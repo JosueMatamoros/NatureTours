@@ -20,7 +20,7 @@ export default function Navbar() {
             "flex items-center justify-between gap-3",
             "h-16 overflow-hidden",
             "rounded-2xl border border-white/10",
-            "bg-emerald-950/40 backdrop-blur-xl",
+            " backdrop-blur-xl",
             "px-4 shadow-lg shadow-black/20",
           ].join(" ")}
         >
@@ -29,11 +29,9 @@ export default function Navbar() {
             <img
               src="/logo.png"
               alt="La Fortuna Nature Tours logo"
-              className="h-16 w-16 "
+              className="h-15 w-15 "
             />
-            <span className="text-sm font-semibold tracking-wide text-white/90">
-              Pura Vida
-            </span>
+
           </a>
 
           {/* Desktop links */}
