@@ -13,7 +13,7 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="fixed inset-x-0 top-4 z-50">
+    <header className="fixed inset-x-0 top-2 z-50">
       <div className="mx-auto w-[min(1100px,92%)]">
         <nav
           className={[
