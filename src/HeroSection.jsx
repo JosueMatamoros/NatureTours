@@ -2,8 +2,48 @@ import { HiOutlineSparkles } from "react-icons/hi2";
 
 export default function HeroSection() {
   return (
-    <section className="relative h-dvh overflow-hidden bg-gradient-to-br from-[#06140d] via-[#0b1f15] to-[#050b08]">
-      <div className="h-full flex overflow-hidden">
+    <section
+      className="
+    relative h-dvh overflow-hidden
+    bg-[url('./ranaTica.png')] bg-cover bg-center
+    md:bg-linear-to-br md:from-[#06140d] md:via-[#0b1f15] md:to-[#050b08]
+  "
+    >
+      {/* TABLET: 2 columnas */}
+      <div className="hidden md:flex lg:hidden h-full overflow-hidden">
+        {/* COLUMNA 1 */}
+        <div className="w-1/2 h-full p-2">
+          <div className="h-full rounded-2xl overflow-hidden">
+            <img
+              src="./ranaTica.png"
+              alt="Rana Tica"
+              className="block w-full h-full object-cover object-[80%_center] brightness-90 contrast-105"
+            />
+          </div>
+        </div>
+
+        {/* COLUMNA 2 */}
+        <div className="w-1/2 h-full flex flex-col p-2 gap-2">
+          <div className="h-1/2 rounded-2xl overflow-hidden">
+            <img
+              src="./serpienteTercioPelo.png"
+              alt="Serpiente Tercio Pelo"
+              className="block w-full h-full object-cover object-center brightness-90 contrast-105"
+            />
+          </div>
+
+          <div className="h-1/2 rounded-2xl overflow-hidden">
+            <img
+              src="./ranaFresa.png"
+              alt="Rana Fresa"
+              className="block w-full h-full object-cover object-center brightness-90 contrast-105"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* DESKTOP: 3 columnas (lg+) */}
+      <div className="hidden lg:flex h-full overflow-hidden">
         {/* COLUMNA 1 */}
         <div className="w-1/3 h-full p-2">
           <div className="h-full rounded-2xl overflow-hidden">
@@ -36,7 +76,7 @@ export default function HeroSection() {
 
         {/* COLUMNA 3 */}
         <div className="w-1/3 h-full flex flex-col p-2 gap-2">
-          <div className="h-1/3 rounded-2xl  overflow-hidden">
+          <div className="h-1/3 rounded-2xl overflow-hidden">
             <img
               src="./ranaLeche.png"
               alt="Rana Leche"
@@ -44,7 +84,7 @@ export default function HeroSection() {
             />
           </div>
 
-          <div className="h-1/3 rounded-2xl  overflow-hidden">
+          <div className="h-1/3 rounded-2xl overflow-hidden">
             <img
               src="./serpienteCoral.png"
               alt="Serpiente Coral"
@@ -52,7 +92,7 @@ export default function HeroSection() {
             />
           </div>
 
-          <div className="h-1/3 rounded-2xl  overflow-hidden">
+          <div className="h-1/3 rounded-2xl overflow-hidden">
             <img
               src="./ranaDorada.png"
               alt="Rana Dorada"
@@ -61,8 +101,6 @@ export default function HeroSection() {
           </div>
         </div>
       </div>
-
-      <div className="absolute inset-0 bg-[#07140e]/30" />
 
       <div className="absolute inset-0 flex items-center justify-center ">
         <div className="text-center max-w-2xl">
