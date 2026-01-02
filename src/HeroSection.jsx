@@ -5,7 +5,7 @@ export default function HeroSection() {
     <section
       className="
     relative h-dvh overflow-hidden
-    bg-[url('./ranaTica.png')] bg-cover bg-center
+    bg-[url('./ranaTica.png')] bg-cover bg-[80%_center]
     md:bg-linear-to-br md:from-[#06140d] md:via-[#0b1f15] md:to-[#050b08]
   "
     >
