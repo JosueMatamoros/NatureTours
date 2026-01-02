@@ -31,31 +31,25 @@ export default function Navbar() {
               alt="La Fortuna Nature Tours logo"
               className="h-15 w-15 "
             />
-
           </a>
 
           {/* Desktop links */}
           <div className="hidden items-center gap-2 md:flex">
-            {[
-              "Home",
-              "Experiences",
-              "Destinations",
-              "Itineraries",
-              "Sustainability",
-              "Contact",
-            ].map((item) => (
-              <a
-                key={item}
-                href="#"
-                className={[
-                  "rounded-xl px-3 py-2 text-sm",
-                  "text-white/70 hover:text-white/90",
-                  "hover:bg-white/5 transition",
-                ].join(" ")}
-              >
-                {item}
-              </a>
-            ))}
+            {["Home", "Tours", "Experiences", "About Us", "Contact"].map(
+              (item) => (
+                <a
+                  key={item}
+                  href="#"
+                  className={[
+                    "rounded-xl px-3 py-2 text-sm",
+                    "text-white/70 hover:text-white/90",
+                    "hover:bg-white/5 transition",
+                  ].join(" ")}
+                >
+                  {item}
+                </a>
+              )
+            )}
           </div>
 
           {/* Right actions */}
@@ -124,27 +118,22 @@ export default function Navbar() {
             ].join(" ")}
           >
             <div className="grid gap-1">
-              {[
-                "Home",
-                "Experiences",
-                "Destinations",
-                "Itineraries",
-                "Sustainability",
-                "Contact",
-              ].map((item) => (
-                <a
-                  key={item}
-                  href="#"
-                  className={[
-                    "rounded-xl px-3 py-2 text-sm",
-                    "text-white/75 hover:text-white/95",
-                    "hover:bg-white/5 transition",
-                  ].join(" ")}
-                  onClick={() => setOpen(false)}
-                >
-                  {item}
-                </a>
-              ))}
+              {["Home", "Tours", "Experiences", "About Us", "Contact"].map(
+                (item) => (
+                  <a
+                    key={item}
+                    href="#"
+                    className={[
+                      "rounded-xl px-3 py-2 text-sm",
+                      "text-white/75 hover:text-white/95",
+                      "hover:bg-white/5 transition",
+                    ].join(" ")}
+                    onClick={() => setOpen(false)}
+                  >
+                    {item}
+                  </a>
+                )
+              )}
 
               <a
                 href="#"
