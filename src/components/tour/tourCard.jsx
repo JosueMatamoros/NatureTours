@@ -12,7 +12,7 @@ export default function TourCard({
   imageAlt,
   title,
   description,
-  stats, // { duration, group, location }
+  stats,
   highlights,
   price,
   oldPrice,
@@ -24,29 +24,25 @@ export default function TourCard({
   return (
     <article className="w-full overflow-hidden rounded-3xl bg-white shadow-[0_12px_40px_rgba(0,0,0,0.10)] ring-1 ring-black/5 hover:scale-101 transition-transform transition-duration-300">
       <div
-        className={`grid grid-cols-1  ${
-          reverse
-            ? "md:grid-cols-[1fr_420px]"
-            : "md:grid-cols-[420px_1fr]"
-        }`}
+        className={`grid items-stretch grid-cols-1 ${
+          reverse ? "md:grid-cols-[1fr_420px]" : "md:grid-cols-[420px_1fr]"
+        } md:min-h-[420px]`}
       >
         {/* IMAGE */}
         <div
-          className={`relative  ${
-            reverse ? "md:order-2" : "md:order-1"
-          }`}
+          className={`relative h-full ${reverse ? "md:order-2" : "md:order-1"}`}
         >
           <img
             src={imageSrc}
             alt={imageAlt}
-            className="h-full w-full object-cover "
+            className="h-full w-full object-cover"
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/15 to-transparent md:hidden" />
         </div>
 
         {/* CONTENT */}
         <div
-          className={`flex flex-col gap-6 p-6 md:p-8 ${
+          className={`flex h-full flex-col justify-between gap-6 p-6 md:p-8 ${
             reverse ? "md:order-1" : "md:order-2"
           }`}
         >
@@ -61,9 +57,17 @@ export default function TourCard({
 
           {/* STATS */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Stat icon={HiOutlineClock} label="Duration" value={stats.duration} />
+            <Stat
+              icon={HiOutlineClock}
+              label="Duration"
+              value={stats.duration}
+            />
             <Stat icon={HiOutlineUsers} label="Group" value={stats.group} />
-            <Stat icon={HiOutlineMapPin} label="Location" value={stats.location} />
+            <Stat
+              icon={HiOutlineMapPin}
+              label="Location"
+              value={stats.location}
+            />
           </div>
 
           {/* HIGHLIGHTS */}
@@ -79,10 +83,10 @@ export default function TourCard({
             ))}
           </ul>
 
-          <div className="h-px w-full bg-slate-200" />
+          <div className="mt-auto h-px w-full bg-slate-200" />
 
           {/* PRICE */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="text-xs text-slate-500">From</div>
               <div className="flex items-baseline gap-2">
@@ -103,7 +107,7 @@ export default function TourCard({
 
             <button
               onClick={onReserve}
-              className="inline-flex items-center gap-3 rounded-2xl bg-emerald-700 px-6 py-3 text-sm font-semibold text-white  transition-all hover:bg-emerald-800 hover:scale-105 transition-duration-300"
+              className="inline-flex items-center gap-3 rounded-2xl bg-emerald-700 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-emerald-800 hover:scale-105 transition-duration-300"
             >
               Book Now
               <HiArrowRight className="h-5 w-5" />

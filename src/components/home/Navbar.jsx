@@ -66,9 +66,9 @@ export default function Navbar() {
               className={[
                 "hidden md:inline-flex items-center justify-center",
                 "rounded-xl px-4 py-2 text-sm font-semibold",
-                "bg-primary-green text-white",
-                "hover:bg-primary-green/90 transition",
-                "shadow-md shadow-primary-green/30",
+                "bg-emerald-700 text-white",
+                "hover:bg-emerald-800 transition",
+                "shadow-md shadow-emerald-700/30",
               ].join(" ")}
             >
               Plan Your Trip
