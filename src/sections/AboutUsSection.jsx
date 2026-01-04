@@ -12,13 +12,13 @@ export default function AboutUsSection() {
             font-medium tracking-wide backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.35)]
             border border-white/20 text-emerald-700"
           >
-            Nuestra Historia
+            Our Story
           </span>
         </div>
 
         {/* Title */}
         <h2 className="mt-6 text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
-          Un sueño que nació del corazón
+          A dream born from the heart
         </h2>
 
         {/* Main content */}
@@ -31,7 +31,7 @@ export default function AboutUsSection() {
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
                     src="/aboutUs/image3.JPG"
-                    alt="Atardecer en el campo"
+                    alt="Sunset over the countryside"
                     className="h-[440px] w-full object-cover sm:h-[520px]"
                     loading="lazy"
                   />
@@ -43,7 +43,7 @@ export default function AboutUsSection() {
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
                     src="/aboutUs/image2.jpeg"
-                    alt="Caminata nocturna con luces"
+                    alt="Night walk with lights"
                     className="h-62.5 w-full object-cover sm:h-70"
                     loading="lazy"
                   />
@@ -55,7 +55,7 @@ export default function AboutUsSection() {
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
                     src="/aboutUs/image1.png"
-                    alt="Cabaña cálida en la montaña"
+                    alt="Cozy mountain cabin"
                     className="h-62.5 w-full object-cover object-top sm:h-70"
                     loading="lazy"
                   />
@@ -63,11 +63,11 @@ export default function AboutUsSection() {
               </div>
             </div>
 
-            {/* Since pill pegado abajo del collage */}
+            {/* Since pill */}
             <div className="absolute bottom-4 ">
               <span className="inline-flex items-center gap-2 rounded-full bg-[#1F5B2A] px-5 py-2 text-sm font-semibold text-white shadow-lg">
                 <FaHeart className="h-4 w-4" />
-                Desde 2025
+                Since 2025
               </span>
             </div>
           </div>
@@ -76,21 +76,19 @@ export default function AboutUsSection() {
           <div className="lg:pt-2">
             <div className="space-y-6 text-[15px] leading-7 text-[#6A6259] sm:text-base">
               <p className="max-w-prose">
-                Todo comenzó con una{" "}
+                It all started with a{" "}
                 <span className="font-semibold text-[#2B241D]">
-                  decisión de vida.
+                  life-changing decision.
                 </span>{" "}
-                Tras una operación del corazón, nuestro padre decidió que era
-                momento de cambiar el ritmo y encontrar en la naturaleza una
-                nueva forma de vivir.
+                After undergoing heart surgery, our father realized it was time
+                to slow down and find a new way of living through nature.
               </p>
 
               <p className="max-w-prose">
-                Así nació este emprendimiento familiar: un espacio donde
-                aprovechamos los recursos naturales de nuestra tierra para
-                compartir experiencias únicas con quienes nos visitan. No somos
-                una empresa comercial, somos una familia que abre las puertas de
-                su hogar.
+                That moment gave birth to this family project: a place where we
+                use the natural resources of our land to share meaningful
+                experiences with those who visit us. We are not a commercial
+                company, we are a family opening the doors of our home.
               </p>
 
               {/* Quote */}
@@ -98,19 +96,19 @@ export default function AboutUsSection() {
                 <div className="flex gap-4">
                   <div className="w-1 shrink-0 rounded-full bg-[#7FA37B]" />
                   <p className="italic text-[#2B241D]">
-                    “Aquí no encontrarás el lujo de un hotel, pero sí la calidez
-                    de sentirte en casa. Eso es lo que nos hace especiales.”
+                    “Here you won’t find the luxury of a hotel, but you will feel
+                    the warmth of being at home. That’s what makes us special.”
                   </p>
                 </div>
               </div>
 
               <p className="max-w-prose">
-                En este inicio de 2026, damos nuestros primeros pasos en el mundo
-                digital. Ven y sé parte de nuestro crecimiento, disfruta de la{" "}
+                At the beginning of 2026, we take our first steps into the
+                digital world. Come and be part of our journey, and enjoy the{" "}
                 <span className="font-semibold text-[#251d2b]">
-                  sencillez y humildad
+                  simplicity and humility
                 </span>{" "}
-                que solo un negocio familiar puede ofrecer.
+                that only a family-run business can offer.
               </p>
             </div>
           </div>
