@@ -38,14 +38,16 @@ export default function MapSection() {
         {/* Header */}
         <div className="text-center">
           <h2 className="mt-6 text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
-            Our Location
+            Our location
           </h2>
 
-          <p className="mx-auto mt-4 max-w-3xl ">
+          <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-emerald-900/70 sm:text-lg">
             Nature Tours La Fortuna is located just a few minutes from downtown
             La Fortuna, San Carlos. From the central park, take Route 702 south
             toward Chachagua.
           </p>
+
+          <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-emerald-900/20" />
         </div>
 
         {/* Content */}
@@ -113,7 +115,9 @@ export default function MapSection() {
                     rel="noreferrer"
                     className="group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-4 text-emerald-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50 active:translate-y-0"
                   >
-                    <span className="text-lg font-semibold">Get directions</span>
+                    <span className="text-lg font-semibold">
+                      Get directions
+                    </span>
                     <svg
                       className="h-5 w-5 transition group-hover:translate-x-0.5"
                       viewBox="0 0 24 24"
@@ -133,7 +137,7 @@ export default function MapSection() {
               </div>
             </div>
 
-            <div className="mx-auto mt-4 max-w-4xl text-center text-sm text-emerald-900/70">
+            <div className="mx-auto mt-4 max-w-4xl text-center text-sm ">
               If you prefer, you can also open your favorite browser and search
               for{" "}
               <span className="font-semibold text-emerald-900">
