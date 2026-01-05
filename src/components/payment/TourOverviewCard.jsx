@@ -8,8 +8,10 @@ import {
   FiShield,
   FiDroplet,
   FiUsers,
+  FiChevronDown,
 } from "react-icons/fi";
 import TourImageCarousel from "./TourImageCarousel";
+import { useEffect, useState } from "react";
 
 export default function TourOverviewCard() {
   const tour = {
@@ -81,21 +83,18 @@ export default function TourOverviewCard() {
       {/* Cards */}
       <div className="space-y-4">
         {/* About card */}
-        <InfoCard
-          title="Sobre el tour"
-          icon={FiInfo}
-        >
+        <AccordionCard title="Sobre el tour" icon={FiInfo}>
           <div className="space-y-4 text-sm leading-relaxed text-gray-700">
             {tour.about.map((p, idx) => (
               <p key={idx}>{p}</p>
             ))}
           </div>
-        </InfoCard>
+        </AccordionCard>
 
         {/* Routes card */}
-        <InfoCard
-          title="Rutas y experiencia"
-          icon={FiMap}
+        <AccordionCard
+  title="Rutas y experiencia"
+  icon={FiMap}
           footer={
             <div className="flex flex-wrap gap-2 pt-2">
               {tour.highlights.map((tag) => (
@@ -114,13 +113,10 @@ export default function TourOverviewCard() {
               <p key={idx}>{p}</p>
             ))}
           </div>
-        </InfoCard>
+        </AccordionCard>
 
         {/* Recommendations card */}
-        <InfoCard
-          title="Recomendaciones"
-          icon={FiCheckCircle}
-        >
+        <AccordionCard title="Recomendaciones" icon={FiCheckCircle}>
           <ul className="grid gap-3 sm:grid-cols-2">
             {tour.recommendations.map((rec) => {
               const Icon = rec.icon;
@@ -145,27 +141,85 @@ export default function TourOverviewCard() {
           </ul>
 
 
-        </InfoCard>
+        </AccordionCard>
       </div>
     </section>
   );
 }
 
-function InfoCard({ title, icon: Icon, children, footer }) {
+function AccordionCard({ title, icon: Icon, children, footer }) {
+  const [isLgUp, setIsLgUp] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    // lg en Tailwind = min-width: 1024px
+    const mq = window.matchMedia("(min-width: 1024px)");
+
+    const apply = () => {
+      const lg = mq.matches;
+      setIsLgUp(lg);
+      setOpen(lg); // lg: abierto, <lg: cerrado
+    };
+
+    apply();
+
+    // Soporte moderno + fallback
+    if (mq.addEventListener) mq.addEventListener("change", apply);
+    else mq.addListener(apply);
+
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", apply);
+      else mq.removeListener(apply);
+    };
+  }, []);
+
+  const isAccordion = !isLgUp; // md y abajo se comporta como acordeón
+  const toggle = () => {
+    if (isAccordion) setOpen((v) => !v);
+  };
+
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      {/* Card header */}
-      <div className="flex items-center gap-3 border-b border-gray-100  px-5 py-4">
+      {/* Header clickable en md y abajo */}
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex w-full items-center gap-3 border-b border-gray-100 px-5 py-4 text-left"
+      >
         <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
           <Icon className="h-5 w-5" />
         </span>
-        <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-      </div>
 
-      {/* Card body */}
-      <div className="px-5 py-4">
-        {children}
-        {footer ? <div className="mt-4">{footer}</div> : null}
+        <h2 className="flex-1 text-base font-semibold text-gray-900">
+          {title}
+        </h2>
+
+        {/* Flecha solo en md y abajo */}
+        <span className="lg:hidden">
+          <FiChevronDown
+            className={`h-5 w-5 text-gray-500 transition-transform ${
+              open ? "rotate-180" : "rotate-0"
+            }`}
+          />
+        </span>
+      </button>
+
+      {/* Body: en lg siempre visible; en <lg colapsable */}
+      <div
+        className={[
+          "px-5",
+          "lg:py-4", // en lg siempre con padding vertical
+          isAccordion ? "grid transition-[grid-template-rows] duration-200 ease-out" : "",
+          isAccordion ? (open ? "grid-rows-[1fr]" : "grid-rows-[0fr]") : "",
+        ].join(" ")}
+      >
+        <div className={isAccordion ? "overflow-hidden" : ""}>
+          {/* En <lg damos padding adentro solo cuando está abierto */}
+          <div className={isAccordion ? (open ? "py-4" : "py-0") : ""}>
+            {children}
+            {footer ? <div className="mt-4">{footer}</div> : null}
+          </div>
+        </div>
       </div>
     </div>
   );
