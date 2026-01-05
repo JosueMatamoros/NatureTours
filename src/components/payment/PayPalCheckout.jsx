@@ -52,7 +52,6 @@ export default function PayPalCheckout({ amount, description, onSuccess }) {
         />
       </PayPalScriptProvider>
 
-      <small>Estado: {status}</small>
     </div>
   );
 }
