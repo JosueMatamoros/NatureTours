@@ -18,9 +18,9 @@ export default function ReserveTourCard() {
   const isComplete = Boolean(selectedDate && slot);
 
   return (
-    <aside className="sticky top-6 w-full max-w-sm overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <aside className="w-full md:max-w-sm rounded-2xl border border-gray-200 bg-white shadow-sm h-fit ">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+      <div className="flex items-center justify-between border-b border-gray-100 px-6 pt-5 pb-2">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Book Tour</h3>
         </div>
@@ -43,7 +43,7 @@ export default function ReserveTourCard() {
             Select a date
           </label>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-3">
+
             <CalendarPicker
               selected={selectedDate}
               onSelect={(d) => {
@@ -51,7 +51,7 @@ export default function ReserveTourCard() {
                 setSlot(null); // reset time slot when changing date
               }}
             />
-          </div>
+
         </section>
 
         {/* Time slots (only if date is selected) */}

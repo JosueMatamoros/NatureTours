@@ -1,29 +1,66 @@
-import { FiClock, FiRefreshCw } from "react-icons/fi";
+import {
+  FiClock,
+  FiRefreshCw,
+  FiInfo,
+  FiMap,
+  FiCheckCircle,
+  FiSun,
+  FiShield,
+  FiDroplet,
+  FiUsers,
+} from "react-icons/fi";
+import TourImageCarousel from "./TourImageCarousel";
 
 export default function TourOverviewCard() {
   const tour = {
-    name: "Arenal Volcano Tour",
-    duration: "2 hours",
-    description:
-      "Explore the impressive Arenal Volcano and its surrounding rainforest on a guided tour. Learn about the region’s geology, wildlife, and history while enjoying breathtaking views.",
+    name: "Horseback Riding Tour",
+    duration: "2 horas",
+    about: [
+      "Este tour a caballo tiene una duración aproximada de 2 horas, aunque puede variar según el ritmo del grupo y el tiempo que deseen tomar para disfrutar del recorrido, hacer pausas y apreciar las bellezas naturales del entorno.",
+      "Antes de iniciar, ofrecemos un refrigerio con frutas o bocadillos nacionales, además de degustaciones de jugos o licores nacionales según disponibilidad. Durante el recorrido realizamos pausas para que puedan disfrutar los paisajes, familiarizarse con los caballos o incluso acercarse a disfrutar de los ríos.",
+    ],
+    routes: [
+      "El tour recorre múltiples senderos de distintos tipos: desde caminos amplios de piedra hasta senderos más estrechos rodeados de naturaleza en zona boscosa. También pasamos por fincas con fauna y agricultura local.",
+      "Contamos con varias rutas que pueden elegirse con base en nuestra recomendación y el clima. Hay opciones muy tranquilas, y también rutas con más lodo para quienes buscan un toque de adrenalina. Dependiendo de las condiciones del clima, al pasar cerca de los ríos, existe la posibilidad de cruzarlos y realizar senderos adicionales.",
+    ],
+    highlights: ["Rutas tranquilas", "Naturaleza boscosa", "Cruce de ríos (según clima)"],
     recommendations: [
-      "Wear comfortable walking shoes",
-      "Bring sunscreen and insect repellent",
-      "Carry a reusable water bottle",
-      "Light rain jacket is recommended",
+      {
+        icon: FiSun,
+        title: "Protección solar",
+        text: "Bloqueador y gorra si lo deseas.",
+      },
+      {
+        icon: FiShield,
+        title: "Repelente",
+        text: "Especialmente útil en zonas boscosas.",
+      },
+      {
+        icon: FiCheckCircle,
+        title: "Zapatos cerrados",
+        text: "Tenis o botas para mayor seguridad.",
+      },
+      {
+        icon: FiUsers,
+        title: "Pantalón recomendado",
+        text: "Jeans o licra para más comodidad.",
+      },
+      {
+        icon: FiDroplet,
+        title: "Opcional",
+        text: "Botella de agua y una muda extra si el clima está lluvioso.",
+      },
     ],
   };
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4 w-full">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {tour.name}
-          </h1>
+      <div className="flex flex-wrap items-center justify-between ">
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-900">{tour.name}</h1>
 
-          <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex items-center gap-1 text-sm text-gray-500">
             <FiClock className="h-4 w-4" />
             {tour.duration}
           </div>
@@ -31,39 +68,105 @@ export default function TourOverviewCard() {
 
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-600/30"
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-600/30"
         >
           <FiRefreshCw className="h-4 w-4" />
-          Change tour
+          Cambiar tour
         </button>
       </div>
 
-      {/* Info */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-6">
-        {/* General Information */}
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold text-gray-900">
-            General information
-          </h2>
+      {/* Image carousel */}
+      <TourImageCarousel />
 
-          <p className="text-sm leading-relaxed text-gray-700">
-            {tour.description}
-          </p>
-        </section>
-
-        {/* Recommendations */}
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Recommendations
-          </h2>
-
-          <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
-            {tour.recommendations.map((item, index) => (
-              <li key={index}>{item}</li>
+      {/* Cards */}
+      <div className="space-y-4">
+        {/* About card */}
+        <InfoCard
+          title="Sobre el tour"
+          icon={FiInfo}
+        >
+          <div className="space-y-4 text-sm leading-relaxed text-gray-700">
+            {tour.about.map((p, idx) => (
+              <p key={idx}>{p}</p>
             ))}
+          </div>
+        </InfoCard>
+
+        {/* Routes card */}
+        <InfoCard
+          title="Rutas y experiencia"
+          icon={FiMap}
+          footer={
+            <div className="flex flex-wrap gap-2 pt-2">
+              {tour.highlights.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          }
+        >
+          <div className="space-y-4 text-sm leading-relaxed text-gray-700">
+            {tour.routes.map((p, idx) => (
+              <p key={idx}>{p}</p>
+            ))}
+          </div>
+        </InfoCard>
+
+        {/* Recommendations card */}
+        <InfoCard
+          title="Recomendaciones"
+          icon={FiCheckCircle}
+        >
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {tour.recommendations.map((rec) => {
+              const Icon = rec.icon;
+              return (
+                <li
+                  key={rec.title}
+                  className="flex gap-3 rounded-xl border border-gray-100 bg-white p-3"
+                >
+                  <span className="mt-0.5 grid h-9 w-9 place-items-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                    <Icon className="h-5 w-5" />
+                  </span>
+
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {rec.title}
+                    </p>
+                    <p className="text-sm text-gray-600">{rec.text}</p>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
-        </section>
+
+
+        </InfoCard>
       </div>
     </section>
+  );
+}
+
+function InfoCard({ title, icon: Icon, children, footer }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      {/* Card header */}
+      <div className="flex items-center gap-3 border-b border-gray-100  px-5 py-4">
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+          <Icon className="h-5 w-5" />
+        </span>
+        <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+      </div>
+
+      {/* Card body */}
+      <div className="px-5 py-4">
+        {children}
+        {footer ? <div className="mt-4">{footer}</div> : null}
+      </div>
+    </div>
   );
 }

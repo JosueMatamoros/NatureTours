@@ -23,7 +23,7 @@ export default function CalendarPicker({ selected, onSelect }) {
       : normalizeToNoon(selected);
 
   return (
-    <div className="rounded-xl border p-3">
+    <div className="rounded-xl border p-3 border-gray-400 max-w-xs mx-auto">
       <DayPicker
         mode="single"
         selected={selectedDate}
