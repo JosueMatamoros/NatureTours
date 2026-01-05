@@ -2,6 +2,7 @@ import React from "react";
 import Navbar from "./components/home/Navbar";
 import HeroSection from "./sections/HeroSection";
 import ToursSection from "./sections/ToursSection";
+import ReviewsSection from "./sections/ReviewsSection";
 import AboutUsSection from "./sections/AboutUsSection";
 import MapSection from "./sections/MapSection";
 
@@ -11,6 +12,7 @@ export default function Home() {
       <Navbar />
       <HeroSection />
       <ToursSection />
+      <ReviewsSection />
       <AboutUsSection />
       <MapSection />
     </div>
