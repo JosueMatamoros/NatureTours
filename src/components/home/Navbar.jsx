@@ -1,4 +1,13 @@
 import { useEffect, useState } from "react";
+import { Link, NavLink } from "react-router-dom";
+
+const LINKS = [
+  { label: "Home", to: "/" },
+  { label: "Tours", to: "/tours" },
+  { label: "Experiences", to: "/experiences" },
+  { label: "About Us", to: "/about" },
+  { label: "Contact", to: "/contact" },
+];
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -20,53 +29,55 @@ export default function Navbar() {
             "flex items-center justify-between gap-3",
             "h-16 overflow-hidden",
             "rounded-2xl border border-white/10",
-            " backdrop-blur-xl",
+            "backdrop-blur-xl",
             "px-4 shadow-lg shadow-black/20",
           ].join(" ")}
         >
           {/* Brand */}
-          <a href="#" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <img
               src="/logo.png"
               alt="La Fortuna Nature Tours logo"
-              className="h-15 w-15 "
+              className="h-15 w-15"
             />
-          </a>
+          </Link>
 
           {/* Desktop links */}
           <div className="hidden items-center gap-2 md:flex">
-            {["Home", "Tours", "Experiences", "About Us", "Contact"].map(
-              (item) => (
-                <a
-                  key={item}
-                  href="#"
-                  className={[
+            {LINKS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  [
                     "rounded-xl px-3 py-2 text-sm",
-                    "text-white/70 hover:text-white/90",
+                    isActive ? "text-white bg-white/10" : "text-white/70 hover:text-white/90",
                     "hover:bg-white/5 transition",
-                  ].join(" ")}
-                >
-                  {item}
-                </a>
-              )
-            )}
+                  ].join(" ")
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
           </div>
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
             {/* CTA */}
-            <a
-              href="#"
-              className={[
-                "hidden md:inline-flex items-center justify-center",
-                "rounded-xl px-4 py-2 text-sm font-semibold",
-                "bg-emerald-700 text-white",
-                "hover:bg-emerald-800 transition",
-                "shadow-md shadow-emerald-700/30",
-              ].join(" ")}
+            <NavLink
+              to="/plan"
+              className={({ isActive }) =>
+                [
+                  "hidden md:inline-flex items-center justify-center",
+                  "rounded-xl px-4 py-2 text-sm font-semibold",
+                  isActive ? "bg-emerald-800 text-white" : "bg-emerald-700 text-white",
+                  "hover:bg-emerald-800 transition",
+                  "shadow-md shadow-emerald-700/30",
+                ].join(" ")
+              }
             >
               Plan Your Trip
-            </a>
+            </NavLink>
 
             {/* Mobile button */}
             <button
@@ -118,25 +129,25 @@ export default function Navbar() {
             ].join(" ")}
           >
             <div className="grid gap-1">
-              {["Home", "Tours", "Experiences", "About Us", "Contact"].map(
-                (item) => (
-                  <a
-                    key={item}
-                    href="#"
-                    className={[
+              {LINKS.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    [
                       "rounded-xl px-3 py-2 text-sm",
-                      "text-white/75 hover:text-white/95",
+                      isActive ? "text-white bg-white/10" : "text-white/75 hover:text-white/95",
                       "hover:bg-white/5 transition",
-                    ].join(" ")}
-                    onClick={() => setOpen(false)}
-                  >
-                    {item}
-                  </a>
-                )
-              )}
+                    ].join(" ")
+                  }
+                  onClick={() => setOpen(false)}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
 
-              <a
-                href="#"
+              <NavLink
+                to="/plan"
                 className={[
                   "mt-2 inline-flex items-center justify-center",
                   "rounded-xl px-4 py-2 text-sm font-semibold",
@@ -147,7 +158,7 @@ export default function Navbar() {
                 onClick={() => setOpen(false)}
               >
                 Plan Your Trip
-              </a>
+              </NavLink>
             </div>
           </div>
         )}
