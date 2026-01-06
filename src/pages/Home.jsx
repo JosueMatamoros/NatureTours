@@ -8,7 +8,7 @@ import MapSection from "../sections/MapSection";
 export default function Home() {
   return (
     <div className="min-h-dvh">
-      <Navbar />
+      <Navbar variant="overlay" />
       <HeroSection />
       <ToursSection />
       <AboutUsSection />

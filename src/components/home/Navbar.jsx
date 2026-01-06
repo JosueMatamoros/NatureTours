@@ -9,8 +9,9 @@ const LINKS = [
   { label: "Contact", to: "/contact" },
 ];
 
-export default function Navbar() {
+export default function Navbar({ variant = "overlay" }) {
   const [open, setOpen] = useState(false);
+  const isOverlay = variant === "overlay";
 
   // Cierra el menú si pasas a pantalla grande
   useEffect(() => {
@@ -22,15 +23,31 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="absolute inset-x-0 top-2 z-50">
+    <header
+      className={[
+        "z-50",
+        isOverlay ? "absolute inset-x-0 top-2" : "relative pt-2",
+      ].join(" ")}
+    >
       <div className="mx-auto w-[min(1100px,92%)]">
         <nav
           className={[
             "flex items-center justify-between gap-3",
             "h-16 overflow-hidden",
-            "rounded-2xl border border-white/10",
+            "rounded-2xl px-4",
             "backdrop-blur-xl",
-            "px-4 shadow-lg shadow-black/20",
+            "transition-colors duration-300",
+            isOverlay
+              ? [
+                  "border border-white/10",
+                  "bg-transparent",
+                  "shadow-lg shadow-black/20",
+                ].join(" ")
+              : [
+                  "border border-gray-200",
+                  "bg-white/80",
+                  "shadow-lg shadow-black/10",
+                ].join(" "),
           ].join(" ")}
         >
           {/* Brand */}
@@ -50,9 +67,14 @@ export default function Navbar() {
                 to={item.to}
                 className={({ isActive }) =>
                   [
-                    "rounded-xl px-3 py-2 text-sm",
-                    isActive ? "text-white bg-white/10" : "text-white/70 hover:text-white/90",
-                    "hover:bg-white/5 transition",
+                    "rounded-xl px-3 py-2 text-sm transition",
+                    isOverlay
+                      ? isActive
+                        ? "text-white bg-white/10"
+                        : "text-white/70 hover:text-white/90 hover:bg-white/5"
+                      : isActive
+                        ? "text-gray-900 bg-gray-100"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100",
                   ].join(" ")
                 }
               >
@@ -66,15 +88,13 @@ export default function Navbar() {
             {/* CTA */}
             <NavLink
               to="/plan"
-              className={({ isActive }) =>
-                [
-                  "hidden md:inline-flex items-center justify-center",
-                  "rounded-xl px-4 py-2 text-sm font-semibold",
-                  isActive ? "bg-emerald-800 text-white" : "bg-emerald-700 text-white",
-                  "hover:bg-emerald-800 transition",
-                  "shadow-md shadow-emerald-700/30",
-                ].join(" ")
-              }
+              className={[
+                "hidden md:inline-flex items-center justify-center",
+                "rounded-xl px-4 py-2 text-sm font-semibold transition",
+                isOverlay
+                  ? "bg-emerald-700 text-white hover:bg-emerald-800 shadow-md shadow-emerald-700/30"
+                  : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/30",
+              ].join(" ")}
             >
               Plan Your Trip
             </NavLink>
@@ -85,10 +105,10 @@ export default function Navbar() {
               onClick={() => setOpen((v) => !v)}
               className={[
                 "md:hidden inline-flex items-center justify-center",
-                "h-10 w-10 rounded-xl",
-                "bg-white/5 hover:bg-white/10 transition",
-                "ring-1 ring-white/10",
-                "text-white/80",
+                "h-10 w-10 rounded-xl transition ring-1",
+                isOverlay
+                  ? "bg-white/5 hover:bg-white/10 ring-white/10 text-white/80"
+                  : "bg-gray-100 hover:bg-gray-200 ring-gray-200 text-gray-700",
               ].join(" ")}
               aria-label="Toggle menu"
               aria-expanded={open}
@@ -123,9 +143,10 @@ export default function Navbar() {
           <div
             className={[
               "mt-3 md:hidden",
-              "rounded-2xl border border-white/10",
-              "bg-emerald-950/55 backdrop-blur-xl",
-              "p-3 shadow-lg shadow-black/20",
+              "rounded-2xl border backdrop-blur-xl p-3 shadow-lg",
+              isOverlay
+                ? "border-white/10 bg-emerald-950/55 shadow-black/20"
+                : "border-gray-200 bg-white/90 shadow-black/10",
             ].join(" ")}
           >
             <div className="grid gap-1">
@@ -135,9 +156,14 @@ export default function Navbar() {
                   to={item.to}
                   className={({ isActive }) =>
                     [
-                      "rounded-xl px-3 py-2 text-sm",
-                      isActive ? "text-white bg-white/10" : "text-white/75 hover:text-white/95",
-                      "hover:bg-white/5 transition",
+                      "rounded-xl px-3 py-2 text-sm transition",
+                      isOverlay
+                        ? isActive
+                          ? "text-white bg-white/10"
+                          : "text-white/75 hover:text-white/95 hover:bg-white/5"
+                        : isActive
+                          ? "text-gray-900 bg-gray-100"
+                          : "text-gray-700 hover:text-gray-900 hover:bg-gray-100",
                     ].join(" ")
                   }
                   onClick={() => setOpen(false)}
@@ -150,10 +176,10 @@ export default function Navbar() {
                 to="/plan"
                 className={[
                   "mt-2 inline-flex items-center justify-center",
-                  "rounded-xl px-4 py-2 text-sm font-semibold",
-                  "bg-emerald-400/90 text-emerald-950",
-                  "hover:bg-emerald-300 transition",
-                  "shadow-md shadow-emerald-400/20",
+                  "rounded-xl px-4 py-2 text-sm font-semibold transition",
+                  isOverlay
+                    ? "bg-emerald-400/90 text-emerald-950 hover:bg-emerald-300 shadow-md shadow-emerald-400/20"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/20",
                 ].join(" ")}
                 onClick={() => setOpen(false)}
               >
