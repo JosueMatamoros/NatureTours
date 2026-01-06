@@ -1,99 +1,78 @@
-import { HiOutlineClock } from "react-icons/hi2";
+import React from "react";
+import TourCard from "../components/tour/tourCard";
 import { useNavigate } from "react-router-dom";
 
-const TOURS = [
-  {
-    id: 1,
-    title: "Night Walk Tour",
-    description:
-      "Caminata nocturna guiada para observar fauna que solo aparece de noche.",
-    image: "/tours/AgalychnisCallidryas.png",
-    duration: "2 hours",
-    price: 45,
-    objectPosition: "object-top",
-  },
-  {
-    id: 2,
-    title: "Horseback Riding Tour",
-    description:
-      "This horseback riding tour lasts approximately 2 hours, although it may vary depending on the group’s pace.",
-    image: "/tours/horseback.png",
-    duration: "2 hours",
-    price: 25,
-    objectPosition: "object-center",
-  },
-];
-
-export default function Tours() {
+export default function ToursSection() {
   const navigate = useNavigate();
 
   return (
-    <main className="mx-auto w-[min(1200px,92%)] py-20">
-      {/* HEADER */}
-      <header className="mb-14 text-center">
-        <h2 className="text-center text-3xl font-semibold tracking-tight text-[#2B241D] sm:text-4xl lg:text-5xl">
-          Our Tours
+    <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8 space-y-6">
+      <div className="text-center">
+        <h2 className="mt-6 text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
+          Discover our tours
         </h2>
 
-        <p className="mx-auto mt-5 max-w-2xl text-center text-base leading-relaxed text-slate-600 sm:text-lg">
-          Discover the attractions of nature through our family-owned business,
-          with two guided experiences designed to help you connect with
-          adventure and the natural environment.
+        <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-emerald-900/70 sm:text-lg">
+          Enjoy unique experiences surrounded by nature, adventure, and
+          unforgettable landscapes in La Fortuna.
         </p>
-      </header>
 
-      {/* GRID */}
-      <section className="grid gap-10 md:grid-cols-2">
-        {TOURS.map((tour) => (
-          <article
-            key={tour.id}
-            className="overflow-hidden rounded-3xl bg-white shadow-[0_20px_50px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:scale-[1.02]"
-          >
-            {/* IMAGE */}
-            <div className="relative h-[320px]">
-              <img
-                src={tour.image}
-                alt={tour.title}
-                className={`h-full w-full object-cover ${tour.objectPosition}`}
-              />
+        <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-emerald-900/20" />
+      </div>
 
-              {/* Overlay gradient */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
-
-              {/* Duration */}
-              <div className="absolute bottom-20 left-4 flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-900 shadow">
-                <HiOutlineClock className="h-5 w-5 text-emerald-700" />
-                {tour.duration}
-              </div>
-
-              {/* Price */}
-              <div className="absolute bottom-20 right-4 rounded-full bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow">
-                ${tour.price}{" "}
-                <span className="font-normal text-slate-500">/ person</span>
-              </div>
-
-              {/* Description text */}
-              <p className="absolute bottom-4 left-6 right-6 text-sm text-white">
-                {tour.description}
-              </p>
-            </div>
-
-            {/* CONTENT */}
-            <div className="flex items-center justify-between gap-4 p-6">
-              <h3 className="text-xl font-semibold text-slate-900">
-                {tour.title}
-              </h3>
-
-              <button
-                onClick={() => navigate(`/checkout?tourType=${tour.id}`)}
-                className="rounded-full bg-emerald-700 px-6 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
-              >
-                Select date
-              </button>
-            </div>
-          </article>
-        ))}
-      </section>
-    </main>
+      <TourCard
+        imageSrc="/tours/night-walk-tour.jpg"
+        imageAlt="Night walk tour"
+        title="Night Walk Tour"
+        description="Explore a family-owned forest in a small town near La Fortuna and discover its nocturnal wildlife on a safe, guided walk. Wander along natural trails while observing animals that only appear at night, accompanied by an expert guide."
+        stats={{
+          duration: "2 hrs",
+          group: "2–12 people",
+          location: "Tropical Forest Trails",
+        }}
+        highlights={[
+          "Expert bilingual guide",
+          "Professional flashlight included",
+          "Wildlife observation",
+        ]}
+        price={45}
+        oldPrice={55}
+        currency="$"
+        per="/ person"
+        onReserve={() =>
+          navigate({
+            pathname: "/checkout",
+            search: "?tourType=1",
+          })
+        }
+      />
+      <TourCard
+        imageSrc="/tours/horseBac-tour.JPG"
+        imageAlt="Horseback riding tour"
+        title="Horseback Riding Tour"
+        description="Enjoy an authentic horseback riding experience through natural trails, crossing rivers and exploring the forest while discovering the beauty of the surroundings alongside experienced local guides."
+        stats={{
+          duration: "2 hrs",
+          group: "2–15 people",
+          location: "Tropical Forest Trails",
+        }}
+        highlights={[
+          "Experienced local guide",
+          "Bilingual guide available",
+          "Calm, well-trained horses",
+          "All riding equipment included",
+        ]}
+        price={25}
+        currency="$"
+        per="/ person"
+        onReserve={() =>
+          navigate({
+            pathname: "/checkout",
+            search: "?tourType=2",
+          })
+        }
+        reverse
+      />
+    </div>
   );
 }
