@@ -1,6 +1,9 @@
 import { HiOutlineSparkles } from "react-icons/hi2";
+import { useNavigate } from "react-router-dom";
 
 export default function HeroSection() {
+  const navigate = useNavigate();
+
   return (
     <section
       className="
@@ -126,7 +129,10 @@ export default function HeroSection() {
           </h1>
 
           <div className="mt-8 flex items-center justify-center gap-3">
-            <button className="rounded-full bg-green-500 px-6 py-3 text-sm font-semibold text-black shadow-lg hover:bg-green-600 transition-all hover:scale-105">
+            <button
+              className="rounded-full bg-green-500 px-6 py-3 text-sm font-semibold text-black shadow-lg hover:bg-green-600 transition-all hover:scale-105"
+              onClick={() => navigate("/tours")}
+            >
               Book Now
             </button>
             <button

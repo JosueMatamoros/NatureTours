@@ -1,4 +1,5 @@
 import { createBrowserRouter, Outlet, ScrollRestoration } from "react-router-dom";
+import ScrollToTop from "./ScrollToTop";
 import Home from "./pages/Home";
 import Checkout from "./pages/Checkout";
 import Success from "./pages/Success";
@@ -9,6 +10,7 @@ function RootLayout() {
   return (
     <>
       <ScrollRestoration getKey={(location) => location.pathname} />
+      <ScrollToTop />
       <Outlet />
     </>
   );

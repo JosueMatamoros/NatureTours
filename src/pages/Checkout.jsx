@@ -12,9 +12,9 @@ export default function Checkout() {
   const tour = useMemo(() => TOURS[tourType] ?? TOURS[1], [tourType]);
 
   return (
-    <div>
+    <div >
       <Navbar variant="solid" />
-      <div className="md:flex px-6 py-5 space-x-6 space-y-6 ">
+      <div className="md:flex px-6 py-5 space-x-6 space-y-6 max-w-6xl mx-auto">
         <TourOverviewCard tour={tour} />
         <ReserveTourCard />
       </div>
