@@ -13,52 +13,11 @@ import {
 import TourImageCarousel from "./TourImageCarousel";
 import { useEffect, useState } from "react";
 
-export default function TourOverviewCard() {
-  const tour = {
-    name: "Horseback Riding Tour",
-    duration: "2 horas",
-    about: [
-      "Este tour a caballo tiene una duración aproximada de 2 horas, aunque puede variar según el ritmo del grupo y el tiempo que deseen tomar para disfrutar del recorrido, hacer pausas y apreciar las bellezas naturales del entorno.",
-      "Antes de iniciar, ofrecemos un refrigerio con frutas o bocadillos nacionales, además de degustaciones de jugos o licores nacionales según disponibilidad. Durante el recorrido realizamos pausas para que puedan disfrutar los paisajes, familiarizarse con los caballos o incluso acercarse a disfrutar de los ríos.",
-    ],
-    routes: [
-      "El tour recorre múltiples senderos de distintos tipos: desde caminos amplios de piedra hasta senderos más estrechos rodeados de naturaleza en zona boscosa. También pasamos por fincas con fauna y agricultura local.",
-      "Contamos con varias rutas que pueden elegirse con base en nuestra recomendación y el clima. Hay opciones muy tranquilas, y también rutas con más lodo para quienes buscan un toque de adrenalina. Dependiendo de las condiciones del clima, al pasar cerca de los ríos, existe la posibilidad de cruzarlos y realizar senderos adicionales.",
-    ],
-    highlights: ["Rutas tranquilas", "Naturaleza boscosa", "Cruce de ríos (según clima)"],
-    recommendations: [
-      {
-        icon: FiSun,
-        title: "Protección solar",
-        text: "Bloqueador y gorra si lo deseas.",
-      },
-      {
-        icon: FiShield,
-        title: "Repelente",
-        text: "Especialmente útil en zonas boscosas.",
-      },
-      {
-        icon: FiCheckCircle,
-        title: "Zapatos cerrados",
-        text: "Tenis o botas para mayor seguridad.",
-      },
-      {
-        icon: FiUsers,
-        title: "Pantalón recomendado",
-        text: "Jeans o licra para más comodidad.",
-      },
-      {
-        icon: FiDroplet,
-        title: "Opcional",
-        text: "Botella de agua y una muda extra si el clima está lluvioso.",
-      },
-    ],
-  };
-
+export default function TourOverviewCard({ tour }) {
   return (
     <section className="space-y-4 w-full">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between ">
+      <div className="flex flex-wrap items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-gray-900">{tour.name}</h1>
 
@@ -78,11 +37,10 @@ export default function TourOverviewCard() {
       </div>
 
       {/* Image carousel */}
-      <TourImageCarousel />
+      <TourImageCarousel images={tour.images} />
 
       {/* Cards */}
       <div className="space-y-4">
-        {/* About card */}
         <AccordionCard title="Sobre el tour" icon={FiInfo}>
           <div className="space-y-4 text-sm leading-relaxed text-gray-700">
             {tour.about.map((p, idx) => (
@@ -91,10 +49,9 @@ export default function TourOverviewCard() {
           </div>
         </AccordionCard>
 
-        {/* Routes card */}
         <AccordionCard
-  title="Rutas y experiencia"
-  icon={FiMap}
+          title="Rutas y experiencia"
+          icon={FiMap}
           footer={
             <div className="flex flex-wrap gap-2 pt-2">
               {tour.highlights.map((tag) => (
@@ -115,7 +72,6 @@ export default function TourOverviewCard() {
           </div>
         </AccordionCard>
 
-        {/* Recommendations card */}
         <AccordionCard title="Recomendaciones" icon={FiCheckCircle}>
           <ul className="grid gap-3 sm:grid-cols-2">
             {tour.recommendations.map((rec) => {
@@ -139,8 +95,6 @@ export default function TourOverviewCard() {
               );
             })}
           </ul>
-
-
         </AccordionCard>
       </div>
     </section>
@@ -209,7 +163,9 @@ function AccordionCard({ title, icon: Icon, children, footer }) {
         className={[
           "px-5",
           "lg:py-4", // en lg siempre con padding vertical
-          isAccordion ? "grid transition-[grid-template-rows] duration-200 ease-out" : "",
+          isAccordion
+            ? "grid transition-[grid-template-rows] duration-200 ease-out"
+            : "",
           isAccordion ? (open ? "grid-rows-[1fr]" : "grid-rows-[0fr]") : "",
         ].join(" ")}
       >

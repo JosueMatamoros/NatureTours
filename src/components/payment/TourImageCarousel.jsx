@@ -1,15 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
-const images = [
-  "/horseBac-tour.JPG",
-  "/horseBac-tour.JPG",
-  "/horseBac-tour.JPG",
-  "/horseBac-tour.JPG",
-];
-
-export default function TourImageCarousel() {
+export default function TourImageCarousel({ images = [] }) {
   const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    setCurrent(0);
+  }, [images]);
 
   const prev = () =>
     setCurrent((c) => (c === 0 ? images.length - 1 : c - 1));
@@ -17,11 +14,11 @@ export default function TourImageCarousel() {
   const next = () =>
     setCurrent((c) => (c === images.length - 1 ? 0 : c + 1));
 
+  if (!images.length) return null;
+
   return (
     <section className="space-y-4">
-      {/* Main image */}
       <div className="group relative overflow-hidden rounded-2xl">
-        {/* Slider */}
         <div
           className="flex transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${current * 100}%)` }}
@@ -36,22 +33,11 @@ export default function TourImageCarousel() {
           ))}
         </div>
 
-        {/* Gradient overlay */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-black/0 to-black/0" />
 
-        {/* Arrows */}
-        <ArrowButton
-          side="left"
-          onClick={prev}
-          icon={FiChevronLeft}
-        />
-        <ArrowButton
-          side="right"
-          onClick={next}
-          icon={FiChevronRight}
-        />
+        <ArrowButton side="left" onClick={prev} icon={FiChevronLeft} />
+        <ArrowButton side="right" onClick={next} icon={FiChevronRight} />
 
-        {/* Dots */}
         <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
           {images.map((_, i) => (
             <button
@@ -59,9 +45,7 @@ export default function TourImageCarousel() {
               onClick={() => setCurrent(i)}
               className={[
                 "h-2.5 w-2.5 rounded-full transition-all duration-300",
-                i === current
-                  ? "scale-125 bg-white"
-                  : "bg-white/50 hover:scale-110 hover:bg-white",
+                i === current ? "scale-125 bg-white" : "bg-white/50 hover:scale-110 hover:bg-white",
               ].join(" ")}
               aria-label={`Go to image ${i + 1}`}
             />
@@ -69,7 +53,6 @@ export default function TourImageCarousel() {
         </div>
       </div>
 
-      {/* Thumbnails */}
       <div className="flex gap-3">
         {images.map((img, i) => (
           <button
@@ -77,9 +60,7 @@ export default function TourImageCarousel() {
             onClick={() => setCurrent(i)}
             className={[
               "relative overflow-hidden rounded-lg transition-all duration-300",
-              i === current
-                ? "ring-2 ring-emerald-600"
-                : "opacity-80 hover:opacity-100",
+              i === current ? "ring-2 ring-emerald-600" : "opacity-80 hover:opacity-100",
             ].join(" ")}
           >
             <img
@@ -87,10 +68,7 @@ export default function TourImageCarousel() {
               alt={`Thumbnail ${i + 1}`}
               className="h-20 w-28 object-cover transition-transform duration-300 hover:scale-105"
             />
-
-            {i === current && (
-              <span className="absolute inset-0 bg-emerald-600/10" />
-            )}
+            {i === current && <span className="absolute inset-0 bg-emerald-600/10" />}
           </button>
         ))}
       </div>
@@ -99,8 +77,7 @@ export default function TourImageCarousel() {
 }
 
 function ArrowButton({ side, onClick, icon: Icon }) {
-  const position =
-    side === "left" ? "left-4" : "right-4";
+  const position = side === "left" ? "left-4" : "right-4";
 
   return (
     <button

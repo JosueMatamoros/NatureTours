@@ -1,7 +1,10 @@
 import React from "react";
 import TourCard from "../components/tour/tourCard";
+import { useNavigate } from "react-router-dom";
 
 export default function ToursSection() {
+  const navigate = useNavigate();
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8 space-y-6">
       <div className="text-center">
@@ -36,7 +39,12 @@ export default function ToursSection() {
         oldPrice={55}
         currency="$"
         per="/ person"
-        onReserve={() => console.log("Book tour")}
+        onReserve={() =>
+          navigate({
+            pathname: "/checkout",
+            search: "?tourType=1",
+          })
+        }
       />
       <TourCard
         imageSrc="/tours/horseBac-tour.JPG"
@@ -57,7 +65,12 @@ export default function ToursSection() {
         price={25}
         currency="$"
         per="/ person"
-        onReserve={() => console.log("Reserve horseback tour")}
+        onReserve={() =>
+          navigate({
+            pathname: "/checkout",
+            search: "?tourType=2",
+          })
+        }
         reverse
       />
     </div>
