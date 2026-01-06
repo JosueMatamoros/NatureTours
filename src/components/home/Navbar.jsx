@@ -65,18 +65,23 @@ export default function Navbar({ variant = "overlay" }) {
               <NavLink
                 key={item.to}
                 to={item.to}
-                className={({ isActive }) =>
-                  [
+                className={({ isActive }) => {
+                  // Overlay: NO mostrar estado activo, solo hover
+                  if (isOverlay) {
+                    return [
+                      "rounded-xl px-3 py-2 text-sm transition",
+                      "text-white/80 hover:text-white hover:bg-white/10",
+                    ].join(" ");
+                  }
+
+                  // Normal: sí mostrar estado activo
+                  return [
                     "rounded-xl px-3 py-2 text-sm transition",
-                    isOverlay
-                      ? isActive
-                        ? "text-white bg-white/10"
-                        : "text-white/70 hover:text-white/90 hover:bg-white/5"
-                      : isActive
-                        ? "text-gray-900 bg-gray-100"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100",
-                  ].join(" ")
-                }
+                    isActive
+                      ? "text-gray-900 bg-gray-100"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100",
+                  ].join(" ");
+                }}
               >
                 {item.label}
               </NavLink>
@@ -91,6 +96,7 @@ export default function Navbar({ variant = "overlay" }) {
               className={[
                 "hidden md:inline-flex items-center justify-center",
                 "rounded-xl px-4 py-2 text-sm font-semibold transition",
+                // Paleta emerald como en TourCard
                 isOverlay
                   ? "bg-emerald-700 text-white hover:bg-emerald-800 shadow-md shadow-emerald-700/30"
                   : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/30",
@@ -154,18 +160,23 @@ export default function Navbar({ variant = "overlay" }) {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={({ isActive }) =>
-                    [
+                  className={({ isActive }) => {
+                    // Overlay: NO mostrar activo, solo hover
+                    if (isOverlay) {
+                      return [
+                        "rounded-xl px-3 py-2 text-sm transition",
+                        "text-white/80 hover:text-white hover:bg-white/10",
+                      ].join(" ");
+                    }
+
+                    // Normal: sí mostrar activo
+                    return [
                       "rounded-xl px-3 py-2 text-sm transition",
-                      isOverlay
-                        ? isActive
-                          ? "text-white bg-white/10"
-                          : "text-white/75 hover:text-white/95 hover:bg-white/5"
-                        : isActive
-                          ? "text-gray-900 bg-gray-100"
-                          : "text-gray-700 hover:text-gray-900 hover:bg-gray-100",
-                    ].join(" ")
-                  }
+                      isActive
+                        ? "text-gray-900 bg-gray-100"
+                        : "text-gray-700 hover:text-gray-900 hover:bg-gray-100",
+                    ].join(" ");
+                  }}
                   onClick={() => setOpen(false)}
                 >
                   {item.label}
@@ -177,6 +188,7 @@ export default function Navbar({ variant = "overlay" }) {
                 className={[
                   "mt-2 inline-flex items-center justify-center",
                   "rounded-xl px-4 py-2 text-sm font-semibold transition",
+                  // Paleta emerald como en TourCard
                   isOverlay
                     ? "bg-emerald-400/90 text-emerald-950 hover:bg-emerald-300 shadow-md shadow-emerald-400/20"
                     : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/20",

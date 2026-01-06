@@ -1,25 +1,44 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Outlet, ScrollRestoration } from "react-router-dom";
 import Home from "./pages/Home";
 import Checkout from "./pages/Checkout";
 import Success from "./pages/Success";
 import NotFound from "./pages/NotFound";
+import Tours from "./pages/Tours";
+
+function RootLayout() {
+  return (
+    <>
+      <ScrollRestoration getKey={(location) => location.pathname} />
+      <Outlet />
+    </>
+  );
+}
 
 const router = createBrowserRouter([
   {
-    path: "/",
-    element: <Home />,
-  },
-  {
-    path: "/checkout",
-    element: <Checkout />,
-  },
-  {
-    path: "/success",
-    element: <Success />,
-  },
-  {
-    path: "*",
-    element: <NotFound />,
+    element: <RootLayout />,
+    children: [
+      {
+        path: "/",
+        element: <Home />,
+      },
+      {
+        path: "/checkout",
+        element: <Checkout />,
+      },
+      {
+        path: "/tours",
+        element: <Tours />,
+      },
+      {
+        path: "/success",
+        element: <Success />,
+      },
+      {
+        path: "*",
+        element: <NotFound />,
+      },
+    ],
   },
 ]);
 
