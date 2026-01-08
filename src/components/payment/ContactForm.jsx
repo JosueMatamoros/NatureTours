@@ -17,9 +17,9 @@ export default function ContactForm({
 }) {
   return (
     <div className="px-8 pb-6 ">
-      {/* Nombre */}
+      {/* Full Name */}
       <label className="block text-sm font-semibold text-gray-800">
-        Nombre completo <span className="text-red-500">*</span>
+        Full name <span className="text-red-500">*</span>
       </label>
       <div className={inputClass(fullNameValid, showError("fullName"))}>
         <FiUser className="h-5 w-5 text-gray-400" />
@@ -27,7 +27,7 @@ export default function ContactForm({
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           onBlur={() => setTouched((t) => ({ ...t, fullName: true }))}
-          placeholder="Tu nombre completo"
+          placeholder="Your full name"
           className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-400 outline-none"
           autoComplete="name"
           inputMode="text"
@@ -35,13 +35,13 @@ export default function ContactForm({
       </div>
       {showError("fullName") && !fullNameValid ? (
         <p className="mt-2 text-xs text-red-600">
-          El nombre solo puede tener letras y espacios (sin números ni símbolos).
+          The name can only contain letters and spaces (no numbers or symbols).
         </p>
       ) : null}
 
-      {/* Teléfono */}
+      {/* Phone */}
       <label className="mt-5 block text-sm font-semibold text-gray-800">
-        Número de teléfono
+        Phone number
       </label>
       <div className={inputClass(phoneValid, showError("phone"))}>
         <FiPhone className="h-5 w-5 text-gray-400" />
@@ -52,7 +52,7 @@ export default function ContactForm({
             if (/^[0-9+\s-]*$/.test(next)) setPhone(next);
           }}
           onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
-          placeholder="+506 8888-8888"
+          placeholder="+1 (415) 555-2671"
           className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-400 outline-none"
           autoComplete="tel"
           inputMode="tel"
@@ -60,13 +60,13 @@ export default function ContactForm({
       </div>
       {showError("phone") && !phoneValid ? (
         <p className="mt-2 text-xs text-red-600">
-          El teléfono no puede tener letras y debe tener entre 8 y 15 dígitos.
+          The phone number cannot contain letters and must be between 8 and 15 digits.
         </p>
       ) : null}
 
       {/* Email */}
       <label className="mt-5 block text-sm font-semibold text-gray-800">
-        Correo electrónico <span className="text-red-500">*</span>
+        Email address <span className="text-red-500">*</span>
       </label>
       <div className={inputClass(emailValid, showError("email"))}>
         <FiMail className="h-5 w-5 text-gray-400" />
@@ -74,7 +74,7 @@ export default function ContactForm({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onBlur={() => setTouched((t) => ({ ...t, email: true }))}
-          placeholder="tu@email.com"
+          placeholder="you@email.com"
           className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-400 outline-none"
           autoComplete="email"
           inputMode="email"
@@ -82,8 +82,8 @@ export default function ContactForm({
       </div>
       {showError("email") && !emailValid ? (
         <p className="mt-2 text-xs text-red-600">
-          Escribí un correo válido tipo{" "}
-          <span className="font-semibold">nombre@dominio.com</span>.
+          Enter a valid email like{" "}
+          <span className="font-semibold">name@domain.com</span>.
         </p>
       ) : null}
     </div>

@@ -19,7 +19,7 @@ export default function PaymentPage() {
   const DEPOSIT_RATE = 0.2;
 
   const descriptionText =
-    "Día del tour - Horario: 6-8 o 8-10 | Apartado o pago completo";
+    "Tour day – Time slot: 6–8 or 8–10 | Deposit or full payment";
 
   const paypalFee = useMemo(() => {
     const fee = booking.subtotal * PAYPAL_FEE_RATE;
@@ -92,11 +92,11 @@ export default function PaymentPage() {
       <header className="px-6 pt-10 pb-6">
         <div className="mx-auto max-w-6xl text-center">
           <h1 className="text-3xl font-bold text-gray-900">
-            Completar Reserva
+            Complete Your Booking
           </h1>
           <p className="mt-2 flex items-center justify-center gap-2 text-sm text-gray-500">
             <FiLock className="h-4 w-4" />
-            Pago seguro y encriptado
+            Secure and encrypted payment
           </p>
         </div>
       </header>
@@ -107,10 +107,10 @@ export default function PaymentPage() {
           <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div className="px-8 pt-7 pb-5 ">
               <h2 className="text-xl font-semibold text-gray-900 ">
-                Detalles de contacto
+                Contact details
               </h2>
               <p className="mt-1 text-sm text-gray-500">
-                Ingresa tu información para recibir la confirmación
+                Enter your information to receive the confirmation
               </p>
             </div>
 
@@ -130,24 +130,24 @@ export default function PaymentPage() {
               showError={showError}
             />
 
-            {/* Pago completo */}
-            <Collapse show={!useDeposit} >
+            {/* Full payment */}
+            <Collapse show={!useDeposit}>
               <PaymentPanel
                 mode="full"
                 mustBlockPay={!isFormValid}
                 amount={total}
                 onSuccess={(details) =>
-                  console.log("Pago completo confirmado", details)
+                  console.log("Full payment confirmed", details)
                 }
                 blockedText={
                   <>
-                    Please answer all fields marked with{" "}
+                    Please fill in all fields marked with{" "}
                     <span className="font-semibold text-red-500">*</span> to
                     complete your booking
                   </>
                 }
               />
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-5 mx-8">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 mt-1 mx-8">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 grid h-8 w-8 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
                     <FiDollarSign className="h-4 w-4" />
@@ -155,50 +155,48 @@ export default function PaymentPage() {
 
                   <div className="flex-1">
                     <h3 className="text-base font-semibold text-emerald-900">
-                      ¿Prefieres evitar el cargo de PayPal?
+                      Prefer to avoid the PayPal fee?
                     </h3>
                     <p className="mt-2 text-sm leading-relaxed text-emerald-800">
-                      Puedes realizar una{" "}
-                      <span className="font-semibold">reserva parcial</span> y
-                      pagar el resto en efectivo  el día del
-                      tour. De esta manera no se aplicará el cargo de PayPal.
+                      You can make a{" "}
+                      <span className="font-semibold">partial reservation</span>{" "}
+                      and pay the remaining balance in cash on the day of the
+                      tour. This way, no PayPal fee will be applied.
                     </p>
-
-
                   </div>
                 </div>
               </div>
             </Collapse>
 
-            {/* Apartado 20% */}
+            {/* Deposit 20% */}
             <Collapse show={useDeposit}>
-              <div className="px-8 pb-8">
+              <div className="px-8 ">
                 <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-                  <div className="px-6 pt-6 pb-4">
+                  <div className="px-6 pt-6 pb-2">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      Apartado del tour (20%)
+                      Tour deposit (20%)
                     </h3>
                     <p className="mt-1 text-sm text-gray-600">
-                      Se cobrará únicamente el{" "}
+                      Only the{" "}
                       <span className="font-semibold">20%</span>{" "}
                       <span className="font-semibold">
                         ({fmt(depositAmount)})
                       </span>{" "}
-                      sin comisión. El resto se paga en efectivo el día del
-                      tour.
+                      will be charged with no additional fees. The remaining
+                      balance is paid in cash on the day of the tour.
                     </p>
                   </div>
 
-                  <div className="px-6 pb-6">
+                  <div className="px-6 pt-6">
                     <PaymentPanel
                       mode="deposit"
                       mustBlockPay={!isFormValid}
                       amount={depositAmount}
-                      description={`Apartado 20% - ${descriptionText}`}
+                      description={`20% deposit – ${descriptionText}`}
                       onSuccess={(details) =>
-                        console.log("Apartado confirmado (PayPal)", details)
+                        console.log("Deposit confirmed (PayPal)", details)
                       }
-                      blockedText="Completa tus datos para habilitar el apartado"
+                      blockedText="Complete your details to enable the deposit"
                     />
                   </div>
                 </div>
@@ -210,10 +208,10 @@ export default function PaymentPage() {
           <aside className="rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div className="px-8 pt-7 pb-5">
               <h2 className="text-xl font-semibold text-gray-900 ">
-                Resumen del pedido
+                Order summary
               </h2>
               <p className="mt-1 text-sm text-gray-500">
-                Desglose de tu reserva
+                Breakdown of your booking
               </p>
             </div>
 
@@ -242,9 +240,9 @@ export default function PaymentPage() {
               />
 
               <p className="mt-6 text-center text-xs text-gray-400">
-                Al completar esta transacción, aceptas nuestros{" "}
+                By completing this transaction, you agree to our{" "}
                 <span className="font-medium text-gray-500 underline underline-offset-2">
-                  Términos de Servicio
+                  Terms of Service
                 </span>
               </p>
             </div>

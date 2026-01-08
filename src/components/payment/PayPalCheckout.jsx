@@ -7,8 +7,8 @@ export default function PayPalCheckout({ amount, description, onSuccess }) {
   const [status, setStatus] = useState("idle");
 
   if (!PAYPAL_CLIENT_ID) {
-    console.error("PayPal Client ID no definido");
-    return <p>Error de configuración de pagos</p>;
+    console.error("PayPal Client ID not defined");
+    return <p>Payment configuration error</p>;
   }
 
   return (
@@ -51,7 +51,6 @@ export default function PayPalCheckout({ amount, description, onSuccess }) {
           }}
         />
       </PayPalScriptProvider>
-
     </div>
   );
 }
