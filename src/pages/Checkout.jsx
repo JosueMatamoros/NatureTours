@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { TOURS } from "../data/tours";
-import ReserveTourCard from "../components/payment/ReserveTourCard";
-import TourOverviewCard from "../components/payment/TourOverviewCard";
+import ReserveTourCard from "../components/checkout/ReserveTourCard";
+import TourOverviewCard from "../components/checkout/TourOverviewCard";
 import Navbar from "../components/home/Navbar";
 
 export default function Checkout() {
