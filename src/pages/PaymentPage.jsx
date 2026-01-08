@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { FiLock, FiDollarSign } from "react-icons/fi";
 
+import CancellationTermsModal from "../components/ui/CancellationTermsModal";
 import ContactForm from "../components/payment/ContactForm";
 import OrderSummaryBox from "../components/payment/OrderSummaryBox";
 import DepositToggleCard from "../components/payment/DepositToggleCard";
@@ -86,6 +87,8 @@ export default function PaymentPage() {
     ].join(" ");
 
   const feePercentText = `${(PAYPAL_FEE_RATE * 100).toFixed(1)}%`;
+
+  const [showCancellationTerms, setShowCancellationTerms] = useState(false);
 
   return (
     <main className="min-h-screen bg-white">
@@ -177,8 +180,7 @@ export default function PaymentPage() {
                       Tour deposit (20%)
                     </h3>
                     <p className="mt-1 text-sm text-gray-600">
-                      Only the{" "}
-                      <span className="font-semibold">20%</span>{" "}
+                      Only the <span className="font-semibold">20%</span>{" "}
                       <span className="font-semibold">
                         ({fmt(depositAmount)})
                       </span>{" "}
@@ -241,10 +243,19 @@ export default function PaymentPage() {
 
               <p className="mt-6 text-center text-xs text-gray-400">
                 By completing this transaction, you agree to our{" "}
-                <span className="font-medium text-gray-500 underline underline-offset-2">
-                  Terms of Service
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCancellationTerms(true)}
+                  className="font-medium text-gray-500 underline underline-offset-2 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-600/30 rounded"
+                >
+                  Cancellation Terms
+                </button>
               </p>
+
+              <CancellationTermsModal
+                open={showCancellationTerms}
+                onClose={() => setShowCancellationTerms(false)}
+              />
             </div>
           </aside>
         </div>
