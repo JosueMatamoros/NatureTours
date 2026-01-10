@@ -9,6 +9,14 @@ function fromYMDLocal(ymd) {
   return new Date(y, m - 1, d, 12, 0, 0, 0);
 }
 
+function toYMDLocal(date) {
+  if (!date) return undefined;
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function normalizeToNoon(d) {
   if (!d) return undefined;
   const x = new Date(d);
@@ -27,7 +35,11 @@ export default function CalendarPicker({ selected, onSelect }) {
       <DayPicker
         mode="single"
         selected={selectedDate}
-        onSelect={(d) => onSelect?.(normalizeToNoon(d))}
+        onSelect={(d) => {
+          const normalized = normalizeToNoon(d);
+          // devolvemos YYYY-MM-DD
+          onSelect?.(normalized ? toYMDLocal(normalized) : undefined);
+        }}
         disabled={{ before: new Date() }}
         className="mx-auto"
         modifiersClassNames={{

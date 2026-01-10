@@ -44,7 +44,7 @@ export const TOURS = {
     id: 2,
     name: "Horseback Riding Tour",
     duration: "2 horas",
-    price: 0,
+    price: 30,
     oldPrice: null,
     currency: "$",
     per: "/ persona",

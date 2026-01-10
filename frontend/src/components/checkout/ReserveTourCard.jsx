@@ -1,25 +1,126 @@
-import { use, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FiUsers, FiCalendar, FiClock, FiMinus, FiPlus } from "react-icons/fi";
 import CalendarPicker from "./CalendarPicker";
 import { useNavigate } from "react-router-dom";
-const timeSlots = [
-  { id: 1, label: "6:00 AM - 8:00 AM" },
-  { id: 2, label: "8:00 AM - 10:00 AM" },
+import { createBooking } from "../../../services/bookings.api"; // tu ruta
+
+// Tour 1: slots fijos PM
+const fixedSlotsTour1 = [
+  { id: 1, startHour: 18, label: "6:00 PM - 8:00 PM" },
+  { id: 2, startHour: 20, label: "8:00 PM - 10:00 PM" },
 ];
 
-export default function ReserveTourCard() {
-  const tour = { id: "arenal", name: "Arenal Volcano Tour", price: 45 };
+function formatHourLabel(hour24) {
+  if (hour24 === 12) return "12:00 MD"; // tu requisito
+  const ampm = hour24 < 12 ? "AM" : "PM";
+  const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+  return `${hour12}:00 ${ampm}`;
+}
 
+function buildHourlySlots(startHour = 6, endHour = 18, durationHours = 2) {
+  const slots = [];
+  let id = 1;
+
+  for (let h = startHour; h <= endHour; h++) {
+    const end = h + durationHours;
+
+    const startLabel = formatHourLabel(h);
+
+    const endHourClamped = Math.min(end, 23);
+    const endLabel = formatHourLabel(endHourClamped);
+
+    slots.push({
+      id: id++,
+      startHour: h,
+      startTime: `${String(h).padStart(2, "0")}:00`,
+      label: `${startLabel} - ${endLabel}`,
+    });
+  }
+
+  return slots;
+}
+
+export default function ReserveTourCard({ tour }) {
   const [slot, setSlot] = useState(null);
   const [guests, setGuests] = useState(1);
-  const [selectedDate, setSelectedDate] = useState(undefined);
+  const [selectedDate, setSelectedDate] = useState(undefined); // "YYYY-MM-DD"
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const navigate = useNavigate();
+
+  // tourId viene del prop tour (NO de la URL)
+  const tourId = Number(tour?.id);
 
   const total = useMemo(() => tour.price * guests, [tour.price, guests]);
   const isComplete = Boolean(selectedDate && slot);
-  const navigate = useNavigate();
+
+  const timeSlots = useMemo(() => {
+    if (tourId === 1) {
+      // Tour 1: fijo PM
+      return fixedSlotsTour1.map((s) => ({
+        ...s,
+        startTime: `${String(s.startHour).padStart(2, "0")}:00`,
+      }));
+    }
+
+    if (tourId === 2) return buildHourlySlots(6, 18, 2);
+
+    // fallback: usa los mismos PM
+    return fixedSlotsTour1.map((s) => ({
+      ...s,
+      startTime: `${String(s.startHour).padStart(2, "0")}:00`,
+    }));
+  }, [tourId]);
+
+  const selectedSlot = useMemo(
+    () => timeSlots.find((t) => t.id === slot) || null,
+    [timeSlots, slot]
+  );
+
+  const visibleSlots = useMemo(() => {
+    if (!slot) return timeSlots;
+    return selectedSlot ? [selectedSlot] : timeSlots;
+  }, [slot, selectedSlot, timeSlots]);
+
+  async function handleConfirm() {
+    setError("");
+
+    if (!tourId || Number.isNaN(tourId)) {
+      setError("tourId inválido (tour.id no viene bien).");
+      return;
+    }
+    if (!selectedDate || !selectedSlot?.startTime) return;
+
+    const payload = {
+      tourId,
+      tourDate: selectedDate, // "YYYY-MM-DD"
+      startTime: selectedSlot.startTime, // "HH:mm"
+      guests,
+    };
+
+    try {
+      setLoading(true);
+      console.log("booking payload:", payload);
+
+      const res = await createBooking(payload);
+
+      // ajusta si tu API devuelve { booking: ... }
+      const booking = res?.data;
+
+      navigate("/payment", { state: { booking, payload } });
+    } catch (e) {
+      setError(
+        e?.response?.data?.message ||
+          "No se pudo crear la reserva. "
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <aside className="w-full md:max-w-sm rounded-2xl border border-gray-200 bg-white shadow-sm h-fit ">
+    <aside className="w-full md:max-w-sm rounded-2xl border border-gray-200 bg-white shadow-sm h-fit">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-100 px-6 pt-5 pb-2">
         <div>
@@ -46,23 +147,35 @@ export default function ReserveTourCard() {
 
           <CalendarPicker
             selected={selectedDate}
-            onSelect={(d) => {
-              setSelectedDate(d);
-              setSlot(null); // reset time slot when changing date
+            onSelect={(ymd) => {
+              setSelectedDate(ymd); // "YYYY-MM-DD"
+              setSlot(null);
             }}
           />
         </section>
 
-        {/* Time slots (only if date is selected) */}
+        {/* Time slots */}
         {selectedDate && (
           <section className="space-y-3">
-            <label className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-              <FiClock className="h-4 w-4 text-emerald-600" />
-              Select a time
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                <FiClock className="h-4 w-4 text-emerald-600" />
+                Select a time
+              </label>
+
+              {slot ? (
+                <button
+                  type="button"
+                  onClick={() => setSlot(null)}
+                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 underline underline-offset-2"
+                >
+                  Change time
+                </button>
+              ) : null}
+            </div>
 
             <div className="grid gap-3">
-              {timeSlots.map((t) => {
+              {visibleSlots.map((t) => {
                 const active = slot === t.id;
 
                 return (
@@ -95,14 +208,21 @@ export default function ReserveTourCard() {
                       ].join(" ")}
                       aria-hidden="true"
                     >
-                      {active && (
-                        <span className="h-2 w-2 rounded-full bg-white" />
-                      )}
+                      {active && <span className="h-2 w-2 rounded-full bg-white" />}
                     </span>
                   </button>
                 );
               })}
             </div>
+
+            {slot ? (
+              <p className="text-xs text-gray-500">
+                Selected:{" "}
+                <span className="font-semibold text-gray-700">
+                  {selectedSlot?.label}
+                </span>
+              </p>
+            ) : null}
           </section>
         )}
 
@@ -122,7 +242,7 @@ export default function ReserveTourCard() {
               <button
                 type="button"
                 onClick={() => setGuests((g) => Math.max(1, g - 1))}
-                disabled={guests <= 1}
+                disabled={guests <= 1 || loading}
                 className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 bg-white text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Decrease guests"
               >
@@ -136,7 +256,7 @@ export default function ReserveTourCard() {
               <button
                 type="button"
                 onClick={() => setGuests((g) => Math.min(12, g + 1))}
-                disabled={guests >= 12}
+                disabled={guests >= 12 || loading}
                 className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 bg-white text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Increase guests"
               >
@@ -166,22 +286,30 @@ export default function ReserveTourCard() {
         {/* CTA */}
         <button
           type="button"
-          disabled={!isComplete}
-          onClick={() => navigate("/payment")}
+          disabled={!isComplete || loading}
+          onClick={handleConfirm}
           className={[
             "w-full rounded-xl py-3 text-sm font-semibold transition",
             "focus:outline-none focus:ring-2 focus:ring-emerald-600/30",
-            isComplete
+            isComplete && !loading
               ? "bg-emerald-600 text-white hover:bg-emerald-700"
               : "cursor-not-allowed bg-gray-200 text-gray-500",
           ].join(" ")}
         >
-          {isComplete ? "Confirm Booking" : "Select a date and time"}
+          {loading
+            ? "Creating booking..."
+            : isComplete
+            ? "Confirm Booking"
+            : "Select a date and time"}
         </button>
 
-        <p className="text-center text-xs text-gray-400">
-          You won&apos;t be charged yet
-        </p>
+        {error ? (
+          <p className="text-center text-xs text-red-600">{error}</p>
+        ) : (
+          <p className="text-center text-xs text-gray-400">
+            You won&apos;t be charged yet
+          </p>
+        )}
       </div>
     </aside>
   );

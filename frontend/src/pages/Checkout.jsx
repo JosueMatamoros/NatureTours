@@ -16,7 +16,7 @@ export default function Checkout() {
       <Navbar variant="solid" />
       <div className="md:flex px-6 py-5 space-x-6 space-y-6 max-w-6xl mx-auto">
         <TourOverviewCard tour={tour} />
-        <ReserveTourCard />
+        <ReserveTourCard tour={tour} />
       </div>
     </div>
   );

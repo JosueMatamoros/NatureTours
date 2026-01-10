@@ -20,7 +20,7 @@ const TOURS = [
       "Este tour a caballo tiene una duración aproximada de 2 horas, aunque puede variar según el ritmo del grupo.",
     image: "/tours/horseback.png",
     duration: "2 horas",
-    price: 25,
+    price: 30,
     objectPosition: "object-center",
   },
 ];
