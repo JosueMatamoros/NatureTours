@@ -103,7 +103,8 @@ export default function ReserveTourCard({ tour }) {
       setLoading(true);
 
       const res = await createBooking(payload);
-      const bookingId = res.data.id;
+      const bookingId = res.id;
+
 
       navigate("/payment", { state: { bookingId } });
     } catch (e) {
