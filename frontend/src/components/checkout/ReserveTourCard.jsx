@@ -101,14 +101,11 @@ export default function ReserveTourCard({ tour }) {
 
     try {
       setLoading(true);
-      console.log("booking payload:", payload);
 
       const res = await createBooking(payload);
+      const bookingId = res.data.id;
 
-      // ajusta si tu API devuelve { booking: ... }
-      const booking = res?.data;
-
-      navigate("/payment", { state: { booking, payload } });
+      navigate("/payment", { state: { bookingId } });
     } catch (e) {
       setError(
         e?.response?.data?.message ||
