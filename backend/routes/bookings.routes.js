@@ -1,6 +1,6 @@
 // src/routes/bookings.routes.js
 import { Router } from "express";
-import { createBooking, getBookingById } from "../controllers/ bookings.controller.js";
+import { createBooking, getBookingById } from "../controllers/bookings.controller.js";
 
 const router = Router();
 

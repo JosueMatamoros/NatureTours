@@ -39,7 +39,6 @@ export async function createBooking(req, res) {
       });
     }
 
-    // 2) Insert booking (trigger calcula subtotal/fee/total y expires_at)
     const created = await client.query(
       `
       insert into bookings (tour_id, tour_date, start_time, guests, status)
@@ -52,7 +51,7 @@ export async function createBooking(req, res) {
       [tourId, tourDate, startTime, guests]
     );
 
-    return res.status(201).json({ ok: true, booking: created.rows[0] });
+    return res.status(201).json({ ok: true, id: created.rows[0].id });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, message: "Error creando booking" });
