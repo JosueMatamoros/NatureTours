@@ -248,16 +248,11 @@ export default function PaymentPage() {
                     if (!res?.ok || !res?.id)
                       throw new Error("Payment not saved");
 
-                    const paymentId = result?.paymentId;
-                    if (!paymentId) {
-                      console.warn("No vino paymentId en result:", result);
-                      navigate("/success/unknown", { state: result }); // fallback
-                      return;
-                    }
-                    navigate(`/success/${paymentId}`, { state: result });
+                    const paymentId = res?.id;
+
+                    navigate(`/success/${paymentId}`);
                   } catch (e) {
                     console.error("Error saving payment:", e);
-                    // aquí podrías mostrar un toast o setError state
                   }
                 }}
               />
