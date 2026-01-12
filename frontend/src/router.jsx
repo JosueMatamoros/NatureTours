@@ -8,7 +8,7 @@ import Home from "./pages/Home";
 import Checkout from "./pages/Checkout";
 import Success from "./pages/Success";
 import NotFound from "./pages/NotFound";
-import Tours from "./pages/Tours";
+import SelecTour from "./pages/SelecTourPage";
 import PaymentPage from "./pages/PaymentPage";
 
 function RootLayout() {
@@ -38,8 +38,8 @@ const router = createBrowserRouter([
         element: <PaymentPage />,
       },
       {
-        path: "/tours",
-        element: <Tours />,
+        path: "/SelecTour",
+        element: <SelecTour />,
       },
       {
         path: "/success/:paymentId",

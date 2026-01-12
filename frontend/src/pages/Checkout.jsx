@@ -1,20 +1,32 @@
 import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Navigate } from "react-router-dom";
 import { TOURS } from "../data/tours";
 import ReserveTourCard from "../components/checkout/ReserveTourCard";
 import TourOverviewCard from "../components/checkout/TourOverviewCard";
 import Navbar from "../components/home/Navbar";
 
+const ENABLED_TOURS = [1, 2];
+
 export default function Checkout() {
   const [searchParams] = useSearchParams();
-  const tourType = Number(searchParams.get("tourType") || 1);
+  const tourType = Number(searchParams.get("tourType"));
 
-  const tour = useMemo(() => TOURS[tourType] ?? TOURS[1], [tourType]);
+  const isValidTour = ENABLED_TOURS.includes(tourType);
+
+  const tour = useMemo(() => {
+    if (!isValidTour) return null;
+    return TOURS[tourType];
+  }, [isValidTour, tourType]);
+
+  if (!isValidTour) {
+    return <Navigate to="/tours" replace />;
+  }
 
   return (
-    <div >
+    <div>
       <Navbar variant="solid" />
-      <div className="md:flex px-6 py-5 space-x-6 space-y-6 max-w-6xl mx-auto">
+
+      <div className="mx-auto max-w-6xl px-6 py-5 md:flex md:space-x-6">
         <TourOverviewCard tour={tour} />
         <ReserveTourCard tour={tour} />
       </div>

@@ -131,7 +131,7 @@ export default function HeroSection() {
           <div className="mt-8 flex items-center justify-center gap-3">
             <button
               className="rounded-full bg-green-500 px-6 py-3 text-sm font-semibold text-black shadow-lg hover:bg-green-600 transition-all hover:scale-105"
-              onClick={() => navigate("/tours")}
+              onClick={() => navigate("/SelecTour")}
             >
               Book Now
             </button>

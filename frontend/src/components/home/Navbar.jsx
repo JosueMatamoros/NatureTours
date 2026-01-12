@@ -92,7 +92,7 @@ export default function Navbar({ variant = "overlay" }) {
           <div className="flex items-center gap-2">
             {/* CTA */}
             <NavLink
-              to="/tours"
+              to="/SelecTour"
               className={[
                 "hidden md:inline-flex items-center justify-center",
                 "rounded-xl px-4 py-2 text-sm font-semibold transition",
@@ -184,7 +184,7 @@ export default function Navbar({ variant = "overlay" }) {
               ))}
 
               <NavLink
-                to="/plan"
+                to="/SelecTour"
                 className={[
                   "mt-2 inline-flex items-center justify-center",
                   "rounded-xl px-4 py-2 text-sm font-semibold transition",
