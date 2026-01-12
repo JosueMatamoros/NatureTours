@@ -11,6 +11,7 @@ import SinpeInfoCard from "../components/payment/SinpeInfoCard";
 import PaymentPanel from "../components/payment/PaymentPanel";
 import Collapse from "../components/ui/Collapse";
 import { getBookingById } from "../../services/bookings.api";
+import { createPayment } from "../../services/payments.api";
 
 export default function PaymentPage() {
   const { bookingId } = useParams();
@@ -25,6 +26,7 @@ export default function PaymentPage() {
   const [useDeposit, setUseDeposit] = useState(false);
   const [showPaypalFeeInfo, setShowPaypalFeeInfo] = useState(false);
   const [showCancellationTerms, setShowCancellationTerms] = useState(false);
+  const mode = useDeposit ? "deposit" : "full";
 
   // Form
   const [fullName, setFullName] = useState("");
@@ -220,13 +222,43 @@ export default function PaymentPage() {
                 customerPayload={{
                   name: fullName,
                   email,
-                  phone,
+                  phone: phone.trim() && touched.phone ? phone : "",
                 }}
                 onCustomerId={(id) => {
+                  console.log("CUSTOMER ID CREATED:", id);
+                  console.log("BOOKING ID:", bookingId);
+                  console.log("MODE:", mode);
                   setCustomerId(id);
                 }}
-                onSuccess={(details) => {
-                  console.log("PAYPAL SUCCESS:", details);
+                onSuccess={async (summary) => {
+                  try {
+                    const payload = {
+                      bookingId,
+                      customerId, // ya lo guardaste con setCustomerId
+                      mode, // "full" o "deposit"
+                      amount: summary.amount,
+                      paypalOrderId: summary.paypalOrderId,
+                      paypalCaptureId: summary.paypalCaptureId,
+                      status: summary.status, // ya viene lowercase
+                    };
+
+                    console.log("CREATING PAYMENT WITH PAYLOAD:", payload);
+                    const res = await createPayment(payload);
+
+                    if (!res?.ok || !res?.id)
+                      throw new Error("Payment not saved");
+
+                    const paymentId = result?.paymentId;
+                    if (!paymentId) {
+                      console.warn("No vino paymentId en result:", result);
+                      navigate("/success/unknown", { state: result }); // fallback
+                      return;
+                    }
+                    navigate(`/success/${paymentId}`, { state: result });
+                  } catch (e) {
+                    console.error("Error saving payment:", e);
+                    // aquí podrías mostrar un toast o setError state
+                  }
                 }}
               />
 
@@ -278,14 +310,12 @@ export default function PaymentPage() {
                       customerPayload={{
                         name: fullName,
                         email,
-                        phone,
+                        phone: phone.trim() && touched.phone ? phone : "",
                       }}
                       onCustomerId={(id) => {
                         setCustomerId(id);
                       }}
-                      onSuccess={(details) =>
-                        console.log("Deposit confirmed (PayPal)", details)
-                      }
+                      onSuccess={() => navigate(`/success`)}
                       blockedText="Complete your details to enable the deposit"
                     />
                   </div>

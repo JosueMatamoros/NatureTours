@@ -20,7 +20,6 @@ export default function PayPalCheckout({
     return <p>Payment configuration error</p>;
   }
 
-
   return (
     <div style={{ maxWidth: 420 }}>
       <PayPalScriptProvider
@@ -41,7 +40,6 @@ export default function PayPalCheckout({
               const customerId = c?.id;
 
               if (!customerId) throw new Error("No customerId returned");
-
 
               onCustomerId?.(customerId);
             } catch (e) {
@@ -64,9 +62,42 @@ export default function PayPalCheckout({
           }}
           onApprove={async (data, actions) => {
             setStatus("capturing");
+
             const details = await actions.order.capture();
+
+            const paypalOrderId = details?.id ?? null;
+            const capture =
+              details?.purchase_units?.[0]?.payments?.captures?.[0] ?? null;
+
+            const paypalCaptureId = capture?.id ?? null;
+            const amount =
+              capture?.amount?.value ??
+              details?.purchase_units?.[0]?.amount?.value ??
+              null;
+
+            const currency =
+              capture?.amount?.currency_code ??
+              details?.purchase_units?.[0]?.amount?.currency_code ??
+              "USD";
+
+            const status = (
+              capture?.status ??
+              details?.status ??
+              ""
+            ).toLowerCase();
+
+            const summary = {
+              paypalOrderId,
+              paypalCaptureId,
+              amount: amount ? Number(amount) : null,
+              currency,
+              status,
+            };
+
+            console.log("PAYMENT SUMMARY:", summary);
+
             setStatus("paid");
-            onSuccess?.(details);
+            onSuccess?.(summary);
           }}
           onCancel={() => setStatus("cancelled")}
           onError={(err) => {
