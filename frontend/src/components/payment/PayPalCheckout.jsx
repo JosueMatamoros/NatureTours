@@ -94,7 +94,6 @@ export default function PayPalCheckout({
               status,
             };
 
-            console.log("PAYMENT SUMMARY:", summary);
 
             setStatus("paid");
             onSuccess?.(summary);

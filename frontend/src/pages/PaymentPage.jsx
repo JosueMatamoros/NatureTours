@@ -225,9 +225,6 @@ export default function PaymentPage() {
                   phone: phone.trim() && touched.phone ? phone : "",
                 }}
                 onCustomerId={(id) => {
-                  console.log("CUSTOMER ID CREATED:", id);
-                  console.log("BOOKING ID:", bookingId);
-                  console.log("MODE:", mode);
                   setCustomerId(id);
                 }}
                 onSuccess={async (summary) => {
@@ -242,7 +239,6 @@ export default function PaymentPage() {
                       status: summary.status, // ya viene lowercase
                     };
 
-                    console.log("CREATING PAYMENT WITH PAYLOAD:", payload);
                     const res = await createPayment(payload);
 
                     if (!res?.ok || !res?.id)
