@@ -1,7 +1,7 @@
 // src/pages/PaymentPage.jsx
 import { useMemo, useState } from "react";
 import { FiLock, FiDollarSign } from "react-icons/fi";
-
+import { useParams } from "react-router-dom";
 import CancellationTermsModal from "../components/ui/CancellationTermsModal";
 import ContactForm from "../components/payment/ContactForm";
 import OrderSummaryBox from "../components/payment/OrderSummaryBox";
@@ -15,6 +15,7 @@ export default function PaymentPage() {
     subtotal: 110.0,
     currency: "USD",
   };
+  const { bookingId } = useParams();
 
   const PAYPAL_FEE_RATE = 0.054;
   const DEPOSIT_RATE = 0.2;

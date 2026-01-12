@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { FiUsers, FiCalendar, FiClock, FiMinus, FiPlus } from "react-icons/fi";
 import CalendarPicker from "./CalendarPicker";
 import { useNavigate } from "react-router-dom";
-import { createBooking } from "../../../services/bookings.api"; // tu ruta
+import { createBooking } from "../../../services/bookings.api";
 
 // Tour 1: slots fijos PM
 const fixedSlotsTour1 = [
@@ -11,7 +11,7 @@ const fixedSlotsTour1 = [
 ];
 
 function formatHourLabel(hour24) {
-  if (hour24 === 12) return "12:00 MD"; // tu requisito
+  if (hour24 === 12) return "12:00 MD";
   const ampm = hour24 < 12 ? "AM" : "PM";
   const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
   return `${hour12}:00 ${ampm}`;
@@ -25,7 +25,6 @@ function buildHourlySlots(startHour = 6, endHour = 18, durationHours = 2) {
     const end = h + durationHours;
 
     const startLabel = formatHourLabel(h);
-
     const endHourClamped = Math.min(end, 23);
     const endLabel = formatHourLabel(endHourClamped);
 
@@ -49,7 +48,6 @@ export default function ReserveTourCard({ tour }) {
 
   const navigate = useNavigate();
 
-  // tourId viene del prop tour (NO de la URL)
   const tourId = Number(tour?.id);
 
   const total = useMemo(() => tour.price * guests, [tour.price, guests]);
@@ -57,7 +55,6 @@ export default function ReserveTourCard({ tour }) {
 
   const timeSlots = useMemo(() => {
     if (tourId === 1) {
-      // Tour 1: fijo PM
       return fixedSlotsTour1.map((s) => ({
         ...s,
         startTime: `${String(s.startHour).padStart(2, "0")}:00`,
@@ -66,7 +63,6 @@ export default function ReserveTourCard({ tour }) {
 
     if (tourId === 2) return buildHourlySlots(6, 18, 2);
 
-    // fallback: usa los mismos PM
     return fixedSlotsTour1.map((s) => ({
       ...s,
       startTime: `${String(s.startHour).padStart(2, "0")}:00`,
@@ -94,24 +90,37 @@ export default function ReserveTourCard({ tour }) {
 
     const payload = {
       tourId,
-      tourDate: selectedDate, // "YYYY-MM-DD"
-      startTime: selectedSlot.startTime, // "HH:mm"
+      tourDate: selectedDate,
+      startTime: selectedSlot.startTime,
       guests,
     };
 
     try {
       setLoading(true);
 
-      const res = await createBooking(payload);
-      const bookingId = res.id;
+      const response = await createBooking(payload);
 
+      // Soporta Axios normal (response.data) o interceptor (response ya es data)
+      const data = response?.data ?? response;
+      const newBookingId = data?.id;
 
-      navigate("/payment", { state: { bookingId } });
+      if (!newBookingId) {
+        console.error("Respuesta real del backend (data):", data);
+        throw new Error("Respuesta sin booking id");
+      }
+
+      navigate(`/payment/${newBookingId}`);
     } catch (e) {
-      setError(
+      console.error("Booking error:", e);
+      console.error("status:", e?.response?.status);
+      console.error("data:", e?.response?.data);
+
+      const backendMsg =
         e?.response?.data?.message ||
-          "No se pudo crear la reserva. "
-      );
+        e?.response?.data?.error?.message ||
+        null;
+
+      setError(backendMsg || e?.message || "No se pudo crear la reserva.");
     } finally {
       setLoading(false);
     }
@@ -119,7 +128,6 @@ export default function ReserveTourCard({ tour }) {
 
   return (
     <aside className="w-full md:max-w-sm rounded-2xl border border-gray-200 bg-white shadow-sm h-fit">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-100 px-6 pt-5 pb-2">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Book Tour</h3>
@@ -136,7 +144,6 @@ export default function ReserveTourCard({ tour }) {
       </div>
 
       <div className="space-y-6 px-6 py-6">
-        {/* Date */}
         <section className="space-y-3">
           <label className="flex items-center gap-2 text-sm font-semibold text-gray-800">
             <FiCalendar className="h-4 w-4 text-emerald-600" />
@@ -146,13 +153,12 @@ export default function ReserveTourCard({ tour }) {
           <CalendarPicker
             selected={selectedDate}
             onSelect={(ymd) => {
-              setSelectedDate(ymd); // "YYYY-MM-DD"
+              setSelectedDate(ymd);
               setSlot(null);
             }}
           />
         </section>
 
-        {/* Time slots */}
         {selectedDate && (
           <section className="space-y-3">
             <div className="flex items-center justify-between">
@@ -206,7 +212,9 @@ export default function ReserveTourCard({ tour }) {
                       ].join(" ")}
                       aria-hidden="true"
                     >
-                      {active && <span className="h-2 w-2 rounded-full bg-white" />}
+                      {active && (
+                        <span className="h-2 w-2 rounded-full bg-white" />
+                      )}
                     </span>
                   </button>
                 );
@@ -224,7 +232,6 @@ export default function ReserveTourCard({ tour }) {
           </section>
         )}
 
-        {/* Guests */}
         <section className="space-y-3">
           <label className="flex items-center gap-2 text-sm font-semibold text-gray-800">
             <FiUsers className="h-4 w-4 text-emerald-600" />
@@ -264,7 +271,6 @@ export default function ReserveTourCard({ tour }) {
           </div>
         </section>
 
-        {/* Summary */}
         <section className="rounded-xl bg-gray-50 px-4 py-4 text-sm">
           <div className="flex justify-between text-gray-600">
             <span>
@@ -281,7 +287,6 @@ export default function ReserveTourCard({ tour }) {
           </div>
         </section>
 
-        {/* CTA */}
         <button
           type="button"
           disabled={!isComplete || loading}

@@ -33,8 +33,9 @@ const router = createBrowserRouter([
         path: "/checkout",
         element: <Checkout />,
       },
-      { path: "/payment",
-        element: <PaymentPage />
+      {
+        path: "/payment/:bookingId",
+        element: <PaymentPage />,
       },
       {
         path: "/tours",
