@@ -1,15 +1,25 @@
+// src/components/payment/PayPalCheckout.jsx
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useState } from "react";
+import { upsertCustomer } from "../../../services/customers.api";
 
 const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID;
 
-export default function PayPalCheckout({ amount, description, onSuccess }) {
+export default function PayPalCheckout({
+  amount,
+  description,
+  onSuccess,
+  customerPayload,
+  onCustomerId,
+  mustBlockPay = false,
+}) {
   const [status, setStatus] = useState("idle");
 
   if (!PAYPAL_CLIENT_ID) {
     console.error("PayPal Client ID not defined");
     return <p>Payment configuration error</p>;
   }
+
 
   return (
     <div style={{ maxWidth: 420 }}>
@@ -21,16 +31,32 @@ export default function PayPalCheckout({ amount, description, onSuccess }) {
         }}
       >
         <PayPalButtons
+          disabled={mustBlockPay}
           style={{ layout: "vertical" }}
-          createOrder={(data, actions) => {
+          createOrder={async (data, actions) => {
             setStatus("creating");
+
+            try {
+              const c = await upsertCustomer(customerPayload);
+              const customerId = c?.id;
+
+              if (!customerId) throw new Error("No customerId returned");
+
+
+              onCustomerId?.(customerId);
+            } catch (e) {
+              console.error("Error creating customer:", e);
+              setStatus("error");
+              throw e;
+            }
+
             return actions.order.create({
               purchase_units: [
                 {
                   description,
                   amount: {
                     currency_code: "USD",
-                    value: amount.toFixed(2),
+                    value: Number(amount).toFixed(2),
                   },
                 },
               ],
@@ -38,28 +64,11 @@ export default function PayPalCheckout({ amount, description, onSuccess }) {
           }}
           onApprove={async (data, actions) => {
             setStatus("capturing");
-
             const details = await actions.order.capture();
-
-            // 🔑 ID REAL DE TRANSACCIÓN PAYPAL
-            const capture =
-              details?.purchase_units?.[0]?.payments?.captures?.[0];
-
-            const paypalTransactionId = capture?.id;
-
-            console.log("PAYPAL TRANSACTION ID:", paypalTransactionId);
-            console.log("FULL PAYPAL DETAILS:", details);
-
             setStatus("paid");
-
-            onSuccess?.({
-              paypalTransactionId,
-              details,
-            });
+            onSuccess?.(details);
           }}
-          onCancel={() => {
-            setStatus("cancelled");
-          }}
+          onCancel={() => setStatus("cancelled")}
           onError={(err) => {
             console.error("PayPal error:", err);
             setStatus("error");

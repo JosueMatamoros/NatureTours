@@ -18,6 +18,8 @@ export default function PaymentPanel({
   description,
   onSuccess,
   blockedText,
+  customerPayload,
+  onCustomerId,
 }) {
   const [showPaypal, setShowPaypal] = useState(false);
 
@@ -27,7 +29,6 @@ export default function PaymentPanel({
       return;
     }
 
-    // Small delay so the placeholder renders immediately and avoids layout flicker.
     const t = setTimeout(() => setShowPaypal(true), 50);
     return () => clearTimeout(t);
   }, [mustBlockPay]);
@@ -50,14 +51,16 @@ export default function PaymentPanel({
             </>
           ) : (
             <>
-              {!showPaypal ? <PaypalLoadingPlaceholder /> : null}
+              {!showPaypal && <PaypalLoadingPlaceholder />}
 
               <div className={showPaypal ? "block" : "hidden"}>
                 <PayPalCheckout
                   amount={amount}
                   description={description}
                   onSuccess={onSuccess}
-                  deferLoading={!showPaypal}
+                  mustBlockPay={mustBlockPay}
+                  customerPayload={customerPayload}
+                  onCustomerId={onCustomerId}
                 />
               </div>
             </>

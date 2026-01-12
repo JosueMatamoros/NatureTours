@@ -19,6 +19,7 @@ export default function PaymentPage() {
   const [booking, setBooking] = useState(null);
   const [loadingBooking, setLoadingBooking] = useState(true);
   const [bookingError, setBookingError] = useState("");
+  const [customerId, setCustomerId] = useState(null);
 
   // UI
   const [useDeposit, setUseDeposit] = useState(false);
@@ -41,7 +42,6 @@ export default function PaymentPage() {
   };
 
   useEffect(() => {
-
     if (!bookingId) {
       navigate("/", { replace: true });
       return;
@@ -89,10 +89,9 @@ export default function PaymentPage() {
   const total = useMemo(() => toMoney(booking?.total), [booking]);
 
   const depositAmount = useMemo(() => {
-  if (!booking) return 0;
-  return toMoney(booking.deposit_amount);
-}, [booking]);
-
+    if (!booking) return 0;
+    return toMoney(booking.deposit_amount);
+  }, [booking]);
 
   const fmt = (n) =>
     new Intl.NumberFormat("en-US", {
@@ -131,8 +130,12 @@ export default function PaymentPage() {
 
   const descriptionText = useMemo(() => {
     if (!booking) return "";
-    const date = booking.tour_date ? String(booking.tour_date).slice(0, 10) : "";
-    const time = booking.start_time ? String(booking.start_time).slice(0, 5) : "";
+    const date = booking.tour_date
+      ? String(booking.tour_date).slice(0, 10)
+      : "";
+    const time = booking.start_time
+      ? String(booking.start_time).slice(0, 5)
+      : "";
     return `${booking.tour_name || "Tour"} – ${date} ${time}`;
   }, [booking]);
 
@@ -213,16 +216,18 @@ export default function PaymentPage() {
                 mustBlockPay={!isFormValid}
                 amount={total}
                 description={descriptionText}
-                onSuccess={(details) =>
-                  console.log("Full payment confirmed", details)
-                }
-                blockedText={
-                  <>
-                    Please fill in all fields marked with{" "}
-                    <span className="font-semibold text-red-500">*</span> to
-                    complete your booking
-                  </>
-                }
+                blockedText="Complete your details to enable payment"
+                customerPayload={{
+                  name: fullName,
+                  email,
+                  phone,
+                }}
+                onCustomerId={(id) => {
+                  setCustomerId(id);
+                }}
+                onSuccess={(details) => {
+                  console.log("PAYPAL SUCCESS:", details);
+                }}
               />
 
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 mt-1 mx-8">
@@ -256,7 +261,9 @@ export default function PaymentPage() {
                     </h3>
                     <p className="mt-1 text-sm text-gray-600">
                       Only the <span className="font-semibold">20%</span>{" "}
-                      <span className="font-semibold">({fmt(depositAmount)})</span>{" "}
+                      <span className="font-semibold">
+                        ({fmt(depositAmount)})
+                      </span>{" "}
                       will be charged with no additional fees. The remaining
                       balance is paid in cash on the day of the tour.
                     </p>
@@ -268,6 +275,14 @@ export default function PaymentPage() {
                       mustBlockPay={!isFormValid}
                       amount={depositAmount}
                       description={`20% deposit – ${descriptionText}`}
+                      customerPayload={{
+                        name: fullName,
+                        email,
+                        phone,
+                      }}
+                      onCustomerId={(id) => {
+                        setCustomerId(id);
+                      }}
                       onSuccess={(details) =>
                         console.log("Deposit confirmed (PayPal)", details)
                       }
