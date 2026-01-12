@@ -21,39 +21,14 @@ export default function ToursSection() {
       </div>
 
       <TourCard
-        imageSrc="/tours/night-walk-tour.jpg"
-        imageAlt="Night walk tour"
-        title="Night Walk Tour"
-        description="Explore a family-owned forest in a small town near La Fortuna and discover its nocturnal wildlife on a safe, guided walk. Wander along natural trails while observing animals that only appear at night, accompanied by an expert guide."
-        stats={{
-          duration: "2 hrs",
-          group: "2–12 people",
-          location: "Tropical Forest Trails",
-        }}
-        highlights={[
-          "Expert bilingual guide",
-          "Professional flashlight included",
-          "Wildlife observation",
-        ]}
-        price={45}
-        oldPrice={55}
-        currency="$"
-        per="/ person"
-        onReserve={() =>
-          navigate({
-            pathname: "/checkout",
-            search: "?tourType=1",
-          })
-        }
-      />
-      <TourCard
-        imageSrc="/tours/horseBac-tour.JPG"
+        imageSrcMobile="/tours/horsebackCoverMobile.JPG"
+        imageSrcDesktop="/tours/horsebackCoverDesktop.JPG"
         imageAlt="Horseback riding tour"
         title="Horseback Riding Tour"
         description="Enjoy an authentic horseback riding experience through natural trails, crossing rivers and exploring the forest while discovering the beauty of the surroundings alongside experienced local guides."
         stats={{
           duration: "2 hrs",
-          group: "2–15 people",
+          group: "2–20 people",
           location: "Tropical Forest Trails",
         }}
         highlights={[
