@@ -38,15 +38,30 @@ export default function PayPalCheckout({ amount, description, onSuccess }) {
           }}
           onApprove={async (data, actions) => {
             setStatus("capturing");
+
             const details = await actions.order.capture();
+
+            // 🔑 ID REAL DE TRANSACCIÓN PAYPAL
+            const capture =
+              details?.purchase_units?.[0]?.payments?.captures?.[0];
+
+            const paypalTransactionId = capture?.id;
+
+            console.log("PAYPAL TRANSACTION ID:", paypalTransactionId);
+            console.log("FULL PAYPAL DETAILS:", details);
+
             setStatus("paid");
-            onSuccess?.(details);
+
+            onSuccess?.({
+              paypalTransactionId,
+              details,
+            });
           }}
           onCancel={() => {
             setStatus("cancelled");
           }}
           onError={(err) => {
-            console.error(err);
+            console.error("PayPal error:", err);
             setStatus("error");
           }}
         />

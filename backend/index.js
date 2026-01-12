@@ -4,6 +4,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import bookingsRoutes from "./routes/bookings.routes.js";
+import customersRoutes from "./routes/customers.routes.js";
+import paymentsRoutes from "./routes/payments.routes.js";
 
 dotenv.config();
 
@@ -17,6 +19,8 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/bookings", bookingsRoutes);
+app.use("/api/customers", customersRoutes);
+app.use("/api/payments", paymentsRoutes)
 
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
