@@ -46,7 +46,7 @@ export async function createBooking(req, res) {
       returning
         id, tour_id, tour_date, start_time, guests,
         subtotal, paypal_fee, total,
-        status, expires_at, created_at, updated_at;
+        status, expires_at, created_at, updated_at, deposit_amount;
       `,
       [tourId, tourDate, startTime, guests]
     );
@@ -75,7 +75,7 @@ export async function getBookingById(req, res) {
         b.id, b.tour_id, t.name as tour_name, t.price as tour_price,
         b.tour_date, b.start_time, b.guests,
         b.subtotal, b.paypal_fee, b.total,
-        b.status, b.expires_at, b.created_at, b.updated_at
+        b.status, b.expires_at, b.created_at, b.updated_at, b.deposit_amount
       from bookings b
       join tours t on t.id = b.tour_id
       where b.id = $1;

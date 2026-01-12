@@ -1,7 +1,8 @@
 // src/pages/PaymentPage.jsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiLock, FiDollarSign } from "react-icons/fi";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+
 import CancellationTermsModal from "../components/ui/CancellationTermsModal";
 import ContactForm from "../components/payment/ContactForm";
 import OrderSummaryBox from "../components/payment/OrderSummaryBox";
@@ -9,47 +10,96 @@ import DepositToggleCard from "../components/payment/DepositToggleCard";
 import SinpeInfoCard from "../components/payment/SinpeInfoCard";
 import PaymentPanel from "../components/payment/PaymentPanel";
 import Collapse from "../components/ui/Collapse";
+import { getBookingById } from "../../services/bookings.api";
 
 export default function PaymentPage() {
-  const booking = {
-    subtotal: 110.0,
-    currency: "USD",
-  };
   const { bookingId } = useParams();
+  const navigate = useNavigate();
 
-  const PAYPAL_FEE_RATE = 0.054;
-  const DEPOSIT_RATE = 0.2;
+  const [booking, setBooking] = useState(null);
+  const [loadingBooking, setLoadingBooking] = useState(true);
+  const [bookingError, setBookingError] = useState("");
 
-  const descriptionText =
-    "Tour day – Time slot: 6–8 or 8–10 | Deposit or full payment";
-
-  const paypalFee = useMemo(() => {
-    const fee = booking.subtotal * PAYPAL_FEE_RATE;
-    return Math.round(fee * 100) / 100;
-  }, [booking.subtotal]);
-
-  const total = useMemo(() => {
-    const t = booking.subtotal + paypalFee;
-    return Math.round(t * 100) / 100;
-  }, [booking.subtotal, paypalFee]);
-
-  const depositAmount = useMemo(() => {
-    const d = booking.subtotal * DEPOSIT_RATE;
-    return Math.round(d * 100) / 100;
-  }, [booking.subtotal]);
-
+  // UI
   const [useDeposit, setUseDeposit] = useState(false);
   const [showPaypalFeeInfo, setShowPaypalFeeInfo] = useState(false);
+  const [showCancellationTerms, setShowCancellationTerms] = useState(false);
 
+  // Form
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-
   const [touched, setTouched] = useState({
     fullName: false,
     phone: false,
     email: false,
   });
+
+  const toMoney = (v) => {
+    const n = typeof v === "string" ? Number(v) : v;
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  useEffect(() => {
+
+    if (!bookingId) {
+      navigate("/", { replace: true });
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setLoadingBooking(true);
+        setBookingError("");
+
+        const res = await getBookingById(bookingId);
+
+        const data = res?.data ?? res;
+
+        if (!data?.ok || !data?.booking) {
+          console.error("Respuesta inválida del servidor:", data);
+          throw new Error("Respuesta inválida del servidor");
+        }
+
+        if (!cancelled) setBooking(data.booking);
+      } catch (e) {
+        console.error("Error loading booking:", e);
+        const msg =
+          e?.response?.data?.message ||
+          e?.message ||
+          "No se pudo cargar la reserva";
+
+        if (!cancelled) setBookingError(msg);
+      } finally {
+        if (!cancelled) setLoadingBooking(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingId, navigate]);
+
+  const currency = "USD";
+
+  const subtotal = useMemo(() => toMoney(booking?.subtotal), [booking]);
+  const paypalFee = useMemo(() => toMoney(booking?.paypal_fee), [booking]);
+  const total = useMemo(() => toMoney(booking?.total), [booking]);
+
+  const depositAmount = useMemo(() => {
+  if (!booking) return 0;
+  return toMoney(booking.deposit_amount);
+}, [booking]);
+
+
+  const fmt = (n) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 2,
+    }).format(n);
 
   // Validators
   const nameOk = (v) =>
@@ -68,15 +118,7 @@ export default function PaymentPage() {
   const fullNameValid = nameOk(fullName);
   const emailValid = emailOk(email);
   const phoneValid = phoneOk(phone);
-
   const isFormValid = fullNameValid && emailValid && phoneValid;
-
-  const fmt = (n) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: booking.currency,
-      minimumFractionDigits: 2,
-    }).format(n);
 
   const showError = (field) => touched[field];
 
@@ -87,9 +129,39 @@ export default function PaymentPage() {
       show && !ok ? "border-red-300 ring-1 ring-red-200" : "border-gray-200",
     ].join(" ");
 
-  const feePercentText = `${(PAYPAL_FEE_RATE * 100).toFixed(1)}%`;
+  const descriptionText = useMemo(() => {
+    if (!booking) return "";
+    const date = booking.tour_date ? String(booking.tour_date).slice(0, 10) : "";
+    const time = booking.start_time ? String(booking.start_time).slice(0, 5) : "";
+    return `${booking.tour_name || "Tour"} – ${date} ${time}`;
+  }, [booking]);
 
-  const [showCancellationTerms, setShowCancellationTerms] = useState(false);
+  // Para OrderSummaryBox: porcentaje real (inferido)
+  const feePercentText = useMemo(() => {
+    if (subtotal <= 0) return "";
+    const pct = (paypalFee / subtotal) * 100;
+    return `${pct.toFixed(1)}%`;
+  }, [subtotal, paypalFee]);
+
+  if (loadingBooking) {
+    return (
+      <main className="min-h-screen bg-white grid place-items-center px-6">
+        <p className="text-gray-600">Loading booking...</p>
+      </main>
+    );
+  }
+
+  if (bookingError) {
+    return (
+      <main className="min-h-screen bg-white grid place-items-center px-6">
+        <div className="max-w-md w-full rounded-2xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-700">{bookingError}</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!booking) return null;
 
   return (
     <main className="min-h-screen bg-white">
@@ -140,6 +212,7 @@ export default function PaymentPage() {
                 mode="full"
                 mustBlockPay={!isFormValid}
                 amount={total}
+                description={descriptionText}
                 onSuccess={(details) =>
                   console.log("Full payment confirmed", details)
                 }
@@ -151,6 +224,7 @@ export default function PaymentPage() {
                   </>
                 }
               />
+
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 mt-1 mx-8">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 grid h-8 w-8 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
@@ -182,9 +256,7 @@ export default function PaymentPage() {
                     </h3>
                     <p className="mt-1 text-sm text-gray-600">
                       Only the <span className="font-semibold">20%</span>{" "}
-                      <span className="font-semibold">
-                        ({fmt(depositAmount)})
-                      </span>{" "}
+                      <span className="font-semibold">({fmt(depositAmount)})</span>{" "}
                       will be charged with no additional fees. The remaining
                       balance is paid in cash on the day of the tour.
                     </p>
@@ -220,7 +292,7 @@ export default function PaymentPage() {
 
             <div className="px-8 pb-8">
               <OrderSummaryBox
-                subtotal={booking.subtotal}
+                subtotal={subtotal}
                 paypalFee={paypalFee}
                 total={total}
                 fmt={fmt}
