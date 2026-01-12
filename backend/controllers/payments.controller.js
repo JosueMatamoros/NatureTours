@@ -121,6 +121,7 @@ export async function createPayment(req, res) {
     client.release();
   }
 }
+
 export async function getPaymentById(req, res) {
   const { id } = req.params;
 
@@ -134,18 +135,16 @@ export async function getPaymentById(req, res) {
     const q = await client.query(
       `
       SELECT
-        id,
-        booking_id,
-        customer_id,
-        mode,
-        amount,
-        paypal_order_id,
-        paypal_capture_id,
-        status,
-        created_at,
-        updated_at
-      FROM payments
-      WHERE id = $1
+        p.id                AS reserva_id,
+        p.paypal_capture_id AS paypal_capture_id,
+        b.tour_date         AS fecha,
+        b.start_time        AS hora,
+        b.guests            AS personas,
+        t.name              AS tour
+      FROM payments p
+      JOIN bookings b ON b.id = p.booking_id
+      JOIN tours t ON t.id = b.tour_id
+      WHERE p.id = $1
       `,
       [id]
     );
@@ -154,7 +153,19 @@ export async function getPaymentById(req, res) {
       return res.status(404).json({ ok: false, message: "Payment no encontrado" });
     }
 
-    return res.json({ ok: true, payment: q.rows[0] });
+    const r = q.rows[0];
+
+    return res.json({
+      ok: true,
+      receipt: {
+        reservaId: r.reserva_id,
+        paypalCaptureId: r.paypal_capture_id, // aquí sí, consistente
+        tour: r.tour,
+        personas: r.personas,
+        fecha: r.fecha,
+        hora: r.hora,
+      },
+    });
   } catch (err) {
     console.error("getPaymentById error:", err);
     return res.status(500).json({ ok: false, message: "Error obteniendo payment" });
@@ -162,4 +173,3 @@ export async function getPaymentById(req, res) {
     client.release();
   }
 }
-
