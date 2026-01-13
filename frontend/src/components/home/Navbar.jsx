@@ -32,7 +32,7 @@ export default function Navbar({ variant = "overlay" }) {
       <div className="mx-auto w-[min(1100px,92%)]">
         <nav
           className={[
-            "flex items-center justify-between gap-3",
+            "relative flex items-center justify-between gap-3",
             "h-16 overflow-hidden",
             "rounded-2xl px-4",
             "backdrop-blur-xl",
@@ -60,7 +60,7 @@ export default function Navbar({ variant = "overlay" }) {
           </Link>
 
           {/* Desktop links */}
-          <div className="hidden items-center gap-2 md:flex">
+          <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-2">
             {LINKS.map((item) => (
               <NavLink
                 key={item.to}

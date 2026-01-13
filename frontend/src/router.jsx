@@ -11,6 +11,8 @@ import NotFound from "./pages/NotFound";
 import SelecTour from "./pages/SelecTourPage";
 import PaymentPage from "./pages/PaymentPage";
 import AboutUs from "./pages/AboutUs";
+import ContactPage from "./pages/ContactPage";
+import ServicesPage from "./pages/ServicesPage";
 
 function RootLayout() {
   return (
@@ -49,6 +51,14 @@ const router = createBrowserRouter([
       {
         path: "/about",
         element: <AboutUs />,
+      },
+      {
+        path: "/contact",
+        element: <ContactPage />,
+      },
+      {
+        path: "/services",
+        element: <ServicesPage />,
       },
       {
         path: "*",
