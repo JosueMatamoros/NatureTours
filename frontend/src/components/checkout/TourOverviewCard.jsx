@@ -41,7 +41,7 @@ export default function TourOverviewCard({ tour }) {
 
       {/* Cards */}
       <div className="space-y-4">
-        <AccordionCard title="Sobre el tour" icon={FiInfo}>
+        <AccordionCard title="About the Tour" icon={FiInfo}>
           <div className="space-y-4 text-sm leading-relaxed text-gray-700">
             {tour.about.map((p, idx) => (
               <p key={idx}>{p}</p>
@@ -50,7 +50,7 @@ export default function TourOverviewCard({ tour }) {
         </AccordionCard>
 
         <AccordionCard
-          title="Rutas y experiencia"
+          title="Routes and Experience"
           icon={FiMap}
           footer={
             <div className="flex flex-wrap gap-2 pt-2">
@@ -72,7 +72,7 @@ export default function TourOverviewCard({ tour }) {
           </div>
         </AccordionCard>
 
-        <AccordionCard title="Recomendaciones" icon={FiCheckCircle}>
+        <AccordionCard title="Recommendations" icon={FiCheckCircle}>
           <ul className="grid gap-3 sm:grid-cols-2">
             {tour.recommendations.map((rec) => {
               const Icon = rec.icon;
@@ -81,7 +81,14 @@ export default function TourOverviewCard({ tour }) {
                   key={rec.title}
                   className="flex gap-3 rounded-xl border border-gray-100 bg-white p-3"
                 >
-                  <span className="mt-0.5 grid h-9 w-9 place-items-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                  <span
+                    className="
+            shrink-0
+            grid h-10 w-10 place-items-center
+            rounded-xl bg-emerald-50 text-emerald-700
+            ring-1 ring-emerald-100
+          "
+                  >
                     <Icon className="h-5 w-5" />
                   </span>
 

@@ -150,13 +150,15 @@ export default function ReserveTourCard({ tour }) {
             Select a date
           </label>
 
-          <CalendarPicker
+          <div className="-mx-6">
+            <CalendarPicker
             selected={selectedDate}
             onSelect={(ymd) => {
               setSelectedDate(ymd);
               setSlot(null);
             }}
           />
+          </div>
         </section>
 
         {selectedDate && (
