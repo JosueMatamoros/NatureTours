@@ -20,8 +20,8 @@ export default function AboutUsSection() {
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
                     src="/aboutUs/image3.JPG"
-                    alt="Sunset over the countryside"
-                    className="h-[440px] w-full object-cover sm:h-[520px]"
+                    alt="image of our nephews"
+                    className="h-[440px] w-full object-cover sm:h-[520px] "
                     loading="lazy"
                   />
                 </figure>
@@ -32,7 +32,7 @@ export default function AboutUsSection() {
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
                     src="/aboutUs/image2.jpeg"
-                    alt="Night walk with lights"
+                    alt="image or sons and daughters"
                     className="h-62.5 w-full object-cover sm:h-70"
                     loading="lazy"
                   />
@@ -40,12 +40,12 @@ export default function AboutUsSection() {
               </div>
 
               {/* Bottom right image */}
-              <div className="col-span-1 space-y-5">
+              <div className="col-span-1 space-y-5 relative">
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
-                    src="/aboutUs/image1.png"
-                    alt="Cozy mountain cabin"
-                    className="h-62.5 w-full object-cover object-top sm:h-70"
+                    src="/aboutUs/image1.JPG"
+                    alt="image of our father"
+                    className="h-62.5 w-full object-cover object-top sm:h-70 scale-110"
                     loading="lazy"
                   />
                 </figure>
@@ -106,3 +106,4 @@ export default function AboutUsSection() {
     </section>
   );
 }
+
