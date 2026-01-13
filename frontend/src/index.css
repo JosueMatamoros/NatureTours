@@ -1,6 +1,42 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary-green: #2f8f4e
-;
+  /* esto hace que .font-sans = Quicksand */
+  --font-sans: "Quicksand", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* opcional: te crea la clase .font-caveat automáticamente */
+  --font-caveat: "Caveat", cursive;
+}
+
+/* CAVEAT */
+@font-face {
+  font-family: "Caveat";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/src/fonts/caveat-v23-latin-regular.woff2") format("woff2");
+}
+
+/* QUICKSAND */
+@font-face {
+  font-family: "Quicksand";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/src/fonts/quicksand-v37-latin-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Quicksand";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/src/fonts/quicksand-v37-latin-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Quicksand";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/src/fonts/quicksand-v37-latin-700.woff2") format("woff2");
 }

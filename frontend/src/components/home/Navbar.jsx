@@ -102,7 +102,7 @@ export default function Navbar({ variant = "overlay" }) {
                   : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/30",
               ].join(" ")}
             >
-              Plan Your Trip
+              Make a Reservation
             </NavLink>
 
             {/* Mobile button */}
@@ -195,7 +195,7 @@ export default function Navbar({ variant = "overlay" }) {
                 ].join(" ")}
                 onClick={() => setOpen(false)}
               >
-                Plan Your Trip
+                Make a Reservation
               </NavLink>
             </div>
           </div>

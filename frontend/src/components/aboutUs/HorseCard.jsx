@@ -56,7 +56,7 @@ export default function HorseCard({ horse }) {
         className={[
           "relative overflow-hidden rounded-[26px]",
           "bg-white ring-1 ring-black/5",
-          "p-4 pb-5",
+          "p-4 pb-1",
           "shadow-[0_18px_45px_rgba(0,0,0,0.12)]",
           "transition-transform duration-500 ease-out",
           "will-change-transform",
@@ -84,8 +84,8 @@ export default function HorseCard({ horse }) {
         </div>
 
         {/* Name centered */}
-        <div className="mt-3 flex justify-center">
-          <div className="text-center text-[22px] font-semibold tracking-tight text-slate-900">
+        <div className="mt-1 flex justify-center font-caveat ">
+          <div className="text-center text-[28px] font-semibold tracking-tight text-slate-900">
             {horse.name}
           </div>
         </div>

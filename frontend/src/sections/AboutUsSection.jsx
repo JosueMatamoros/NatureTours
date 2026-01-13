@@ -64,7 +64,7 @@ export default function AboutUsSection() {
           {/* Right: text */}
           <div className="lg:pt-2">
             <div className="space-y-6 text-[15px] leading-7 text-[#6A6259] sm:text-base">
-              <p className="max-w-prose">
+              <p className="max-w-prose ">
                 It all started with a{" "}
                 <span className="font-semibold text-[#2B241D]">
                   life-changing decision.
@@ -84,7 +84,7 @@ export default function AboutUsSection() {
               <div className="rounded-2xl bg-[#F3EDE3] p-6 shadow-sm ring-1 ring-black/5">
                 <div className="flex gap-4">
                   <div className="w-1 shrink-0 rounded-full bg-[#7FA37B]" />
-                  <p className="italic text-[#2B241D]">
+                  <p className="text-[#2B241D] font-caveat text-xl">
                     “Here you won’t find the luxury of a hotel, but you will feel
                     the warmth of being at home. That’s what makes us special.”
                   </p>
