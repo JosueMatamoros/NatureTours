@@ -4,6 +4,7 @@ import HeroSection from "../sections/HeroSection";
 import ToursSection from "../sections/ToursSection";
 import AboutUsSection from "../sections/AboutUsSection";
 import MapSection from "../sections/MapSection";
+import WhatsAppButton from '../components/ui/WhatsAppButton'
 
 export default function Home() {
   return (
@@ -13,6 +14,7 @@ export default function Home() {
       <ToursSection />
       <AboutUsSection />
       <MapSection />
+      <WhatsAppButton />
     </div>
   );
 }
