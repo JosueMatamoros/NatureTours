@@ -53,10 +53,12 @@ export const TOURS = {
     currency: "$",
     per: "/ person",
     images: [
-      "/horseBac-tour.JPG",
-      "/horseBac-tour.JPG",
-      "/horseBac-tour.JPG",
-      "/horseBac-tour.JPG",
+      "/booking/horse/image1.JPG",
+      "/booking/horse/image2.JPG",
+      "/booking/horse/image3.JPG",
+      "/booking/horse/image4.JPG",
+      "/booking/horse/image5.JPG",
+      "/booking/horse/image6.JPG",
     ],
     about: [
       "This horseback riding tour lasts approximately two hours, although the exact duration may vary depending on the pace of the group and the time spent enjoying the ride, taking breaks, and appreciating the surrounding natural beauty.",

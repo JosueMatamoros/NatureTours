@@ -1,13 +1,8 @@
 import {
   FiClock,
-  FiRefreshCw,
   FiInfo,
   FiMap,
   FiCheckCircle,
-  FiSun,
-  FiShield,
-  FiDroplet,
-  FiUsers,
   FiChevronDown,
 } from "react-icons/fi";
 import TourImageCarousel from "./TourImageCarousel";
@@ -26,14 +21,6 @@ export default function TourOverviewCard({ tour }) {
             {tour.duration}
           </div>
         </div>
-
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-600/30"
-        >
-          <FiRefreshCw className="h-4 w-4" />
-          Cambiar tour
-        </button>
       </div>
 
       {/* Image carousel */}
