@@ -19,7 +19,7 @@ export default function AboutUsSection() {
               <div className="col-span-1 row-span-2">
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
-                    src="/aboutUs/image3.JPG"
+                    src="/aboutUs/image3.jpeg"
                     alt="image of our nephews"
                     className="h-[440px] w-full object-cover sm:h-[520px] "
                     loading="lazy"
