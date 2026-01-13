@@ -26,7 +26,6 @@ export default function TourCard({
     <article className="w-full overflow-hidden rounded-3xl bg-white shadow-[0_12px_40px_rgba(0,0,0,0.10)] ring-1 ring-black/5 transition-transform duration-300 hover:scale-101">
       <div
         className={`grid items-stretch grid-cols-1 ${
-          // ✅ Cambié md -> lg (side-by-side empieza más tarde)
           reverse ? "lg:grid-cols-[1fr_420px]" : "lg:grid-cols-[420px_1fr]"
         } lg:min-h-[420px]`}
       >
@@ -66,7 +65,6 @@ export default function TourCard({
             </p>
           </div>
 
-          {/* STATS (estilo EXACTO screenshot + responsive) */}
           <div className="flex gap-2">
             <Stat icon={HiOutlineClock} label="Duration" value={stats.duration} />
             <Stat icon={HiOutlineUsers} label="Group" value={stats.group} />
@@ -78,7 +76,6 @@ export default function TourCard({
             />
           </div>
 
-          {/* HIGHLIGHTS (icono centrado con texto) */}
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {highlights.map((item, i) => (
               <li key={i} className="flex items-center gap-2 text-sm text-slate-600">

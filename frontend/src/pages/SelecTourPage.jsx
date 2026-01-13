@@ -7,25 +7,25 @@ const TOURS = [
     id: 2,
     title: "Horseback Riding Tour",
     description:
-      "Vive una experiencia única a caballo recorriendo los senderos del bosque y bordeando los cristalinos ríos de la zona. Estarás rodeado de exuberante vegetación, aves tropicales y la hermosa naturaleza que hace de Costa Rica un destino inolvidable.",
+      "Enjoy a memorable horseback riding experience along scenic forest trails and crystal-clear rivers. Ride through lush tropical landscapes, spot local wildlife, and take in the natural beauty that makes Costa Rica truly unforgettable.",
     image: "/tours/familyHorsebackRiding.JPG",
-    duration: "2 horas",
+    duration: "2 hours",
     price: 30,
     objectPosition: "object-center",
     available: true,
-    cta: "Seleccionar fecha",
+    cta: "Select date",
   },
   {
     id: 1,
     title: "Night Walk Tour",
     description:
-      "Adéntrate en una fascinante caminata nocturna guiada por los senderos del bosque tropical. Descubre las maravillas que Costa Rica ofrece durante la noche: ranas de ojos rojos, serpientes, insectos exóticos y la increíble vida silvestre que despierta al caer el sol.",
+      "Join a guided night walk through the tropical forest and discover a completely different side of Costa Rica. Observe nocturnal wildlife such as red-eyed tree frogs, insects, and other fascinating creatures that come to life after sunset.",
     image: "/tours/AgalychnisCallidryas.png",
-    duration: "2 horas",
+    duration: "2 hours",
     price: 45,
     objectPosition: "object-top",
     available: false,
-    cta: "Próximamente",
+    cta: "Coming soon",
     badge: "Coming Soon",
   },
 ];
@@ -37,16 +37,15 @@ export default function SelecTour() {
     <div>
       <Navbar variant="solid" />
 
-      <main className="mx-auto max-w-6xl px-4 py-20">
+      <main className="mx-auto max-w-6xl px-4 ">
         {/* HEADER */}
         <header className="mb-16 text-center">
           <h2 className="mt-6 text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
-            Discover our tours
+            Our tours
           </h2>
 
           <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-emerald-900/70 sm:text-lg">
-            Enjoy unique experiences surrounded by nature, adventure, and
-            unforgettable landscapes in La Fortuna.
+            Discover the magic of nature through our guided experiences, designed to create unforgettable memories.
           </p>
 
           <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-emerald-900/20" />

@@ -51,7 +51,7 @@ export default function MapSection() {
         </div>
 
         {/* Content */}
-        <div className="mt-10 flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
           {/* MAP */}
           <div className="w-full lg:flex-1">
             <div className="relative overflow-hidden rounded-3xl border border-emerald-900/10 bg-white shadow-sm">
