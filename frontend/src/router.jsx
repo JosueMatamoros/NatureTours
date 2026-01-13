@@ -10,6 +10,7 @@ import Success from "./pages/Success";
 import NotFound from "./pages/NotFound";
 import SelecTour from "./pages/SelecTourPage";
 import PaymentPage from "./pages/PaymentPage";
+import AboutUs from "./pages/AboutUs";
 
 function RootLayout() {
   return (
@@ -44,6 +45,10 @@ const router = createBrowserRouter([
       {
         path: "/success/:paymentId",
         element: <Success />,
+      },
+      {
+        path: "/about",
+        element: <AboutUs />,
       },
       {
         path: "*",

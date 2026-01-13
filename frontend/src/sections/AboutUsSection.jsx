@@ -4,25 +4,14 @@ import { FaHeart } from "react-icons/fa";
 export default function AboutUsSection() {
   return (
     <section className="w-full">
-      <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
-        {/* Top badge */}
-        <div className="flex justify-center">
-          <span
-            className="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2 text-sm
-            font-medium tracking-wide backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.35)]
-            border border-white/20 text-emerald-700"
-          >
-            Our Story
-          </span>
-        </div>
-
+      <div className="mx-auto max-w-6xl px-4 sm:py-14 py-2  sm:px-6 lg:px-8">
         {/* Title */}
-        <h2 className="mt-6 text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
+        <h2 className="mt-6  text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
           A dream born from the heart
         </h2>
 
         {/* Main content */}
-        <div className="mt-12 grid gap-10 lg:grid-cols-2 lg:items-start">
+        <div className="mt-6 sm:mt-12 grid gap-10 lg:grid-cols-2 lg:items-start">
           {/* Left: collage */}
           <div className="relative">
             <div className="grid grid-cols-2 gap-5 ">
