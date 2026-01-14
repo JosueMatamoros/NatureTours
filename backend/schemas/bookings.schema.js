@@ -11,3 +11,11 @@ export const createBookingSchema = z.object({
 export const bookingIdSchema = z.object({
   id: z.string().uuid(),
 });
+
+export const changeBookingSchema = z.object({
+  tourId: z.number().int().positive(),
+  tourDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  guests: z.number().int().min(1).max(25),
+});
+
