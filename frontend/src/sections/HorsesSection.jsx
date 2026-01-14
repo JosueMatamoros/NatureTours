@@ -103,17 +103,28 @@ const HORSES = [
   },
 ];
 
-
-const normalHorses = HORSES.slice(0, -2);
-const lastTwoHorses = HORSES.slice(-2);
-
 const CardWrap = ({ children }) => (
   <div className="w-full lg:w-[340px] xl:w-[360px]">{children}</div>
 );
 
-export default function HorsesSection() {
+export default function HorsesSection({ limit }) {
+  const hasLimit = typeof limit === "number" && limit > 0;
+
+  const horsesToShow = hasLimit ? HORSES.slice(0, limit) : HORSES;
+
+  // Layout especial SOLO si NO hay limit
+  const useSpecialLayout = !hasLimit;
+
+  const normalHorses = useSpecialLayout
+    ? horsesToShow.slice(0, -2)
+    : horsesToShow;
+  const lastTwoHorses = useSpecialLayout ? horsesToShow.slice(-2) : [];
+
   return (
-    <section className="mx-auto max-w-6xl px-6 mt-4 sm:mt-8">
+    <section
+      id="horses"
+      className="mx-auto max-w-6xl px-6 mt-4 sm:mt-8"
+    >
       {/* Header */}
       <div className="text-center">
         <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
@@ -121,36 +132,30 @@ export default function HorsesSection() {
         </h2>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          {/* 15 hearts */}
           <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 ring-1 ring-rose-100">
             <FiHeart className="h-4 w-4" />
             15 hearts
           </span>
 
-          {/* dot */}
           <span className="hidden sm:inline-block h-1 w-1 rounded-full bg-slate-300" />
 
-          {/* 60 paws */}
           <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 ring-1 ring-amber-100">
             <GiPawPrint className="h-4 w-4" />
             60 paws
           </span>
 
-          {/* dot */}
           <span className="hidden sm:inline-block h-1 w-1 rounded-full bg-slate-300" />
 
-          {/* one family */}
           <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-4 py-2 text-sm font-medium text-sky-700 ring-1 ring-sky-100">
             <FiUsers className="h-4 w-4" />
             one family
           </span>
         </div>
 
-        {/* Divider */}
         <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-slate-200" />
       </div>
 
-      {/* Main grid */}
+      {/* Grid principal */}
       <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3 justify-items-center">
         {normalHorses.map((horse) => (
           <CardWrap key={horse.id}>
@@ -159,16 +164,18 @@ export default function HorsesSection() {
         ))}
       </div>
 
-
-      <div className="mt-8 flex justify-center">
-        <div className="grid gap-8 sm:flex sm:gap-8 sm:justify-center">
-          {lastTwoHorses.map((horse) => (
-            <CardWrap key={horse.id}>
-              <HorseCard horse={horse} />
-            </CardWrap>
-          ))}
+      {/* SOLO cuando NO hay limit */}
+      {useSpecialLayout && lastTwoHorses.length > 0 && (
+        <div className="mt-8 flex justify-center">
+          <div className="grid gap-8 sm:flex sm:gap-8 sm:justify-center">
+            {lastTwoHorses.map((horse) => (
+              <CardWrap key={horse.id}>
+                <HorseCard horse={horse} />
+              </CardWrap>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }
