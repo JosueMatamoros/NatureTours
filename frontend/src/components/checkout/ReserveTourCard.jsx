@@ -40,7 +40,6 @@ function buildHourlySlots(startHour = 6, endHour = 16, durationHours = 2) {
   return slots;
 }
 
-// ✅ NUEVO: rango del mes visible en YYYY-MM-DD
 function monthRangeYMD(dateObj) {
   const y = dateObj.getFullYear();
   const m = dateObj.getMonth(); // 0-based
@@ -65,9 +64,8 @@ export default function ReserveTourCard({ tour }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ✅ NUEVO: disponibilidad por mes (bloqueos)
   const [blockedByDay, setBlockedByDay] = useState(() => new Map()); // Map(date -> ["13:00",...])
-  const [fullDays, setFullDays] = useState(() => new Set()); // Set(date)
+  const [fullDays, setFullDays] = useState(() => new Set());         // Set(date)
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const d = new Date();
     d.setHours(12, 0, 0, 0);
@@ -106,14 +104,12 @@ export default function ReserveTourCard({ tour }) {
     return selectedSlot ? [selectedSlot] : timeSlots;
   }, [slot, selectedSlot, timeSlots]);
 
-  // ✅ NUEVO: slots bloqueados para el día seleccionado
   const blockedSlotsForSelectedDay = useMemo(() => {
     if (!selectedDate) return new Set();
     const arr = blockedByDay.get(String(selectedDate).trim()) ?? [];
     return new Set(arr.map((s) => String(s).trim()));
   }, [blockedByDay, selectedDate]);
 
-  // ✅ NUEVO: cargar disponibilidad del mes visible
   async function loadMonthAvailability(monthDate) {
     if (!tourId) return;
 
@@ -140,14 +136,12 @@ export default function ReserveTourCard({ tour }) {
     }
   }
 
-  // ✅ NUEVO: cargar al montar y cuando cambia tour
   useEffect(() => {
     if (!tourId) return;
     loadMonthAvailability(visibleMonth);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tourId]);
 
-  // ✅ Ajuste: no permitir confirmar si el slot seleccionado está bloqueado
+
   const isSelectedBlocked = selectedSlot?.startTime
     ? blockedSlotsForSelectedDay.has(selectedSlot.startTime)
     : false;
@@ -301,9 +295,7 @@ export default function ReserveTourCard({ tour }) {
                       ].join(" ")}
                       aria-hidden="true"
                     >
-                      {active && (
-                        <span className="h-2 w-2 rounded-full bg-white" />
-                      )}
+                      {active && <span className="h-2 w-2 rounded-full bg-white" />}
                     </span>
                   </button>
                 );
