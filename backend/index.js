@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import bookingsRoutes from "./routes/bookings.routes.js";
 import customersRoutes from "./routes/customers.routes.js";
 import paymentsRoutes from "./routes/payments.routes.js";
+import availabilityRoutes from "./routes/availability.routes.js";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.get("/health", (req, res) => {
 app.use("/api/bookings", bookingsRoutes);
 app.use("/api/customers", customersRoutes);
 app.use("/api/payments", paymentsRoutes)
+app.use("/api/availability", availabilityRoutes);
 
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
