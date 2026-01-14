@@ -4,16 +4,15 @@ import { Link, NavLink } from "react-router-dom";
 const LINKS = [
   { label: "Home", to: "/" },
   { label: "Tours", to: "/tours" },
-  { label: "Experiences", to: "/experiences" },
   { label: "About Us", to: "/about" },
   { label: "Contact", to: "/contact" },
+  { label: "Services", to: "/services" },
 ];
 
 export default function Navbar({ variant = "overlay" }) {
   const [open, setOpen] = useState(false);
   const isOverlay = variant === "overlay";
 
-  // Cierra el menú si pasas a pantalla grande
   useEffect(() => {
     const onResize = () => {
       if (window.innerWidth >= 768) setOpen(false);

@@ -15,12 +15,12 @@ export default function DogSection() {
       </p>
 
       {/* Name line */}
-      <p className="mt-3 text-center text-base font-semibold text-slate-900 sm:text-lg">
+      <p className="mt-1 text-center text-base font-semibold text-slate-900 sm:text-lg">
         She’s <span className="italic">“Muñeca”</span> <span className="font-normal text-slate-500">(Doll)</span>
       </p>
 
       {/* Circles */}
-      <div className="mt-10 grid gap-8 sm:flex sm:items-center sm:justify-center sm:gap-10">
+      <div className="mt-6 grid  sm:flex sm:items-center sm:justify-center sm:gap-10">
         {photos.map((p) => (
           <CirclePhoto
             key={p.id}
@@ -33,7 +33,7 @@ export default function DogSection() {
       </div>
 
       {/* Paw prints */}
-      <div className="mt-10 flex justify-center">
+      <div className="mt-6 flex justify-center">
         <div className="flex items-center gap-3 opacity-50">
           <Paw />
           <Paw className="translate-y-2" />
