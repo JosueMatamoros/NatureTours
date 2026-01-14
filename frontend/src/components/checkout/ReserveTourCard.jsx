@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiUsers, FiCalendar, FiClock, FiMinus, FiPlus } from "react-icons/fi";
 import CalendarPicker from "./CalendarPicker";
 import { useNavigate } from "react-router-dom";
 import { createBooking } from "../../../services/bookings.api";
+import { getAvailabilityBlocked } from "../../../services/availability.api";
 
 // Tour 1: slots fijos PM
 const fixedSlotsTour1 = [
@@ -17,7 +18,7 @@ function formatHourLabel(hour24) {
   return `${hour12}:00 ${ampm}`;
 }
 
-function buildHourlySlots(startHour = 6, endHour = 18, durationHours = 2) {
+function buildHourlySlots(startHour = 6, endHour = 16, durationHours = 2) {
   const slots = [];
   let id = 1;
 
@@ -39,6 +40,24 @@ function buildHourlySlots(startHour = 6, endHour = 18, durationHours = 2) {
   return slots;
 }
 
+// ✅ NUEVO: rango del mes visible en YYYY-MM-DD
+function monthRangeYMD(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = dateObj.getMonth(); // 0-based
+
+  const first = new Date(y, m, 1, 12, 0, 0, 0);
+  const last = new Date(y, m + 1, 0, 12, 0, 0, 0);
+
+  const toYMD = (d) => {
+    const yy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yy}-${mm}-${dd}`;
+  };
+
+  return { from: toYMD(first), to: toYMD(last) };
+}
+
 export default function ReserveTourCard({ tour }) {
   const [slot, setSlot] = useState(null);
   const [guests, setGuests] = useState(1);
@@ -46,12 +65,20 @@ export default function ReserveTourCard({ tour }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // ✅ NUEVO: disponibilidad por mes (bloqueos)
+  const [blockedByDay, setBlockedByDay] = useState(() => new Map()); // Map(date -> ["13:00",...])
+  const [fullDays, setFullDays] = useState(() => new Set()); // Set(date)
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  });
+
   const navigate = useNavigate();
 
   const tourId = Number(tour?.id);
 
   const total = useMemo(() => tour.price * guests, [tour.price, guests]);
-  const isComplete = Boolean(selectedDate && slot);
 
   const timeSlots = useMemo(() => {
     if (tourId === 1) {
@@ -79,6 +106,54 @@ export default function ReserveTourCard({ tour }) {
     return selectedSlot ? [selectedSlot] : timeSlots;
   }, [slot, selectedSlot, timeSlots]);
 
+  // ✅ NUEVO: slots bloqueados para el día seleccionado
+  const blockedSlotsForSelectedDay = useMemo(() => {
+    if (!selectedDate) return new Set();
+    const arr = blockedByDay.get(String(selectedDate).trim()) ?? [];
+    return new Set(arr.map((s) => String(s).trim()));
+  }, [blockedByDay, selectedDate]);
+
+  // ✅ NUEVO: cargar disponibilidad del mes visible
+  async function loadMonthAvailability(monthDate) {
+    if (!tourId) return;
+
+    const { from, to } = monthRangeYMD(monthDate);
+
+    try {
+      const data = await getAvailabilityBlocked({ tourId, from, to });
+
+      const map = new Map();
+      const set = new Set();
+
+      for (const day of data?.days ?? []) {
+        const date = String(day.date).trim();
+        const blocked = (day.blocked ?? []).map((s) => String(s).trim());
+
+        if (blocked.length > 0) map.set(date, blocked);
+        if (day.isFull) set.add(date);
+      }
+
+      setBlockedByDay(map);
+      setFullDays(set);
+    } catch (e) {
+      console.error("availability error:", e);
+    }
+  }
+
+  // ✅ NUEVO: cargar al montar y cuando cambia tour
+  useEffect(() => {
+    if (!tourId) return;
+    loadMonthAvailability(visibleMonth);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourId]);
+
+  // ✅ Ajuste: no permitir confirmar si el slot seleccionado está bloqueado
+  const isSelectedBlocked = selectedSlot?.startTime
+    ? blockedSlotsForSelectedDay.has(selectedSlot.startTime)
+    : false;
+
+  const isComplete = Boolean(selectedDate && slot && !isSelectedBlocked);
+
   async function handleConfirm() {
     setError("");
 
@@ -87,6 +162,12 @@ export default function ReserveTourCard({ tour }) {
       return;
     }
     if (!selectedDate || !selectedSlot?.startTime) return;
+
+    // Si alguien hackea el botón, igual no lo dejamos
+    if (blockedSlotsForSelectedDay.has(selectedSlot.startTime)) {
+      setError("Ese horario ya está ocupado. Elegí otro.");
+      return;
+    }
 
     const payload = {
       tourId,
@@ -100,7 +181,6 @@ export default function ReserveTourCard({ tour }) {
 
       const response = await createBooking(payload);
 
-      // Soporta Axios normal (response.data) o interceptor (response ya es data)
       const data = response?.data ?? response;
       const newBookingId = data?.id;
 
@@ -116,9 +196,7 @@ export default function ReserveTourCard({ tour }) {
       console.error("data:", e?.response?.data);
 
       const backendMsg =
-        e?.response?.data?.message ||
-        e?.response?.data?.error?.message ||
-        null;
+        e?.response?.data?.message || e?.response?.data?.error?.message || null;
 
       setError(backendMsg || e?.message || "No se pudo crear la reserva.");
     } finally {
@@ -152,12 +230,17 @@ export default function ReserveTourCard({ tour }) {
 
           <div className="-mx-6">
             <CalendarPicker
-            selected={selectedDate}
-            onSelect={(ymd) => {
-              setSelectedDate(ymd);
-              setSlot(null);
-            }}
-          />
+              selected={selectedDate}
+              disabledDaysSet={fullDays}
+              onMonthChange={(m) => {
+                setVisibleMonth(m);
+                loadMonthAvailability(m);
+              }}
+              onSelect={(ymd) => {
+                setSelectedDate(ymd);
+                setSlot(null);
+              }}
+            />
           </div>
         </section>
 
@@ -183,16 +266,20 @@ export default function ReserveTourCard({ tour }) {
             <div className="grid gap-3">
               {visibleSlots.map((t) => {
                 const active = slot === t.id;
+                const isBlocked = blockedSlotsForSelectedDay.has(t.startTime);
 
                 return (
                   <button
                     key={t.id}
                     type="button"
+                    disabled={isBlocked}
                     onClick={() => setSlot(t.id)}
                     className={[
                       "group flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm transition",
                       "focus:outline-none focus:ring-2 focus:ring-emerald-600/30",
-                      active
+                      isBlocked
+                        ? "cursor-not-allowed opacity-40 border-gray-200 bg-gray-50"
+                        : active
                         ? "border-emerald-600 bg-emerald-50"
                         : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50",
                     ].join(" ")}
@@ -229,6 +316,11 @@ export default function ReserveTourCard({ tour }) {
                 <span className="font-semibold text-gray-700">
                   {selectedSlot?.label}
                 </span>
+                {isSelectedBlocked ? (
+                  <span className="ml-2 font-semibold text-red-600">
+                    (Not available)
+                  </span>
+                ) : null}
               </p>
             ) : null}
           </section>

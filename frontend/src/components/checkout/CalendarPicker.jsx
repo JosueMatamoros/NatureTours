@@ -24,7 +24,12 @@ function normalizeToNoon(d) {
   return x;
 }
 
-export default function CalendarPicker({ selected, onSelect }) {
+export default function CalendarPicker({
+  selected,
+  onSelect,
+  onMonthChange,
+  disabledDaysSet, // Set("YYYY-MM-DD") con días full
+}) {
   const selectedDate =
     typeof selected === "string"
       ? fromYMDLocal(selected)
@@ -37,10 +42,24 @@ export default function CalendarPicker({ selected, onSelect }) {
         selected={selectedDate}
         onSelect={(d) => {
           const normalized = normalizeToNoon(d);
-          // devolvemos YYYY-MM-DD
           onSelect?.(normalized ? toYMDLocal(normalized) : undefined);
         }}
-        disabled={{ before: new Date() }}
+        onMonthChange={(m) => {
+          onMonthChange?.(normalizeToNoon(m));
+        }}
+        disabled={(d) => {
+          // bloquear fechas pasadas
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const dd = new Date(d);
+          dd.setHours(0, 0, 0, 0);
+          if (dd < today) return true;
+
+          // bloquear días full (si vienen del backend)
+          const ymd = toYMDLocal(d);
+          return disabledDaysSet?.has(ymd) ?? false;
+        }}
         className="mx-auto"
         modifiersClassNames={{
           selected: "bg-emerald-600 text-white rounded-lg",
