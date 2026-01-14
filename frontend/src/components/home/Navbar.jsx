@@ -151,7 +151,7 @@ export default function Navbar({ variant = "overlay" }) {
               "mt-3 md:hidden",
               "rounded-2xl border backdrop-blur-xl p-3 shadow-lg",
               isOverlay
-                ? "border-white/10 bg-emerald-950/55 shadow-black/20"
+                ? "border-white/10 bg-gray-900/5 shadow-black/20"
                 : "border-gray-200 bg-white/90 shadow-black/10",
             ].join(" ")}
           >

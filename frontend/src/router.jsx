@@ -13,6 +13,7 @@ import PaymentPage from "./pages/PaymentPage";
 import AboutUs from "./pages/AboutUs";
 import ContactPage from "./pages/ContactPage";
 import ServicesPage from "./pages/ServicesPage";
+import ToursPage from "./pages/ToursPage";
 
 function RootLayout() {
   return (
@@ -59,6 +60,10 @@ const router = createBrowserRouter([
       {
         path: "/services",
         element: <ServicesPage />,
+      },
+      {
+        path: "/tours",
+        element: <ToursPage />,
       },
       {
         path: "*",

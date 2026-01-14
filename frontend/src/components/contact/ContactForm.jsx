@@ -40,7 +40,7 @@ export default function ContactForm({ onSubmit }) {
             name="fullName"
             value={form.fullName}
             onChange={handleChange}
-            placeholder="John Doe"
+            placeholder="Your full name"
             className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-emerald-500"
             required
           />
@@ -55,7 +55,7 @@ export default function ContactForm({ onSubmit }) {
             name="email"
             value={form.email}
             onChange={handleChange}
-            placeholder="john@example.com"
+            placeholder="you@gmail.com"
             className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-emerald-500"
             required
           />
@@ -69,7 +69,7 @@ export default function ContactForm({ onSubmit }) {
             name="phone"
             value={form.phone}
             onChange={handleChange}
-            placeholder="+506 8888 8888"
+            placeholder="+ 415 555-2671"
             className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-emerald-500"
           />
         </div>
@@ -102,7 +102,7 @@ export default function ContactForm({ onSubmit }) {
 
           {/* People */}
           <div>
-            <label className="text-sm font-semibold text-gray-900">
+            <label className="text-sm font-semibold text-gray-900 ">
               People
             </label>
             <GuestsInput

@@ -127,7 +127,7 @@ export default function ReserveTourCard({ tour }) {
   }
 
   return (
-    <aside className="w-full md:max-w-sm rounded-2xl border border-gray-200 bg-white shadow-sm h-fit">
+    <aside className="w-full md:max-w-sm rounded-2xl border border-gray-200 bg-white shadow-sm h-fit mt-4 md:mt-0">
       <div className="flex items-center justify-between border-b border-gray-100 px-6 pt-5 pb-2">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Book Tour</h3>
