@@ -4,7 +4,7 @@ import {
   ScrollRestoration,
 } from "react-router-dom";
 import ScrollToTop from "./ScrollToTop";
-import Home from "./pages/Home";
+import Home from "./pages/HomePage";
 import Checkout from "./pages/Checkout";
 import Success from "./pages/Success";
 import NotFound from "./pages/NotFound";

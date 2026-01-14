@@ -21,8 +21,8 @@ export default function ContactInfoPanel({
   return (
     <aside className="h-full space-y-4">
       <WhatsAppButton />
-      <div className="rounded-2xl bg-neutral-900 text-white p-6 shadow-lg">
-        <div className="text-xs tracking-widest uppercase text-white/60">
+      <div className="rounded-2xl border border-emerald-50 bg-emerald-50   p-6 shadow-lg">
+        <div className="text-xs tracking-widest uppercase ">
           Direct line
         </div>
 
@@ -30,14 +30,14 @@ export default function ContactInfoPanel({
           Couldn&apos;t find availability?
         </h3>
 
-        <p className="text-sm text-white/70 leading-relaxed">
+        <p className="text-sm  leading-relaxed">
           Call us and we can help you open up spots
         </p>
 
         <div className="mt-2 space-y-3">
           <a
             href={`tel:+${phoneE164}`}
-            className="block text-3xl font-extrabold tracking-tight hover:text-white/90"
+            className="block text-3xl font-extrabold tracking-tight "
           >
             {phoneDisplay}
           </a>
@@ -47,14 +47,14 @@ export default function ContactInfoPanel({
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
+              className="inline-flex items-center gap-3 rounded-2xl bg-emerald-700 px-6 py-3 text-white text-sm font-semibold  transition-all duration-300 hover:scale-105 hover:bg-emerald-800"
             >
               WhatsApp
             </a>
 
             <a
               href={`tel:+${phoneE164}`}
-              className="inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15"
+              className="inline-flex items-center justify-center rounded-xl  px-4 py-2 text-sm font-semibold text-emerald-900/80 border transition-all duration-300 hover:bg-emerald-50 hover:text-emerald-900 hover:scale-105"
             >
               Call
             </a>

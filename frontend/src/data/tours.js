@@ -6,6 +6,8 @@ import {
   FiUsers,
   FiDroplet,
 } from "react-icons/fi";
+import { IoShirtOutline } from "react-icons/io5";
+import { PiPants } from "react-icons/pi";
 
 export const TOURS = {
   1: {
@@ -17,10 +19,7 @@ export const TOURS = {
     currency: "$",
     per: "/ person",
     images: [
-      "/tours/night-walk-tour.jpg",
-      "/tours/night-walk-2.jpg",
-      "/tours/night-walk-3.jpg",
-      "/tours/night-walk-4.jpg",
+      "/tours/AgalychnisCallidryas.png",
     ],
     about: [
       "Guided night walk designed to observe wildlife that only appears after dark.",
@@ -36,11 +35,31 @@ export const TOURS = {
       "Wildlife observation",
     ],
     recommendations: [
-      { icon: FiSun, title: "Sun protection", text: "In case you arrive early." },
-      { icon: FiShield, title: "Insect repellent", text: "Highly recommended." },
-      { icon: FiCheckCircle, title: "Closed-toe shoes", text: "For a comfortable walk." },
-      { icon: FiUsers, title: "Comfortable clothing", text: "Lightweight, but covering." },
-      { icon: FiDroplet, title: "Optional", text: "Water and a light rain jacket." },
+      {
+        icon: FiSun,
+        title: "Sun protection",
+        text: "In case you arrive early.",
+      },
+      {
+        icon: FiShield,
+        title: "Insect repellent",
+        text: "Highly recommended.",
+      },
+      {
+        icon: FiCheckCircle,
+        title: "Closed-toe shoes",
+        text: "For a comfortable walk.",
+      },
+      {
+        icon: FiUsers,
+        title: "Comfortable clothing",
+        text: "Lightweight, but covering.",
+      },
+      {
+        icon: FiDroplet,
+        title: "Optional",
+        text: "Water and a light rain jacket.",
+      },
     ],
   },
 
@@ -74,11 +93,36 @@ export const TOURS = {
       "River crossings (weather permitting)",
     ],
     recommendations: [
-      { icon: FiSun, title: "Sun protection", text: "Sunscreen and a hat if you wish." },
-      { icon: FiShield, title: "Insect repellent", text: "Especially useful in forested areas." },
-      { icon: FiCheckCircle, title: "Closed-toe shoes", text: "Sneakers or boots for added safety." },
-      { icon: FiUsers, title: "Long pants recommended", text: "Jeans or leggings for better comfort." },
-      { icon: FiDroplet, title: "Optional", text: "Water bottle and an extra change of clothes if the weather is rainy." },
+      {
+        icon: FiSun,
+        title: "Sun protection",
+        text: "Sunscreen and a hat if you wish.",
+      },
+      {
+        icon: FiShield,
+        title: "Insect repellent",
+        text: "Especially useful in forested areas.",
+      },
+      {
+        icon: FiCheckCircle,
+        title: "Closed-toe shoes",
+        text: "Hiking shoes or boots for added safety.",
+      },
+      {
+        icon: PiPants ,
+        title: "Long pants recommended",
+        text: "Jeans or leggings for better comfort.",
+      },
+      {
+        icon: FiDroplet,
+        title: "Water bottle",
+        text: "Bring water to stay hydrated during the tour.",
+      },
+      {
+        icon: IoShirtOutline ,
+        title: "Extra change of clothes",
+        text: "Recommended for rain or river crossings.",
+      },
     ],
   },
 };

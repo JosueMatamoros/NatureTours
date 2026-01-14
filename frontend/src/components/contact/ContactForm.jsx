@@ -130,7 +130,8 @@ export default function ContactForm({ onSubmit }) {
 
         <button
           type="submit"
-          className="mt-2 inline-flex w-full items-center justify-center rounded-xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white hover:bg-neutral-800"
+          className=" mt-2 inline-flex w-full items-center justify-center rounded-2xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-emerald-800"
+
         >
           Send Request
         </button>
