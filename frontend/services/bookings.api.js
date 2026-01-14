@@ -12,3 +12,8 @@ export function createBooking({ tourId, tourDate, startTime, guests }) {
 export function getBookingById(bookingId) {
   return api.get(`/api/bookings/${bookingId}`);
 }
+
+export function expireBooking(bookingId) {
+  if (!bookingId) throw new Error("bookingId requerido");
+  return api.patch(`/api/bookings/${bookingId}/expire`);
+}

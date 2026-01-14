@@ -1,7 +1,10 @@
 // src/pages/PaymentPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { FiLock, FiDollarSign } from "react-icons/fi";
+import { TbLogout2 } from "react-icons/tb";
+
 import { useParams, useNavigate } from "react-router-dom";
+import { useConfirmExit } from "../hooks/useConfirmExit";
 
 import CancellationTermsModal from "../components/ui/CancellationTermsModal";
 import ContactForm from "../components/payment/ContactForm";
@@ -12,6 +15,8 @@ import PaymentPanel from "../components/payment/PaymentPanel";
 import Collapse from "../components/ui/Collapse";
 import { getBookingById } from "../../services/bookings.api";
 import { createPayment } from "../../services/payments.api";
+import CancelBookingModal from "../components/ui/CancelBookingModal";
+import { expireBooking } from "../../services/bookings.api";
 
 export default function PaymentPage() {
   const { bookingId } = useParams();
@@ -42,6 +47,29 @@ export default function PaymentPage() {
     const n = typeof v === "string" ? Number(v) : v;
     return Number.isFinite(n) ? n : 0;
   };
+
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [pendingNav, setPendingNav] = useState(null);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+
+  const shouldBlockExit = Boolean(
+    bookingId &&
+      !leaving &&
+      !paymentCompleted &&
+      (!booking || booking.status === "pending")
+  );
+
+  const openExitModal = (blocker = null) => {
+    if (showExitModal) return;
+
+    if (blocker) setPendingNav(blocker);
+    setShowExitModal(true);
+  };
+
+  useConfirmExit(shouldBlockExit && !showExitModal, (blocker) => {
+    openExitModal(blocker);
+  });
 
   useEffect(() => {
     if (!bookingId) {
@@ -182,11 +210,49 @@ export default function PaymentPage() {
         </div>
       </header>
 
+      <CancelBookingModal
+        open={showExitModal}
+        loading={leaving}
+        onStay={() => {
+          pendingNav?.reset?.();
+          setPendingNav(null);
+          setShowExitModal(false);
+        }}
+        onConfirm={async () => {
+          try {
+            setLeaving(true);
+            await expireBooking(bookingId);
+          } catch (e) {
+            console.error("expireBooking error:", e);
+          } finally {
+            setLeaving(false);
+            setShowExitModal(false);
+
+            if (pendingNav?.proceed) {
+              pendingNav.proceed();
+              setPendingNav(null);
+              return;
+            }
+
+            navigate("/", { replace: true });
+          }
+        }}
+      />
+
       <section className="px-6 pb-12">
         <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-2">
           {/* LEFT */}
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="px-8 pt-7 pb-5 ">
+
+          <div className="relative rounded-2xl border border-gray-200 bg-white shadow-sm ">
+            <button
+              type="button"
+              onClick={() => openExitModal(null)}
+              className="absolute -top-12 inline-flex items-center justify-center h-10 w-10 z-10 rounded-full bg-white border border-red-200 text-red-600 hover:text-red-700 hover:border-red-300 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-red-500/30"
+            >
+              <TbLogout2 className="h-5 w-5" />
+            </button>
+
+            <div className="px-8 pt-7 pb-5  ">
               <h2 className="text-xl font-semibold text-gray-900 ">
                 Contact details
               </h2>
@@ -229,31 +295,31 @@ export default function PaymentPage() {
                 }}
                 onSuccess={async (summary) => {
                   try {
+                    setPaymentCompleted(true);
+
                     const payload = {
                       bookingId,
-                      customerId, // ya lo guardaste con setCustomerId
-                      mode, // "full" o "deposit"
+                      customerId,
+                      mode,
                       amount: summary.amount,
                       paypalOrderId: summary.paypalOrderId,
                       paypalCaptureId: summary.paypalCaptureId,
-                      status: summary.status, // ya viene lowercase
+                      status: summary.status,
                     };
 
                     const res = await createPayment(payload);
-
                     if (!res?.ok || !res?.id)
                       throw new Error("Payment not saved");
 
-                    const paymentId = res?.id;
-
-                    navigate(`/success/${paymentId}`);
+                    navigate(`/success/${res.id}`, { replace: true });
                   } catch (e) {
+                    setPaymentCompleted(false);
                     console.error("Error saving payment:", e);
                   }
                 }}
               />
 
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 mt-1 mx-8">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 mt-1 mx-8 mb-8 md:mb-0">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 grid h-8 w-8 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
                     <FiDollarSign className="h-4 w-4" />
