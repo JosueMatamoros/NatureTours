@@ -20,6 +20,8 @@ export default function PaymentPanel({
   blockedText,
   customerPayload,
   onCustomerId,
+  bookingId,
+  onTimeout,
 }) {
   const [showPaypal, setShowPaypal] = useState(false);
 
@@ -55,6 +57,8 @@ export default function PaymentPanel({
 
               <div className={showPaypal ? "block" : "hidden"}>
                 <PayPalCheckout
+                  bookingId={bookingId}
+                  onTimeout={onTimeout}
                   amount={amount}
                   description={description}
                   onSuccess={onSuccess}

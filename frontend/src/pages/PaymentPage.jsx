@@ -17,6 +17,7 @@ import { getBookingById } from "../../services/bookings.api";
 import { createPayment } from "../../services/payments.api";
 import CancelBookingModal from "../components/ui/CancelBookingModal";
 import { expireBooking } from "../../services/bookings.api";
+import TimeoutModal from "../components/ui/TimeoutModal";
 
 export default function PaymentPage() {
   const { bookingId } = useParams();
@@ -52,6 +53,7 @@ export default function PaymentPage() {
   const [leaving, setLeaving] = useState(false);
   const [pendingNav, setPendingNav] = useState(null);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [showTimeout, setShowTimeout] = useState(false);
 
   const shouldBlockExit = Boolean(
     bookingId &&
@@ -209,6 +211,17 @@ export default function PaymentPage() {
           </p>
         </div>
       </header>
+      <TimeoutModal
+        open={showTimeout}
+        onClose={() => {
+          setShowTimeout(false);
+          navigate("/tours", { replace: true });
+        }}
+        onHelp={() => {
+          setShowTimeout(false);
+          navigate("/contact");
+        }}
+      />
 
       <CancelBookingModal
         open={showExitModal}
@@ -284,6 +297,7 @@ export default function PaymentPage() {
                 mustBlockPay={!isFormValid}
                 amount={total}
                 description={descriptionText}
+                bookingId={bookingId}
                 blockedText="Complete your details to enable payment"
                 customerPayload={{
                   name: fullName,
@@ -293,6 +307,7 @@ export default function PaymentPage() {
                 onCustomerId={(id) => {
                   setCustomerId(id);
                 }}
+                onTimeout={() => setShowTimeout(true)}
                 onSuccess={async (summary) => {
                   try {
                     setPaymentCompleted(true);
