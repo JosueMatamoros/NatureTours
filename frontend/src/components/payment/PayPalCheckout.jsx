@@ -38,21 +38,17 @@ export default function PayPalCheckout({
           createOrder={async (data, actions) => {
             setStatus("creating");
 
-            // 1) VALIDAR BOOKING ANTES DE CREAR ORDEN
             let payload;
             try {
               payload = await validateBooking(bookingId);
-              console.log("🕒 validateBooking response:", payload);
             } catch (err) {
-              console.error("validateBooking request failed:", err);
               setStatus("error");
-              throw err; // aborta PayPal
+              throw err;
             }
 
             if (!payload?.ok || payload?.valid !== true) {
               setStatus("error");
 
-              // solo mostrar modal si realmente expiró
               if (payload?.reason === "expired" || payload?.reason === "not_pending") {
                 onTimeout?.();
               }
@@ -60,7 +56,6 @@ export default function PayPalCheckout({
               throw new Error(`Booking not valid: ${payload?.reason || "unknown"}`);
             }
 
-            // 2) CREAR / ACTUALIZAR CLIENTE
             try {
               const c = await upsertCustomer(customerPayload);
               const customerId = c?.id;
@@ -73,7 +68,6 @@ export default function PayPalCheckout({
               throw e;
             }
 
-            // 3) CREAR ORDEN PAYPAL
             return actions.order.create({
               purchase_units: [
                 {
