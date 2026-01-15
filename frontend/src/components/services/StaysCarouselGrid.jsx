@@ -1,78 +1,62 @@
 import React from "react";
 import StayCarouselCard from "./StayCarouselCard";
-import { HiOutlineWifi } from "react-icons/hi";
+import { HiOutlineWifi, HiOutlineLocationMarker } from "react-icons/hi";
 import { FiWind } from "react-icons/fi";
+import { MdHotTub, MdPets} from "react-icons/md";
+import { BiBed } from "react-icons/bi";
+import { GiShower } from "react-icons/gi";
+import { FaUmbrellaBeach } from "react-icons/fa";
 
 export default function StaysCarouselGrid() {
   const stays = [
     {
-      title: "Casa Vista al Valle",
+      title: "Villa Alma Verde",
       subtitle:
-        "Hermosa casa con vista panorámica al valle, ideal para familias.",
-      locationLabel: "Valle Central",
-      capacity: 6,
-      highlight: "Mayor capacidad",
-      airbnbUrl: "https://www.airbnb.com/tu-link-1",
+        "Only 1.8 miles (about 5 minutes) from downtown La Fortuna, with stunning rainforest and river views. Spacious, comfortable, and perfect for large groups.",
+      locationLabel: "Javillos, La Fortuna",
+      capacity: 12,
+      highlight: "Largest capacity",
+      airbnbUrl: "https://www.airbnb.com/h/villaalmaverde",
       images: [
-        "https://images.unsplash.com/photo-1505693314120-0d443867891c?auto=format&fit=crop&w=1600&q=80",
-        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1600&q=80",
+        "/houses/villaMario/VillaMario1.JPG",
+        "/houses/villaMario/VillaMario2.JPG",
+        "/houses/villaMario/VillaMario3.JPG",
+        "/houses/villaMario/VillaMario4.JPG",
       ],
       amenities: [
-        { label: "Wifi", icon: <HiOutlineWifi className="h-4 w-4" /> },
+        { label: "Wi-Fi", icon: <HiOutlineWifi className="h-4 w-4" /> },
         { label: "A/C", icon: <FiWind className="h-4 w-4" /> },
-        { label: "TV" },
-        { label: "Private bathroom" },
+        { label: "Outdoor shower", icon: <GiShower className="h-4 w-4" /> },
+        { label: "3 bedrooms", icon: <BiBed className="h-4 w-4" /> },
+        { label: "Pet friendly", icon: <MdPets className="h-4 w-4" /> },
       ],
     },
     {
-      title: "Cabaña El Bosque",
-      subtitle: "Acogedora cabaña rodeada de naturaleza y tranquilidad.",
-      locationLabel: "Bosque Norte",
-      capacity: 4,
-      highlight: "Centro de Fortuna",
-      airbnbUrl: "https://www.airbnb.com/tu-link-2",
-      images: [
-        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1600&q=80",
-        "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1600&q=80",
-      ],
-      amenities: [{ label: "Wifi" }, { label: "Private bathroom" }, { label: "View" }],
-    },
-    {
-      title: "Casa Vista al Valle",
+      title: "Villa Aurora",
       subtitle:
-        "Hermosa casa con vista panorámica al valle, ideal para familias.",
-      locationLabel: "Valle Central",
-      capacity: 6,
-      highlight: "Mayor capacidad",
-      airbnbUrl: "https://www.airbnb.com/tu-link-1",
+        "Right in downtown La Fortuna, close to everything, yet private and peaceful. Enjoy open green pastures, friendly cows, and unwind in the jacuzzi after a day of adventure.",
+      locationLabel: "La Fortuna Downtown",
+      capacity: 7,
+      highlight: "Closest to downtown",
+      airbnbUrl: "https://www.airbnb.com/h/villaaurorafortuna",
       images: [
-        "https://images.unsplash.com/photo-1505693314120-0d443867891c?auto=format&fit=crop&w=1600&q=80",
-        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1600&q=80",
+        "/houses/villaAurora/VillaAurora1.JPG",
+        "/houses/villaAurora/VillaAurora2.JPG",
+        "/houses/villaAurora/VillaAurora3.JPG",
+        "/houses/villaAurora/VillaAurora4.JPG",
       ],
       amenities: [
-        { label: "Wifi", icon: <HiOutlineWifi className="h-4 w-4" /> },
+        { label: "Wi-Fi", icon: <HiOutlineWifi className="h-4 w-4" /> },
         { label: "A/C", icon: <FiWind className="h-4 w-4" /> },
-        { label: "TV" },
-        { label: "Private bathroom" },
+        { label: "2 bedrooms", icon: <BiBed className="h-4 w-4" /> },
+        { label: "Jacuzzi", icon: <MdHotTub className="h-4 w-4" /> },
+        { label: "Pet friendly", icon: <MdPets className="h-4 w-4" /> },
       ],
-    },
-    {
-      title: "Cabaña El Bosque",
-      subtitle: "Acogedora cabaña rodeada de naturaleza y tranquilidad.",
-      locationLabel: "Bosque Norte",
-      capacity: 4,
-      highlight: "Centro de Fortuna",
-      airbnbUrl: "https://www.airbnb.com/tu-link-2",
-      images: [
-        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1600&q=80",
-        "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1600&q=80",
-      ],
-      amenities: [{ label: "Wifi" }, { label: "Private bathroom" }, { label: "View" }],
     },
   ];
 
   return (
-    <section className="bg-[#FBFAF8] py-6 sm:py-10">
+    <section className=" py-6 sm:py-10">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-2">
           {stays.map((s) => (

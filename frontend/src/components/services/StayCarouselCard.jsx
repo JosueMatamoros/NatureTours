@@ -4,8 +4,8 @@ import {
   HiOutlineUsers,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
-  HiOutlineExternalLink,
 } from "react-icons/hi";
+import { FaAirbnb } from "react-icons/fa";
 
 export default function StayCarouselCard({
   title,
@@ -24,14 +24,20 @@ export default function StayCarouselCard({
     setIndex((i) => (i - 1 + safeImages.length) % safeImages.length);
   const next = () => setIndex((i) => (i + 1) % safeImages.length);
 
+  // Ensure external link works even if user passes "airbnb.com/..."
+  const normalizedUrl = airbnbUrl?.startsWith("http")
+    ? airbnbUrl
+    : `https://${airbnbUrl}`;
+
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-[0_18px_60px_-35px_rgba(0,0,0,0.35)] ring-1 ring-black/5">
       {/* Media */}
       <div className="relative aspect-[16/10] w-full overflow-hidden">
         <img
           src={safeImages[index]}
-          alt={title}
+          alt={`${title} photo ${index + 1}`}
           className="h-full w-full object-cover"
+          loading="lazy"
         />
 
         {/* Highlight chip */}
@@ -46,11 +52,11 @@ export default function StayCarouselCard({
           <div className="flex justify-between text-sm font-medium text-white">
             <div className="flex items-center gap-2">
               <HiOutlineLocationMarker className="h-5 w-5" />
-              {locationLabel}
+              <span>{locationLabel}</span>
             </div>
             <div className="flex items-center gap-2">
               <HiOutlineUsers className="h-5 w-5" />
-              {capacity}
+              <span>{capacity}</span>
             </div>
           </div>
         </div>
@@ -59,23 +65,46 @@ export default function StayCarouselCard({
         {safeImages.length > 1 && (
           <>
             <button
+              type="button"
               onClick={prev}
-              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-2 shadow ring-1 ring-black/5"
+              aria-label="Previous image"
+              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-2 text-[#2B241D] shadow-sm ring-1 ring-black/5 transition hover:bg-white"
             >
-              <HiOutlineChevronLeft />
+              <HiOutlineChevronLeft className="h-5 w-5" />
             </button>
             <button
+              type="button"
               onClick={next}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-2 shadow ring-1 ring-black/5"
+              aria-label="Next image"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-2 text-[#2B241D] shadow-sm ring-1 ring-black/5 transition hover:bg-white"
             >
-              <HiOutlineChevronRight />
+              <HiOutlineChevronRight className="h-5 w-5" />
             </button>
           </>
         )}
+
+        {/* Dots */}
+        {safeImages.length > 1 && (
+          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
+            {safeImages.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setIndex(i)}
+                aria-label={`Go to image ${i + 1}`}
+                className={[
+                  "h-2 w-2 rounded-full transition",
+                  i === index ? "bg-white" : "bg-white/40 hover:bg-white/70",
+                ].join(" ")}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* CONTENT (flex-1) */}
+      {/* Content */}
       <div className="flex flex-1 flex-col p-6 sm:p-7">
+        {/* Top content grows */}
         <div className="flex-1">
           <h3 className="text-2xl font-extrabold tracking-tight text-[#2B241D]">
             {title}
@@ -86,31 +115,32 @@ export default function StayCarouselCard({
           </p>
         </div>
 
-        {/* FOOTER (always bottom) */}
+        {/* Footer pinned to bottom */}
         <div className="pt-5">
           {/* Amenities */}
           {amenities?.length > 0 && (
             <div className="mb-4 flex flex-wrap gap-2">
               {amenities.map((a, i) => (
                 <span
-                  key={i}
-                  className="rounded-full bg-[#F3EEE7] px-4 py-2 text-sm font-medium text-[#2B241D]/75 ring-1 ring-black/5"
+                  key={`${a.label}-${i}`}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#F3EEE7] px-4 py-2 text-sm font-medium text-[#2B241D]/75 ring-1 ring-black/5"
                 >
+                  {a.icon ? <span className="text-[#2B241D]/70">{a.icon}</span> : null}
                   {a.label}
                 </span>
               ))}
             </div>
           )}
 
-          {/* Airbnb button */}
+          {/* Airbnb button (external) */}
           <a
-            href={airbnbUrl}
+            href={normalizedUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-900 px-6 py-4 text-sm font-semibold text-white transition hover:bg-emerald-800"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF385C] px-6 py-4 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[#FF385C]/40"
           >
-            <HiOutlineExternalLink className="h-5 w-5" />
-            Ver en Airbnb
+            <FaAirbnb className="h-5 w-5" />
+            View on Airbnb
           </a>
         </div>
       </div>
