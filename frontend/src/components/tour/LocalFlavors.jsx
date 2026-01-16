@@ -60,7 +60,7 @@ export default function LocalFlavors() {
           {/* Imagen */}
           <div className="flex-1">
             <img
-              src="/resources/fruits.JPG"
+              src="/resources/fruits.webp"
               alt="Fresh tropical fruits from Costa Rica"
               className="h-full w-full object-cover rounded-3xl"
             />

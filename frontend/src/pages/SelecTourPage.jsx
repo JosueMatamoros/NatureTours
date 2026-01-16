@@ -8,7 +8,7 @@ const TOURS = [
     title: "Horseback Riding Tour",
     description:
       "Enjoy a memorable horseback riding experience along scenic forest trails and crystal-clear rivers. Ride through lush tropical landscapes, spot local wildlife, and take in the natural beauty that makes Costa Rica truly unforgettable.",
-    image: "/tours/familyHorsebackRiding.JPG",
+    image: "/tours/familyHorsebackRiding.webp",
     duration: "2 hours",
     price: 30,
     objectPosition: "object-center",
@@ -20,7 +20,7 @@ const TOURS = [
     title: "Night Walk Tour",
     description:
       "Join a guided night walk through the tropical forest and discover a completely different side of Costa Rica. Observe nocturnal wildlife such as red-eyed tree frogs, insects, and other fascinating creatures that come to life after sunset.",
-    image: "/tours/AgalychnisCallidryas.png",
+    image: "/tours/AgalychnisCallidryas.webp",
     duration: "2 hours",
     price: 45,
     objectPosition: "object-top",

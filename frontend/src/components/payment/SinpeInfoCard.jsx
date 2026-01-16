@@ -1,4 +1,4 @@
-import sinpeMovilImg from "/resources/sinpemovil.jpeg";
+import sinpeMovilImg from "/resources/sinpemovil.webp";
 
 export default function SinpeInfoCard({
   fmt,

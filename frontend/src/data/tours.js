@@ -19,7 +19,7 @@ export const TOURS = {
     currency: "$",
     per: "/ person",
     images: [
-      "/tours/AgalychnisCallidryas.png",
+      "/tours/AgalychnisCallidryas.webp",
     ],
     about: [
       "Guided night walk designed to observe wildlife that only appears after dark.",
@@ -72,12 +72,12 @@ export const TOURS = {
     currency: "$",
     per: "/ person",
     images: [
-      "/booking/horse/image1.JPG",
-      "/booking/horse/image2.JPG",
-      "/booking/horse/image3.JPG",
-      "/booking/horse/image4.JPG",
-      "/booking/horse/image5.JPG",
-      "/booking/horse/image6.JPG",
+      "/booking/horse/image1.webp",
+      "/booking/horse/image2.webp",
+      "/booking/horse/image3.webp",
+      "/booking/horse/image4.webp",
+      "/booking/horse/image5.webp",
+      "/booking/horse/image6.webp",
     ],
     about: [
       "This horseback riding tour lasts approximately two hours, although the exact duration may vary depending on the pace of the group and the time spent enjoying the ride, taking breaks, and appreciating the surrounding natural beauty.",

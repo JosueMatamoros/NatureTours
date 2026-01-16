@@ -21,8 +21,8 @@ export default function ToursSection() {
       </div>
 
       <TourCard
-        imageSrcMobile="/tours/horsebackCoverMobile.JPG"
-        imageSrcDesktop="/tours/horsebackCoverDesktop.JPG"
+        imageSrcMobile="/tours/horsebackCoverMobile.webp"
+        imageSrcDesktop="/tours/horsebackCoverDesktop.webp"
         imageAlt="Horseback riding tour"
         title="Horseback Riding Tour"
         description="Enjoy an authentic horseback riding experience through natural trails, crossing rivers and exploring the forest while discovering the beauty of the surroundings alongside experienced local guides."

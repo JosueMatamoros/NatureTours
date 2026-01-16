@@ -19,12 +19,12 @@ export default function Home() {
       <ToursSection />
       <TourImagesBento
         images={[
-          "/tours/bento/image1.JPG",
-          "/tours/bento/image2.JPG",
-          "/tours/bento/image3.JPG",
-          "/tours/bento/image4.JPG",
-          "/tours/bento/image5.JPG",
-          "/tours/bento/image6.JPG",
+          "/tours/bento/image1.webp",
+          "/tours/bento/image2.webp",
+          "/tours/bento/image3.webp",
+          "/tours/bento/image4.webp",
+          "/tours/bento/image5.webp",
+          "/tours/bento/image6.webp",
         ]}
       />
       <div className="w-full  flex justify-center sm:-mt-12">
