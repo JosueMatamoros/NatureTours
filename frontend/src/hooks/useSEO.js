@@ -14,7 +14,7 @@ import { useEffect } from "react";
  */
 export function useSEO({
   title = "Nature Tours La Fortuna",
-  description = "Experience the best horseback riding tours in La Fortuna, Costa Rica with stunning Arenal Volcano views.",
+  description = "Experience the best horseback riding tours in La Fortuna, Costa Rica through lush rainforest and beautiful nature trails.",
   keywords = "horseback riding la fortuna, horse tours costa rica, arenal volcano tours",
   canonical = "https://naturetourslafortuna.com/",
   image = "https://naturetourslafortuna.com/og-image.webp",
@@ -77,7 +77,7 @@ export const SEO_CONFIG = {
   home: {
     title: "Nature Tours La Fortuna | Horseback Riding Tours in Costa Rica",
     description:
-      "Experience the best horseback riding tours in La Fortuna, Costa Rica. Explore stunning Arenal Volcano views, river crossings, and tropical rainforest trails. Book your adventure today!",
+      "Experience the best horseback riding tours in La Fortuna, Costa Rica. Explore lush rainforest trails, river crossings, and stunning tropical nature. Book your adventure today!",
     keywords:
       "horseback riding la fortuna, horse tours costa rica, arenal volcano tours, la fortuna tours, things to do in la fortuna, la fortuna activities, best tours la fortuna, family tours costa rica, adventure tours la fortuna, sunset horseback riding costa rica",
     canonical: "https://naturetourslafortuna.com/",
@@ -86,7 +86,7 @@ export const SEO_CONFIG = {
   tours: {
     title: "Horseback Riding Tours in La Fortuna | Nature Tours Costa Rica",
     description:
-      "Explore La Fortuna on horseback with breathtaking Arenal Volcano views. Sunset rides, river crossings, mountain trails, and unforgettable experiences with well-trained horses. Perfect for families!",
+      "Explore La Fortuna on horseback through breathtaking rainforest scenery. Sunset rides, river crossings, mountain trails, and unforgettable experiences with well-trained horses. Perfect for families!",
     keywords:
       "horseback riding la fortuna, horse tours arenal, costa rica horseback tours, sunset horse ride la fortuna, horse riding tour costa rica, trail riding arenal volcano, family horse tours, private horseback tour",
     canonical: "https://naturetourslafortuna.com/tours",
