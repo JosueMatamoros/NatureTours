@@ -8,7 +8,7 @@ export default function HeroSection() {
     <section
       className="
     relative h-dvh overflow-hidden
-    bg-[url('./ranaTica.png')] bg-cover bg-[80%_center]
+    bg-[url('/hero/ranaTica.webp')] bg-cover bg-[80%_center]
     md:bg-linear-to-br md:from-[#06140d] md:via-[#0b1f15] md:to-[#050b08]
   "
     >
@@ -18,7 +18,7 @@ export default function HeroSection() {
         <div className="w-1/2 h-full p-2">
           <div className="h-full rounded-2xl overflow-hidden">
             <img
-              src="./ranaTica.png"
+              src="/hero/ranaTica.webp"
               alt="Rana Tica"
               className="block w-full h-full object-cover object-[80%_center] brightness-90 contrast-105"
             />
@@ -29,7 +29,7 @@ export default function HeroSection() {
         <div className="w-1/2 h-full flex flex-col p-2 gap-2">
           <div className="h-1/2 rounded-2xl overflow-hidden">
             <img
-              src="./serpienteTercioPelo.png"
+              src="/hero/serpienteTercioPelo.webp"
               alt="Serpiente Tercio Pelo"
               className="block w-full h-full object-cover object-center brightness-90 contrast-105"
             />
@@ -37,7 +37,7 @@ export default function HeroSection() {
 
           <div className="h-1/2 rounded-2xl overflow-hidden">
             <img
-              src="./ranaFresa.png"
+              src="/hero/ranaFresa.webp"
               alt="Rana Fresa"
               className="block w-full h-full object-cover object-center brightness-90 contrast-105"
             />
@@ -51,7 +51,7 @@ export default function HeroSection() {
         <div className="w-1/3 h-full p-2">
           <div className="h-full rounded-2xl overflow-hidden">
             <img
-              src="./ranaTica.png"
+              src="/hero/ranaTica.webp"
               alt="Rana Tica"
               className="block w-full h-full object-cover object-center brightness-90 contrast-105"
             />
@@ -62,7 +62,7 @@ export default function HeroSection() {
         <div className="w-1/3 h-full flex flex-col p-2 gap-2">
           <div className="h-1/2 rounded-2xl overflow-hidden">
             <img
-              src="./serpienteTercioPelo.png"
+              src="/hero/serpienteTercioPelo.webp"
               alt="Serpiente Tercio Pelo"
               className="block w-full h-full object-cover object-center brightness-90 contrast-105"
             />
@@ -70,7 +70,7 @@ export default function HeroSection() {
 
           <div className="h-1/2 rounded-2xl overflow-hidden">
             <img
-              src="./ranaFresa.png"
+              src="/hero/ranaFresa.webp"
               alt="Rana Fresa"
               className="block w-full h-full object-cover object-center brightness-90 contrast-105"
             />
@@ -81,7 +81,7 @@ export default function HeroSection() {
         <div className="w-1/3 h-full flex flex-col p-2 gap-2">
           <div className="h-1/3 rounded-2xl overflow-hidden">
             <img
-              src="./ranaLeche.png"
+              src="/hero/ranaLeche.webp"
               alt="Rana Leche"
               className="block w-full h-full object-cover object-center brightness-90 contrast-105"
             />
@@ -89,7 +89,7 @@ export default function HeroSection() {
 
           <div className="h-1/3 rounded-2xl overflow-hidden">
             <img
-              src="./serpienteCoral.png"
+              src="/hero/serpienteCoral.webp"
               alt="Serpiente Coral"
               className="block w-full h-full object-cover object-center brightness-90 contrast-105"
             />
@@ -97,7 +97,7 @@ export default function HeroSection() {
 
           <div className="h-1/3 rounded-2xl overflow-hidden">
             <img
-              src="./ranaDorada.png"
+              src="/hero/ranaDorada.webp"
               alt="Rana Dorada"
               className="block w-full h-full object-cover object-center brightness-90 contrast-105"
             />
