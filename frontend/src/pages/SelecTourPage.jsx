@@ -1,6 +1,7 @@
 import { HiOutlineClock } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/home/Navbar";
+import Footer from "../components/home/Footer";
 
 const TOURS = [
   {
@@ -131,6 +132,7 @@ export default function SelecTour() {
           })}
         </section>
       </main>
+      <Footer />
     </div>
   );
 }

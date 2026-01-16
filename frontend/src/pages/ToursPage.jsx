@@ -2,6 +2,7 @@ import React from "react";
 import TourVideo from "../components/tour/TourVideo";
 import LocalFlavors from "../components/tour/LocalFlavors";
 import Navbar from "../components/home/Navbar";
+import Footer from "../components/home/Footer";
 import TourImagesBento from "../components/tour/TourImagesBento";
 import WhatToBring from "../components/tour/WhatToBring";
 
@@ -22,6 +23,7 @@ export default function ToursPage() {
       />
       <LocalFlavors />
       <WhatToBring />
+      <Footer />
     </div>
   );
 }

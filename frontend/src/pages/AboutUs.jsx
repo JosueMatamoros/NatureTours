@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import HorsesSection from "../sections/HorsesSection";
 import DogSection from "../sections/DogSection";
 import Navbar from "../components/home/Navbar";
+import Footer from "../components/home/Footer";
 import AboutUsSection from "../sections/AboutUsSection";
 
 export default function AboutUs() {
@@ -26,6 +27,7 @@ export default function AboutUs() {
       </div>
       <HorsesSection />
       <DogSection />
+      <Footer />
     </div>
   );
 }

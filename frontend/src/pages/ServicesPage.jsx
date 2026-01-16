@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   HiOutlineShieldCheck,
   HiOutlineTruck,
@@ -9,8 +10,23 @@ import {
 import { FiCoffee, FiStar } from "react-icons/fi";
 import StaysCarouselGrid from "../components/services/StaysCarouselGrid";
 import Navbar from "../components/home/Navbar";
+import Footer from "../components/home/Footer";
 
 export default function ServicesPage() {
+  const navigate = useNavigate();
+
+  const handleAskTransportation = () => {
+    navigate("/contact", {
+      state: { message: "Hello, I would like to ask about transportation services (airport transfers, hotel pickups, etc.)" },
+    });
+  };
+
+  const handleAskFood = () => {
+    navigate("/contact", {
+      state: { message: "Hello, I would like to ask about restaurant recommendations and local food options." },
+    });
+  };
+
   return (
     <div>
       <Navbar variant="solid" />
@@ -81,7 +97,8 @@ export default function ServicesPage() {
 
                     <button
                       type="button"
-                      className="mt-6 inline-flex items-center gap-2 rounded-full border border-emerald-900/15 bg-white/70 px-5 py-3 text-sm font-semibold text-emerald-900 shadow-sm transition hover:bg-white"
+                      onClick={handleAskTransportation}
+                      className="mt-6 inline-flex items-center gap-2 rounded-full border border-emerald-900/15 bg-white/70 px-5 py-3 text-sm font-semibold text-emerald-900 shadow-sm transition-all duration-300 hover:bg-white hover:scale-105 hover:shadow-md"
                     >
                       <HiOutlinePhone className="h-5 w-5" />
                       Ask us and we&apos;ll connect you
@@ -127,7 +144,8 @@ export default function ServicesPage() {
 
                     <button
                       type="button"
-                      className="mt-6 inline-flex items-center gap-2 rounded-full border border-orange-900/15 bg-white/70 px-5 py-3 text-sm font-semibold text-orange-800 shadow-sm transition hover:bg-white"
+                      onClick={handleAskFood}
+                      className="mt-6 inline-flex items-center gap-2 rounded-full border border-orange-900/15 bg-white/70 px-5 py-3 text-sm font-semibold text-orange-800 shadow-sm transition-all duration-300 hover:bg-white hover:scale-105 hover:shadow-md"
                     >
                       <HiOutlinePhone className="h-5 w-5" />
                       Ask us and we&apos;ll connect you
@@ -152,6 +170,7 @@ export default function ServicesPage() {
 
 
       </section>
+      <Footer />
     </div>
   );
 }

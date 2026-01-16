@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 const LINKS = [
   { label: "Home", to: "/" },
@@ -7,11 +7,44 @@ const LINKS = [
   { label: "About Us", to: "/about" },
   { label: "Contact", to: "/contact" },
   { label: "Services", to: "/services" },
+  { label: "Location", to: "/#location" },
 ];
 
 export default function Navbar({ variant = "overlay" }) {
   const [open, setOpen] = useState(false);
   const isOverlay = variant === "overlay";
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Manejar scroll a anchor después de navegación
+  useEffect(() => {
+    if (location.hash) {
+      const element = document.querySelector(location.hash);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+    }
+  }, [location]);
+
+  const handleLinkClick = (e, to) => {
+    if (to.includes("#")) {
+      const [path, hash] = to.split("#");
+      const targetPath = path || "/";
+
+      // Si ya estamos en la misma página, solo hacer scroll
+      if (location.pathname === targetPath) {
+        e.preventDefault();
+        const element = document.getElementById(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      }
+      // Si estamos en otra página, navegar y luego el useEffect hará el scroll
+    }
+    setOpen(false);
+  };
 
   useEffect(() => {
     const onResize = () => {
@@ -64,6 +97,7 @@ export default function Navbar({ variant = "overlay" }) {
               <NavLink
                 key={item.to}
                 to={item.to}
+                onClick={(e) => handleLinkClick(e, item.to)}
                 className={({ isActive }) => {
                   // Overlay: NO mostrar estado activo, solo hover
                   if (isOverlay) {
@@ -176,7 +210,7 @@ export default function Navbar({ variant = "overlay" }) {
                         : "text-gray-700 hover:text-gray-900 hover:bg-gray-100",
                     ].join(" ");
                   }}
-                  onClick={() => setOpen(false)}
+                  onClick={(e) => handleLinkClick(e, item.to)}
                 >
                   {item.label}
                 </NavLink>

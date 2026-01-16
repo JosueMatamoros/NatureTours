@@ -9,11 +9,10 @@ const TourVideo = () => {
         <h2 className="text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
           Horseback Riding Tour
         </h2>
-
       </div>
 
       {/* Frame del video */}
-      <div className="w-full max-w-4xl overflow-hidden rounded-3xl border border-gray-200 shadow-sm aspect-video">
+      <div className="w-full max-w-6xl overflow-hidden rounded-3xl border border-gray-200 shadow-sm aspect-video">
         <video
           src="/videos/horseback.mp4"
           controls

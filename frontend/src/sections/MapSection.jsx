@@ -33,7 +33,7 @@ export default function MapSection() {
   );
 
   return (
-    <section>
+    <section id="location" >
       <div className="mx-auto max-w-6xl px-4 sm:py-14 py-2  sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center">

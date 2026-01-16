@@ -3,8 +3,8 @@ import CancellationTermsModal from "../ui/CancellationTermsModal";
 import WhatsAppButton from "../ui/WhatsAppButton";
 
 export default function ContactInfoPanel({
-  phoneDisplay = "+506 8989 3333",
-  phoneE164 = "50689893333",
+  phoneDisplay = "+506 8989 3335",
+  phoneE164 = "50689893335",
   whatsappMessage = "Hello, I would like more information about the tour.",
   servicesHref = "/services",
   policiesHref = "/policies", // optional, in case you use it later

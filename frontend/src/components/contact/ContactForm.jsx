@@ -1,16 +1,23 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import CalendarPicker from "./CalendarPicker";
 import GuestsInput from "./GuestsInput";
 
-export default function ContactForm({ onSubmit }) {
+export default function ContactForm({ onSubmit, initialMessage = "" }) {
   const [form, setForm] = useState({
     fullName: "",
     email: "",
     phone: "",
     date: "",
     people: 1,
-    message: "",
+    message: initialMessage,
   });
+
+  // Update message if initialMessage changes
+  useEffect(() => {
+    if (initialMessage) {
+      setForm((s) => ({ ...s, message: initialMessage }));
+    }
+  }, [initialMessage]);
 
   const [calendarOpen, setCalendarOpen] = useState(false);
 

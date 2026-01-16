@@ -2,10 +2,12 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowRight } from "react-icons/fi";
 import Navbar from "../components/home/Navbar";
+import Footer from "../components/home/Footer";
 import HeroSection from "../sections/HeroSection";
 import ToursSection from "../sections/ToursSection";
 import AboutUsSection from "../sections/AboutUsSection";
 import MapSection from "../sections/MapSection";
+import FAQSection from "../sections/FAQSection";
 import WhatsAppButton from "../components/ui/WhatsAppButton";
 import TourImagesBento from "../components/tour/TourImagesBento";
 import HorsesSection from "../sections/HorsesSection";
@@ -50,6 +52,8 @@ export default function Home() {
         </button>
       </div>
       <MapSection />
+      <FAQSection />
+      <Footer />
       <WhatsAppButton />
     </div>
   );
