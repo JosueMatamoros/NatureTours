@@ -3,6 +3,8 @@ import sinpeMovilImg from "/resources/sinpemovil.webp";
 export default function SinpeInfoCard({
   fmt,
   depositAmount,
+  subtotal,
+  descriptionText,
   phone = "89893333",
   owner = "Mario Matamoros Muñoz",
 }) {
@@ -16,7 +18,7 @@ export default function SinpeInfoCard({
         You may pay a <span className="font-semibold">deposit</span>{" "}
         <span className="font-semibold">({fmt(depositAmount)})</span> or pay the{" "}
         <span className="font-semibold">full amount with no additional fees</span>{" "}
-        <span className="font-semibold">(110)</span>.
+        <span className="font-semibold">({fmt(subtotal)})</span>.
       </p>
 
       <div className="mt-4 flex items-center gap-4 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4">
@@ -37,7 +39,7 @@ export default function SinpeInfoCard({
 
       <p className="mt-4 text-xs text-gray-500">
         <span className="font-semibold text-gray-700">Description:</span>{" "}
-        You are coming on February 24 at 8:00 PM.
+        {descriptionText}
       </p>
     </div>
   );

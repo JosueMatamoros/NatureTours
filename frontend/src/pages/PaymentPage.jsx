@@ -379,6 +379,7 @@ export default function PaymentPage() {
                       mustBlockPay={!isFormValid}
                       amount={depositAmount}
                       description={`20% deposit – ${descriptionText}`}
+                      bookingId={bookingId}
                       customerPayload={{
                         name: fullName,
                         email,
@@ -387,7 +388,31 @@ export default function PaymentPage() {
                       onCustomerId={(id) => {
                         setCustomerId(id);
                       }}
-                      onSuccess={() => navigate(`/success`)}
+                      onTimeout={() => setShowTimeout(true)}
+                      onSuccess={async (summary) => {
+                        try {
+                          setPaymentCompleted(true);
+
+                          const payload = {
+                            bookingId,
+                            customerId,
+                            mode,
+                            amount: summary.amount,
+                            paypalOrderId: summary.paypalOrderId,
+                            paypalCaptureId: summary.paypalCaptureId,
+                            status: summary.status,
+                          };
+
+                          const res = await createPayment(payload);
+                          if (!res?.ok || !res?.id)
+                            throw new Error("Payment not saved");
+
+                          navigate(`/success/${res.id}`, { replace: true });
+                        } catch (e) {
+                          setPaymentCompleted(false);
+                          console.error("Error saving payment:", e);
+                        }
+                      }}
                       blockedText="Complete your details to enable the deposit"
                     />
                   </div>
@@ -428,6 +453,7 @@ export default function PaymentPage() {
               <SinpeInfoCard
                 fmt={fmt}
                 depositAmount={depositAmount}
+                subtotal={subtotal}
                 descriptionText={descriptionText}
               />
 

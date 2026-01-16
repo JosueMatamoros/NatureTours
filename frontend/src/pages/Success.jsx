@@ -8,9 +8,12 @@ import {
   FiCalendar,
   FiClock,
   FiFileText,
-  FiDownload,
+  FiDollarSign,
   FiMail,
+  FiCreditCard,
+  FiTag,
 } from "react-icons/fi";
+import ReceiptPDF from "../components/payment/ReceiptPDF";
 
 export default function Success() {
   const { paymentId } = useParams();
@@ -124,12 +127,80 @@ export default function Success() {
               icon={FiFileText}
               label="PURCHASE ID"
               value={
-                <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1 font-mono text-emerald-800">
+                <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 sm:px-3 py-1 font-mono text-xs sm:text-sm text-emerald-800 break-all">
                   {receipt.reservaId}
                 </span>
               }
             />
+            {receipt.paypalCaptureId && (
+              <Row
+                icon={FiFileText}
+                label="PAYPAL ID"
+                value={
+                  <span className="rounded-lg border border-blue-200 bg-blue-50 px-2 sm:px-3 py-1 font-mono text-xs sm:text-sm text-blue-800 break-all">
+                    {receipt.paypalCaptureId}
+                  </span>
+                }
+              />
+            )}
           </div>
+        </div>
+
+        {/* Payment Summary */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
+            <FiCreditCard className="text-emerald-700" />
+            Payment Summary
+          </h2>
+
+          <div className="space-y-4 text-sm">
+            <Row
+              icon={FiTag}
+              label="PAYMENT TYPE"
+              value={
+                <span
+                  className={`rounded-lg px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                    receipt.mode === "deposit"
+                      ? "border border-amber-200 bg-amber-50 text-amber-800"
+                      : "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                  }`}
+                >
+                  {receipt.mode === "deposit" ? "50% Deposit" : "Full Payment"}
+                </span>
+              }
+            />
+            <Row
+              icon={FiDollarSign}
+              label="AMOUNT PAID"
+              value={`$${Number(receipt.amount).toFixed(2)}`}
+            />
+            {receipt.mode === "deposit" && (
+              <Row
+                icon={FiDollarSign}
+                label="REMAINING BALANCE"
+                value={
+                  <span className="text-amber-700">
+                    ${(Number(receipt.pricePerPerson) * receipt.personas - Number(receipt.amount)).toFixed(2)}
+                  </span>
+                }
+              />
+            )}
+            <Row
+              icon={FiDollarSign}
+              label="TOUR TOTAL"
+              value={`$${(Number(receipt.pricePerPerson) * receipt.personas).toFixed(2)}`}
+            />
+          </div>
+
+          {receipt.mode === "deposit" && (
+            <p className="mt-4 text-xs text-amber-700 bg-amber-50 rounded-lg p-3 border border-amber-200">
+              <strong>Note:</strong> The remaining balance of{" "}
+              <span className="font-semibold">
+                ${(Number(receipt.pricePerPerson) * receipt.personas - Number(receipt.amount)).toFixed(2)}
+              </span>{" "}
+              is due on the day of the tour.
+            </p>
+          )}
         </div>
 
         {/* Recommendation */}
@@ -160,10 +231,7 @@ export default function Success() {
 
         {/* Actions */}
         <div className="space-y-3">
-          <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#3d5a3d] py-3 font-semibold text-white hover:bg-[#2f4a2f]">
-            <FiDownload />
-            Download PDF Receipt
-          </button>
+          <ReceiptPDF receipt={receipt} />
 
           <Link
             to="/"
@@ -179,12 +247,12 @@ export default function Success() {
 
 function Row({ icon: Icon, label, value }) {
   return (
-    <div className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-b-0">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3 last:border-b-0 gap-2">
       <div className="flex items-center gap-3 text-gray-500">
-        <Icon className="h-4 w-4" />
+        <Icon className="h-4 w-4 flex-shrink-0" />
         <span className="text-xs font-medium tracking-wide">{label}</span>
       </div>
-      <div className="font-semibold text-gray-900 text-right">{value}</div>
+      <div className="font-semibold text-gray-900 sm:text-right">{value}</div>
     </div>
   );
 }

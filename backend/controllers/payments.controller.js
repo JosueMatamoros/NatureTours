@@ -137,10 +137,13 @@ export async function getPaymentById(req, res) {
       SELECT
         p.id                AS reserva_id,
         p.paypal_capture_id AS paypal_capture_id,
+        p.amount            AS amount,
+        p.mode              AS mode,
         b.tour_date         AS fecha,
         b.start_time        AS hora,
         b.guests            AS personas,
-        t.name              AS tour
+        t.name              AS tour,
+        t.price             AS price_per_person
       FROM payments p
       JOIN bookings b ON b.id = p.booking_id
       JOIN tours t ON t.id = b.tour_id
@@ -159,11 +162,14 @@ export async function getPaymentById(req, res) {
       ok: true,
       receipt: {
         reservaId: r.reserva_id,
-        paypalCaptureId: r.paypal_capture_id, // aquí sí, consistente
+        paypalCaptureId: r.paypal_capture_id,
+        amount: parseFloat(r.amount),
+        mode: r.mode,
         tour: r.tour,
         personas: r.personas,
         fecha: r.fecha,
         hora: r.hora,
+        pricePerPerson: parseFloat(r.price_per_person),
       },
     });
   } catch (err) {
