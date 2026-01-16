@@ -2,9 +2,9 @@ import React from "react";
 
 export default function DogSection() {
   const photos = [
-    { id: 1, src: "/dog/dog1.JPG", alt: "Muñeca - photo 1", size: "sm", mobileAlign: "left" },
-    { id: 2, src: "/dog/dog2.JPG", alt: "Muñeca - photo 2", size: "lg", mobileAlign: "center" },
-    { id: 3, src: "/dog/dog3.JPG", alt: "Muñeca - photo 3", size: "sm", mobileAlign: "right" },
+    { id: 1, src: "/dog/dog1.webp", alt: "Muñeca - photo 1", size: "sm", mobileAlign: "left" },
+    { id: 2, src: "/dog/dog2.webp", alt: "Muñeca - photo 2", size: "lg", mobileAlign: "center" },
+    { id: 3, src: "/dog/dog3.webp", alt: "Muñeca - photo 3", size: "sm", mobileAlign: "right" },
   ];
 
   return (

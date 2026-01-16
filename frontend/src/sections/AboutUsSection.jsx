@@ -19,7 +19,7 @@ export default function AboutUsSection() {
               <div className="col-span-1 row-span-2">
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
-                    src="/aboutUs/image3.jpeg"
+                    src="/aboutUs/image3.webp"
                     alt="image of our nephews"
                     className="h-[440px] w-full object-cover sm:h-[520px] "
                     loading="lazy"
@@ -31,7 +31,7 @@ export default function AboutUsSection() {
               <div className="col-span-1">
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
-                    src="/aboutUs/image2.jpeg"
+                    src="/aboutUs/image2.webp"
                     alt="image or sons and daughters"
                     className="h-62.5 w-full object-cover sm:h-70"
                     loading="lazy"
@@ -43,7 +43,7 @@ export default function AboutUsSection() {
               <div className="col-span-1 space-y-5 relative">
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
-                    src="/aboutUs/image1.JPG"
+                    src="/aboutUs/image1.webp"
                     alt="image of our father"
                     className="h-62.5 w-full object-cover object-top sm:h-70 scale-110"
                     loading="lazy"
