@@ -147,7 +147,10 @@ export default function ServicesPage() {
           <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-emerald-900/20" />
         </div>
 
+
         <StaysCarouselGrid />
+
+
       </section>
     </div>
   );

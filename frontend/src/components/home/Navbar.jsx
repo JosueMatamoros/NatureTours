@@ -52,7 +52,7 @@ export default function Navbar({ variant = "overlay" }) {
           {/* Brand */}
           <Link to="/" className="flex items-center gap-2">
             <img
-              src="/logo.png"
+              src="/logo.webp"
               alt="La Fortuna Nature Tours logo"
               className="h-15 w-15"
             />
