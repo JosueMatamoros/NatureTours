@@ -24,7 +24,7 @@ export default function Footer() {
               <Link to="/" className="flex items-center gap-3">
                 <img
                   src="/logo.webp"
-                  alt="Nature Tours"
+                  alt="Nature Tours La Fortuna logo - Horse tours Costa Rica"
                   className="h-14 w-14"
                 />
                 <span className="text-xl font-bold text-gray-900">

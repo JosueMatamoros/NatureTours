@@ -9,12 +9,12 @@ export default function ToursSection() {
     <div className="mx-auto max-w-6xl px-4 sm:py-14 py-2 sm:px-6 lg:px-8 space-y-6">
       <div className="text-center">
         <h2 className="mt-6 text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
-          Discover our tours
+          Horseback riding tours
         </h2>
 
         <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-emerald-900/70 sm:text-lg">
-          Enjoy unique experiences surrounded by nature, adventure, and
-          unforgettable landscapes in La Fortuna.
+          Experience unique horseback riding adventures surrounded by nature and
+          unforgettable landscapes in La Fortuna, Costa Rica.
         </p>
 
         <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-emerald-900/20" />

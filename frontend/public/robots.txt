@@ -1,0 +1,26 @@
+# robots.txt for Nature Tours La Fortuna
+# https://naturetourslafortuna.com
+
+# Allow all bots
+User-agent: *
+Allow: /
+
+# Pages we don't want indexed (payment/transaction pages)
+Disallow: /payment/
+Disallow: /success/
+
+# Sitemap location
+Sitemap: https://naturetourslafortuna.com/sitemap.xml
+
+# Crawl-delay to be friendly to the server
+Crawl-delay: 1
+
+# Google specific bots
+User-agent: Googlebot
+Allow: /
+Disallow: /payment/
+Disallow: /success/
+
+# Image bots
+User-agent: Googlebot-Image
+Allow: /

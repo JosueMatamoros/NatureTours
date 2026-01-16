@@ -1,13 +1,14 @@
-import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import ContactForm from "../components/contact/ContactForm";
 import ContactInfoPanel from "../components/contact/ContactInfoPanel";
 import Navbar from "../components/home/Navbar";
 import Footer from "../components/home/Footer";
+import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
 
 export default function ContactPage() {
   const location = useLocation();
   const initialMessage = location.state?.message || "";
+  useSEO(SEO_CONFIG.contact);
 
   return (
     <div>

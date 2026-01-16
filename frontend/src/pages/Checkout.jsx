@@ -4,12 +4,14 @@ import { TOURS } from "../data/tours";
 import ReserveTourCard from "../components/checkout/ReserveTourCard";
 import TourOverviewCard from "../components/checkout/TourOverviewCard";
 import Navbar from "../components/home/Navbar";
+import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
 
 const ENABLED_TOURS = [1, 2];
 
 export default function Checkout() {
   const [searchParams] = useSearchParams();
   const tourType = Number(searchParams.get("tourType"));
+  useSEO(SEO_CONFIG.checkout);
 
   const isValidTour = ENABLED_TOURS.includes(tourType);
 

@@ -11,9 +11,12 @@ import FAQSection from "../sections/FAQSection";
 import WhatsAppButton from "../components/ui/WhatsAppButton";
 import TourImagesBento from "../components/tour/TourImagesBento";
 import HorsesSection from "../sections/HorsesSection";
+import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
 
 export default function Home() {
   const navigate = useNavigate();
+  useSEO(SEO_CONFIG.home);
+
   return (
     <div className="min-h-dvh">
       <Navbar variant="overlay" />

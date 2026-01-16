@@ -20,7 +20,7 @@ export default function AboutUsSection() {
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
                     src="/aboutUs/image3.webp"
-                    alt="image of our nephews"
+                    alt="Family owned horse tours La Fortuna Costa Rica"
                     className="h-[440px] w-full object-cover sm:h-[520px] "
                     loading="lazy"
                   />
@@ -32,7 +32,7 @@ export default function AboutUsSection() {
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
                     src="/aboutUs/image2.webp"
-                    alt="image or sons and daughters"
+                    alt="Local guides horseback riding tours near Arenal Volcano"
                     className="h-62.5 w-full object-cover sm:h-70"
                     loading="lazy"
                   />
@@ -44,7 +44,7 @@ export default function AboutUsSection() {
                 <figure className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5">
                   <img
                     src="/aboutUs/image1.webp"
-                    alt="image of our father"
+                    alt="Nature Tours La Fortuna founder and horses"
                     className="h-62.5 w-full object-cover object-top sm:h-70 scale-110"
                     loading="lazy"
                   />

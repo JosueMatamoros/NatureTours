@@ -11,9 +11,11 @@ import { FiCoffee, FiStar } from "react-icons/fi";
 import StaysCarouselGrid from "../components/services/StaysCarouselGrid";
 import Navbar from "../components/home/Navbar";
 import Footer from "../components/home/Footer";
+import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
 
 export default function ServicesPage() {
   const navigate = useNavigate();
+  useSEO(SEO_CONFIG.services);
 
   const handleAskTransportation = () => {
     navigate("/contact", {

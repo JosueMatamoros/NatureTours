@@ -5,8 +5,11 @@ import Navbar from "../components/home/Navbar";
 import Footer from "../components/home/Footer";
 import TourImagesBento from "../components/tour/TourImagesBento";
 import WhatToBring from "../components/tour/WhatToBring";
+import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
 
 export default function ToursPage() {
+  useSEO(SEO_CONFIG.tours);
+
   return (
     <div>
       <Navbar variant="solid" />

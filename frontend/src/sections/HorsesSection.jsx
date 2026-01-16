@@ -128,7 +128,7 @@ export default function HorsesSection({ limit }) {
       {/* Header */}
       <div className="text-center">
         <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-          They’re part of our family too
+          Meet our horses
         </h2>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

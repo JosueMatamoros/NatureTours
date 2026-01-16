@@ -38,13 +38,13 @@ export default function MapSection() {
         {/* Header */}
         <div className="text-center">
           <h2 className="mt-6 text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
-            Our location
+            How to find us
           </h2>
 
           <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-emerald-900/70 sm:text-lg">
             Nature Tours La Fortuna is located just a few minutes from downtown
-            La Fortuna, San Carlos. From the central park, take Route 702 south
-            toward Chachagua.
+            La Fortuna, San Carlos, near the Arenal Volcano. From the central park, take Route 702 south
+            toward Chachagua. Easy access for horseback riding tours!
           </p>
 
           <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-emerald-900/20" />

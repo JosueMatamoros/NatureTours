@@ -5,9 +5,11 @@ import DogSection from "../sections/DogSection";
 import Navbar from "../components/home/Navbar";
 import Footer from "../components/home/Footer";
 import AboutUsSection from "../sections/AboutUsSection";
+import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
 
 export default function AboutUs() {
   const location = useLocation();
+  useSEO(SEO_CONFIG.about);
 
   useEffect(() => {
     if (location.hash === "#horses") {

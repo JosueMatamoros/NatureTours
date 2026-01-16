@@ -27,7 +27,7 @@ export default function TourImageCarousel({ images = [] }) {
             <img
               key={i}
               src={img}
-              alt="Tour"
+              alt={`Horseback riding tour La Fortuna photo ${i + 1}`}
               className="h-125 w-full shrink-0 object-cover"
             />
           ))}

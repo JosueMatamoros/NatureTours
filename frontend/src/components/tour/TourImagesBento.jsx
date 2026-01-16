@@ -51,14 +51,13 @@ const TourImagesBento = ({ images }) => {
     <section className="mx-auto max-w-6xl px-4 sm:py-14 py-2 sm:px-6 lg:px-8 space-y-6">
       <div className="text-center">
         <h2 className="mt-6 text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
-          Rivers to enjoy and explore
+          River crossings on horseback
         </h2>
 
         <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-emerald-900/70 sm:text-lg">
-          Among the most enjoyed areas of the tour are the rivers. These spaces
-          are perfect for taking family photos, taking a short break, and
-          allowing children to explore freely, play, and connect with nature in
-          a calm and safe environment.
+          One of the highlights of our horseback riding tour is crossing beautiful rivers in La Fortuna. These spots
+          are perfect for family photos, short breaks, and letting children explore nature
+          in a calm and safe environment.
         </p>
 
         <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-emerald-900/20" />
@@ -76,7 +75,7 @@ const TourImagesBento = ({ images }) => {
             <div className="relative aspect-[4/5] w-full">
               <img
                 src={images[active]}
-                alt={`Imagen ${active + 1}`}
+                alt={`Horseback riding adventure La Fortuna photo ${active + 1}`}
                 className={`${imgClass} absolute inset-0 shadow-lg ring-1 ring-black/10 transition-all duration-300 ease-out`}
                 style={{
                   transform:
@@ -130,32 +129,32 @@ const TourImagesBento = ({ images }) => {
           <div className="grid grid-cols-12 gap-1">
             {/* Hero grande */}
             <div className="col-span-12 md:col-span-8 row-span-2">
-              <img src={images[0]} alt="Hero" className={imgClass} />
+              <img src={images[0]} alt="Horseback riding through river in La Fortuna Costa Rica" className={imgClass} />
             </div>
 
             {/* Top right */}
             <div className="col-span-12 md:col-span-4">
-              <img src={images[1]} alt="Image 1" className={imgClass} />
+              <img src={images[1]} alt="Horse tour crossing tropical river Costa Rica" className={imgClass} />
             </div>
 
             {/* Bottom right */}
             <div className="col-span-12 md:col-span-4">
-              <img src={images[2]} alt="Image 2" className={imgClass} />
+              <img src={images[2]} alt="Family enjoying horseback riding near Arenal Volcano" className={imgClass} />
             </div>
 
             {/* Bottom left small */}
             <div className="col-span-12 md:col-span-4">
-              <img src={images[3]} alt="Image 3" className={imgClass} />
+              <img src={images[3]} alt="Scenic horse trail through rainforest La Fortuna" className={imgClass} />
             </div>
 
             {/* Bottom center wide */}
             <div className="col-span-12 md:col-span-4">
-              <img src={images[4]} alt="Image 4" className={imgClass} />
+              <img src={images[4]} alt="Guided horseback adventure in Costa Rica" className={imgClass} />
             </div>
 
             {/* Bottom right tall */}
             <div className="col-span-12 md:col-span-4">
-              <img src={images[5]} alt="Image 5" className={imgClass} />
+              <img src={images[5]} alt="River crossing on horseback tour La Fortuna" className={imgClass} />
             </div>
           </div>
         </div>
