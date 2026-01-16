@@ -1,4 +1,5 @@
 import { HiOutlineSparkles } from "react-icons/hi2";
+import { HiChevronDown } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 
 export default function HeroSection() {
@@ -145,6 +146,18 @@ export default function HeroSection() {
           </div>
         </div>
       </div>
+
+      {/* Scroll indicator */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
+        <HiChevronDown className="h-8 w-8 text-white/80 animate-[bounce_2s_ease-in-out_infinite]" />
+      </div>
+
+      <style>{`
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(6px); }
+        }
+      `}</style>
     </section>
   );
 }

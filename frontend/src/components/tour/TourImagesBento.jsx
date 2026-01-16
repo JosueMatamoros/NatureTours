@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { PiHandTap } from "react-icons/pi";
 
 const TourImagesBento = ({ images }) => {
   if (!images || images.length < 6) return null;
@@ -9,6 +10,7 @@ const TourImagesBento = ({ images }) => {
   const [active, setActive] = useState(0);
   const [phase, setPhase] = useState("in"); // "in" | "out"
   const [pending, setPending] = useState(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   const mobilePoses = useMemo(
     () => [
@@ -25,6 +27,7 @@ const TourImagesBento = ({ images }) => {
   const onNext = () => {
     if (phase === "out") return; // evita spam taps durante salida
 
+    setHasInteracted(true);
     const next = (active + 1) % 6;
     setPending(next);
     setPhase("out");
@@ -86,9 +89,25 @@ const TourImagesBento = ({ images }) => {
                 }}
                 draggable={false}
               />
-              =
+
+              {/* Touch indicator - disappears after first tap */}
+              {!hasInteracted && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="relative">
+                      <PiHandTap className="h-14 w-14 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] animate-[tap_1.2s_ease-in-out_infinite]" />
+                      {/* Ripple effect */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white/80 animate-[ripple_1.2s_ease-out_infinite]" />
+                    </div>
+                    <span className="rounded-full bg-black/50 backdrop-blur-sm px-4 py-1.5 text-sm text-white font-medium shadow-lg">
+                      Tap to explore
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-white">
-                Toca para ver otra ({active + 1}/6)
+                {active + 1} / 6
               </div>
             </div>
           </button>
@@ -96,6 +115,18 @@ const TourImagesBento = ({ images }) => {
 
         {/* DESKTOP:*/}
         <div className="hidden md:block">
+
+          <style>{`
+            @keyframes tap {
+              0%, 100% { transform: translateY(0) scale(1); }
+              50% { transform: translateY(8px) scale(0.95); }
+            }
+            @keyframes ripple {
+              0% { transform: translate(-50%, 0) scale(0); opacity: 1; }
+              50% { transform: translate(-50%, 0) scale(2); opacity: 0.5; }
+              100% { transform: translate(-50%, 0) scale(3); opacity: 0; }
+            }
+          `}</style>
           <div className="grid grid-cols-12 gap-1">
             {/* Hero grande */}
             <div className="col-span-12 md:col-span-8 row-span-2">
