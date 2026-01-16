@@ -140,6 +140,7 @@ export default function HeroSection() {
               className="rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-md
   border border-white/20
   shadow-[0_4px_20px_rgba(0,0,0,0.35)] transition-all hover:scale-105"
+              onClick={() => navigate("/tours")}
             >
               View Tours
             </button>

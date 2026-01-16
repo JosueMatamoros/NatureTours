@@ -5,6 +5,7 @@ import {
   HiOutlineUsers,
   HiOutlineMapPin,
   HiArrowRight,
+  HiOutlineInformationCircle,
 } from "react-icons/hi2";
 
 export default function TourCard({
@@ -20,6 +21,7 @@ export default function TourCard({
   currency,
   per,
   onReserve,
+  onMoreInfo,
   reverse = false,
 }) {
   return (
@@ -109,13 +111,23 @@ export default function TourCard({
               </div>
             </div>
 
-            <button
-              onClick={onReserve}
-              className="inline-flex items-center gap-3 rounded-2xl bg-emerald-700 px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-emerald-800"
-            >
-              Book Now
-              <HiArrowRight className="h-5 w-5" />
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={onMoreInfo}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-700 px-6 py-3 text-sm font-semibold text-emerald-700 transition-all duration-300 hover:scale-105 hover:bg-emerald-50"
+              >
+                <HiOutlineInformationCircle className="h-5 w-5" />
+                More Information
+              </button>
+
+              <button
+                onClick={onReserve}
+                className="inline-flex items-center justify-center gap-3 rounded-2xl bg-emerald-700 px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-emerald-800"
+              >
+                Book Now
+                <HiArrowRight className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
