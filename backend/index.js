@@ -12,7 +12,28 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+/**
+ * CORS configuration
+ * - Local dev: http://localhost:5173
+ * - Production: process.env.FRONTEND_URL (Pages now, domain later)
+ */
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests without Origin (Postman, curl, PayPal webhooks)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 
 app.get("/health", (req, res) => {
@@ -21,7 +42,7 @@ app.get("/health", (req, res) => {
 
 app.use("/api/bookings", bookingsRoutes);
 app.use("/api/customers", customersRoutes);
-app.use("/api/payments", paymentsRoutes)
+app.use("/api/payments", paymentsRoutes);
 app.use("/api/availability", availabilityRoutes);
 
 const port = process.env.PORT || 3001;
