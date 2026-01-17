@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getPaymentById } from "../../services/payments.api";
+import { sendReceiptEmail } from "../../services/email.api";
 import {
   FiCheckCircle,
   FiMapPin,
@@ -9,7 +10,6 @@ import {
   FiClock,
   FiFileText,
   FiDollarSign,
-  FiMail,
   FiCreditCard,
   FiTag,
 } from "react-icons/fi";
@@ -21,6 +21,7 @@ export default function Success() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [receipt, setReceipt] = useState(null);
+  const emailSentRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +55,16 @@ export default function Success() {
       cancelled = true;
     };
   }, [paymentId]);
+
+  // Enviar email automáticamente cuando se cargue el receipt
+  useEffect(() => {
+    if (receipt && !emailSentRef.current) {
+      emailSentRef.current = true;
+      sendReceiptEmail(receipt).catch((err) => {
+        console.error("Error sending receipt email:", err);
+      });
+    }
+  }, [receipt]);
 
   if (loading) {
     return (
@@ -214,20 +225,16 @@ export default function Success() {
           </p>
         </div>
 
-        {/* Email notice */}
-        <div className="flex items-center gap-3 rounded-2xl bg-gray-50 p-4">
-          <div className="rounded-full bg-gray-200 p-2">
-            <FiMail className="text-gray-700" />
+        {/* Save reminder */}
+        <div className="flex items-center gap-3 rounded-2xl bg-amber-50 border border-amber-200 p-4">
+          <div className="rounded-full bg-amber-100 p-2">
+            <FiFileText className="text-amber-700" />
           </div>
-          <p className="text-sm text-gray-600">
-            A copy of this confirmation will be sent to your{" "}
-            <span className="font-semibold text-gray-900">email address</span>
+          <p className="text-sm text-amber-800">
+            <span className="font-semibold">Important:</span> Save your{" "}
+            <span className="font-semibold">Purchase ID</span> or download the PDF receipt to validate your reservation.
           </p>
         </div>
-
-        <p className="text-center text-sm text-gray-500">
-          Save your <span className="font-semibold text-gray-900">Purchase ID</span> to validate your reservation
-        </p>
 
         {/* Actions */}
         <div className="space-y-3">
