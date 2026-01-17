@@ -57,23 +57,36 @@ function monthRangeYMD(dateObj) {
   return { from: toYMD(first), to: toYMD(last) };
 }
 
+function isSameLocalDayYMD(ymd, dateObj) {
+  if (!ymd || !dateObj) return false;
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const d = String(dateObj.getDate()).padStart(2, "0");
+  return ymd === `${y}-${m}-${d}`;
+}
+
 export default function ReserveTourCard({ tour }) {
   const [slot, setSlot] = useState(null);
   const [guests, setGuests] = useState(1);
-  const [selectedDate, setSelectedDate] = useState(undefined); // "YYYY-MM-DD"
+  const [selectedDate, setSelectedDate] = useState(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [blockedByDay, setBlockedByDay] = useState(() => new Map()); // Map(date -> ["13:00",...])
-  const [fullDays, setFullDays] = useState(() => new Set());         // Set(date)
+  const [blockedByDay, setBlockedByDay] = useState(() => new Map());
+  const [fullDays, setFullDays] = useState(() => new Set());
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const d = new Date();
     d.setHours(12, 0, 0, 0);
     return d;
   });
 
-  const navigate = useNavigate();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60 * 1000); // cada minuto
+    return () => clearInterval(t);
+  }, []);
 
+  const navigate = useNavigate();
   const tourId = Number(tour?.id);
 
   const total = useMemo(() => tour.price * guests, [tour.price, guests]);
@@ -86,7 +99,7 @@ export default function ReserveTourCard({ tour }) {
       }));
     }
 
-    if (tourId === 2) return buildHourlySlots(6, 18, 2);
+    if (tourId === 2) return buildHourlySlots(6, 16, 2);
 
     return fixedSlotsTour1.map((s) => ({
       ...s,
@@ -141,12 +154,20 @@ export default function ReserveTourCard({ tour }) {
     loadMonthAvailability(visibleMonth);
   }, [tourId]);
 
+  const isTodaySelected = selectedDate && isSameLocalDayYMD(selectedDate, now);
+  const currentHour = now.getHours();
+
+  const isSelectedPastByClock =
+    Boolean(isTodaySelected && selectedSlot?.startHour != null) &&
+    selectedSlot.startHour <= currentHour;
 
   const isSelectedBlocked = selectedSlot?.startTime
     ? blockedSlotsForSelectedDay.has(selectedSlot.startTime)
     : false;
 
-  const isComplete = Boolean(selectedDate && slot && !isSelectedBlocked);
+  const isComplete = Boolean(
+    selectedDate && slot && !isSelectedBlocked && !isSelectedPastByClock
+  );
 
   async function handleConfirm() {
     setError("");
@@ -157,7 +178,15 @@ export default function ReserveTourCard({ tour }) {
     }
     if (!selectedDate || !selectedSlot?.startTime) return;
 
-    // Si alguien hackea el botón, igual no lo dejamos
+    const now2 = new Date();
+    const isToday2 = isSameLocalDayYMD(selectedDate, now2);
+    const currentHour2 = now2.getHours();
+
+    if (isToday2 && selectedSlot.startHour <= currentHour2) {
+      setError("Ese horario ya pasó. Elegí otro.");
+      return;
+    }
+
     if (blockedSlotsForSelectedDay.has(selectedSlot.startTime)) {
       setError("Ese horario ya está ocupado. Elegí otro.");
       return;
@@ -174,7 +203,6 @@ export default function ReserveTourCard({ tour }) {
       setLoading(true);
 
       const response = await createBooking(payload);
-
       const data = response?.data ?? response;
       const newBookingId = data?.id;
 
@@ -260,7 +288,12 @@ export default function ReserveTourCard({ tour }) {
             <div className="grid gap-3">
               {visibleSlots.map((t) => {
                 const active = slot === t.id;
-                const isBlocked = blockedSlotsForSelectedDay.has(t.startTime);
+
+                // Regla de reloj para "HOY": deshabilitar <= hora actual
+                const isPastByClock = Boolean(isTodaySelected) && t.startHour <= currentHour;
+
+                const isBlocked =
+                  blockedSlotsForSelectedDay.has(t.startTime) || isPastByClock;
 
                 return (
                   <button
@@ -295,7 +328,9 @@ export default function ReserveTourCard({ tour }) {
                       ].join(" ")}
                       aria-hidden="true"
                     >
-                      {active && <span className="h-2 w-2 rounded-full bg-white" />}
+                      {active && (
+                        <span className="h-2 w-2 rounded-full bg-white" />
+                      )}
                     </span>
                   </button>
                 );
@@ -308,7 +343,7 @@ export default function ReserveTourCard({ tour }) {
                 <span className="font-semibold text-gray-700">
                   {selectedSlot?.label}
                 </span>
-                {isSelectedBlocked ? (
+                {isSelectedBlocked || isSelectedPastByClock ? (
                   <span className="ml-2 font-semibold text-red-600">
                     (Not available)
                   </span>
