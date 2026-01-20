@@ -49,9 +49,8 @@ export default function Footer() {
               ))}
               <button
                 onClick={() => setFaqOpen(true)}
-                className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
               >
-                <HiOutlineQuestionMarkCircle className="h-4 w-4" />
                 FAQ
               </button>
             </nav>
@@ -63,23 +62,23 @@ export default function Footer() {
           {/* Copyright & Credits */}
           <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between">
             <p className="text-sm text-gray-500">
-              © {new Date().getFullYear()} Nature Tours La Fortuna.
+              © {new Date().getFullYear()} <span className="hover:text-gray-700 transition-colors"><Link to="/matamoros">Nature Tours La Fortuna</Link></span>.
             </p>
             <div className="flex flex-col items-center gap-1 sm:items-end">
               <p className="text-sm text-gray-500">
                 Designed & developed by{" "}
                 <a
-                  href="mailto:josuematamoros.dev@gmail.com"
+                  href="mailto:1002matamoros@gmail.com"
                   className="font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   Josué Matamoros
                 </a>
               </p>
               <a
-                href="mailto:josuematamoros.dev@gmail.com"
+                href="mailto:1002matamoros@gmail.com"
                 className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
               >
-                josuematamoros.dev@gmail.com
+                1002matamoros@gmail.com
               </a>
             </div>
           </div>

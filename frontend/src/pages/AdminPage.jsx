@@ -10,13 +10,13 @@ export default function AdminPage() {
       <div className="flex flex-col sm:flex-row gap-6">
         <button
           className="px-8 py-4 rounded-xl bg-emerald-600 text-white text-xl font-semibold shadow-lg hover:bg-emerald-700 transition border-2 border-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-200"
-          onClick={() => navigate("/admin/reservaciones")}
+          onClick={() => navigate("/matamoros/reservaciones")}
         >
           Reservaciones
         </button>
         <button
           className="px-8 py-4 rounded-xl bg-yellow-500 text-white text-xl font-semibold shadow-lg hover:bg-yellow-600 transition border-2 border-yellow-600 focus:outline-none focus:ring-4 focus:ring-yellow-200"
-          onClick={() => navigate("/admin/cabalgatas")}
+          onClick={() => navigate("/matamoros/cabalgatas")}
         >
           Cabalgatas
         </button>
