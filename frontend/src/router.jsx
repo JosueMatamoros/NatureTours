@@ -25,6 +25,7 @@ const AboutUs = lazy(() => import("./pages/AboutUs"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const ServicesPage = lazy(() => import("./pages/ServicesPage"));
 const ToursPage = lazy(() => import("./pages/ToursPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
 
 // ══════════════════════════════════════════════════════════════
 // LOADING FALLBACK - Lo que se muestra mientras carga una página
@@ -95,6 +96,10 @@ const router = createBrowserRouter([
       {
         path: "/tours",
         element: <LazyPage><ToursPage /></LazyPage>,
+      },
+      {
+        path: "/admin",
+        element: <LazyPage><AdminPage /></LazyPage>,
       },
       {
         path: "*",

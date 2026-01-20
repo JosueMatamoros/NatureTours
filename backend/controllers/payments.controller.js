@@ -11,11 +11,11 @@ export async function createPayment(req, res) {
   const {
     bookingId,
     customerId,
-    mode,              // "deposit" | "full"
+    mode, // "deposit" | "full"
     amount,
     paypalOrderId,
-    paypalCaptureId,   // opcional
-    status,            // "completed"
+    paypalCaptureId, // opcional
+    status, // "completed"
   } = parsed.data;
 
   if (String(status).toLowerCase() !== "completed") {
@@ -37,12 +37,14 @@ export async function createPayment(req, res) {
       WHERE id = $1
       FOR UPDATE
       `,
-      [bookingId]
+      [bookingId],
     );
 
     if (bookingQ.rowCount === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ ok: false, message: "Booking no encontrado" });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Booking no encontrado" });
     }
 
     const booking = bookingQ.rows[0];
@@ -57,9 +59,7 @@ export async function createPayment(req, res) {
 
     const toNum = (v) => Number(v);
     const expectedAmount =
-      mode === "full"
-        ? toNum(booking.total)
-        : toNum(booking.deposit_amount);
+      mode === "full" ? toNum(booking.total) : toNum(booking.deposit_amount);
 
     const round2 = (n) => Math.round(n * 100) / 100;
 
@@ -87,7 +87,7 @@ export async function createPayment(req, res) {
         paypalOrderId,
         paypalCaptureId || null,
         status,
-      ]
+      ],
     );
 
     const nextBookingStatus = mode === "full" ? "paid" : "pending";
@@ -99,7 +99,7 @@ export async function createPayment(req, res) {
           updated_at = now()
       WHERE id = $1
       `,
-      [bookingId, nextBookingStatus]
+      [bookingId, nextBookingStatus],
     );
 
     await client.query("COMMIT");
@@ -149,11 +149,13 @@ export async function getPaymentById(req, res) {
       JOIN tours t ON t.id = b.tour_id
       WHERE p.id = $1
       `,
-      [id]
+      [id],
     );
 
     if (q.rowCount === 0) {
-      return res.status(404).json({ ok: false, message: "Payment no encontrado" });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Payment no encontrado" });
     }
 
     const r = q.rows[0];
@@ -174,7 +176,73 @@ export async function getPaymentById(req, res) {
     });
   } catch (err) {
     console.error("getPaymentById error:", err);
-    return res.status(500).json({ ok: false, message: "Error obteniendo payment" });
+    return res
+      .status(500)
+      .json({ ok: false, message: "Error obteniendo payment" });
+  } finally {
+    client.release();
+  }
+}
+
+export async function getAllPayments(req, res) {
+  const client = await pool.connect();
+
+  try {
+    const q = await client.query(
+      `
+      SELECT
+      p.id                 AS payment_id,
+      p.amount             AS amount,
+      p.mode               AS mode,
+      p.paypal_order_id    AS paypal_order_id,
+      p.paypal_capture_id  AS paypal_capture_id,
+      p.status             AS status,
+      p.created_at         AS created_at,
+
+      b.id                 AS booking_id,
+      b.tour_date          AS tour_date,
+      b.start_time         AS start_time,
+      b.guests             AS guests,
+
+      c.id                 AS customer_id,
+      c.name               AS customer_name
+    FROM payments p
+    JOIN bookings b ON b.id = p.booking_id
+    LEFT JOIN customers c ON c.id = p.customer_id
+    ORDER BY b.tour_date DESC, b.start_time DESC, p.created_at DESC;
+
+      `,
+    );
+
+    return res.json({
+      ok: true,
+      payments: q.rows.map((r) => ({
+        id: r.payment_id,
+        amount: Number(r.amount),
+        mode: r.mode,
+        paypal: {
+          orderId: r.paypal_order_id,
+          captureId: r.paypal_capture_id,
+        },
+        status: r.status,
+
+        booking: {
+          id: r.booking_id,
+          fecha: r.tour_date,
+          hora: r.start_time,
+          personas: r.guests,
+        },
+
+        customer: r.customer_id
+          ? { id: r.customer_id, name: r.customer_name }
+          : null,
+      })),
+    });
+  } catch (err) {
+    console.error("getAllPayments error:", err);
+    return res
+      .status(500)
+      .json({ ok: false, message: "Error obteniendo payments" });
   } finally {
     client.release();
   }
