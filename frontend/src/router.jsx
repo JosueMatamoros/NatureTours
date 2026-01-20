@@ -5,18 +5,11 @@ import {
   ScrollRestoration,
 } from "react-router-dom";
 import ScrollToTop from "./ScrollToTop";
+import AdminGuard from "./router/AdminGuard";
 
-// ══════════════════════════════════════════════════════════════
-// CARGA NORMAL (sin lazy) - HomePage se carga inmediatamente
-// porque es la primera página que ve el usuario
-// ══════════════════════════════════════════════════════════════
 import Home from "./pages/HomePage";
 import NotFound from "./pages/NotFound";
 
-// ══════════════════════════════════════════════════════════════
-// LAZY LOADING - Estas páginas se cargan SOLO cuando el usuario
-// navega a ellas. Reduce el bundle inicial de 657KB a ~300KB
-// ══════════════════════════════════════════════════════════════
 const Checkout = lazy(() => import("./pages/Checkout"));
 const Success = lazy(() => import("./pages/Success"));
 const SelecTour = lazy(() => import("./pages/SelecTourPage"));
@@ -28,11 +21,8 @@ const ToursPage = lazy(() => import("./pages/ToursPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ReservacionesPage = lazy(() => import("./pages/ReservacionesPage"));
 const CabalgatasPage = lazy(() => import("./pages/CabalgatasPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
 
-// ══════════════════════════════════════════════════════════════
-// LOADING FALLBACK - Lo que se muestra mientras carga una página
-// Es muy rápido (50-150ms) así que casi no se ve
-// ══════════════════════════════════════════════════════════════
 function PageLoader() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
@@ -41,10 +31,6 @@ function PageLoader() {
   );
 }
 
-// ══════════════════════════════════════════════════════════════
-// WRAPPER - Envuelve componentes lazy en Suspense
-// Suspense "atrapa" la promesa del lazy y muestra el fallback
-// ══════════════════════════════════════════════════════════════
 function LazyPage({ children }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 }
@@ -63,58 +49,113 @@ const router = createBrowserRouter([
   {
     element: <RootLayout />,
     children: [
-      {
-        path: "/",
-        element: <Home />,
-      },
+      { path: "/", element: <Home /> },
+
       {
         path: "/checkout",
-        element: <LazyPage><Checkout /></LazyPage>,
+        element: (
+          <LazyPage>
+            <Checkout />
+          </LazyPage>
+        ),
       },
       {
         path: "/payment/:bookingId",
-        element: <LazyPage><PaymentPage /></LazyPage>,
+        element: (
+          <LazyPage>
+            <PaymentPage />
+          </LazyPage>
+        ),
       },
       {
         path: "/SelecTour",
-        element: <LazyPage><SelecTour /></LazyPage>,
+        element: (
+          <LazyPage>
+            <SelecTour />
+          </LazyPage>
+        ),
       },
       {
         path: "/success/:paymentId",
-        element: <LazyPage><Success /></LazyPage>,
+        element: (
+          <LazyPage>
+            <Success />
+          </LazyPage>
+        ),
       },
       {
         path: "/about",
-        element: <LazyPage><AboutUs /></LazyPage>,
+        element: (
+          <LazyPage>
+            <AboutUs />
+          </LazyPage>
+        ),
       },
       {
         path: "/contact",
-        element: <LazyPage><ContactPage /></LazyPage>,
+        element: (
+          <LazyPage>
+            <ContactPage />
+          </LazyPage>
+        ),
       },
       {
         path: "/services",
-        element: <LazyPage><ServicesPage /></LazyPage>,
+        element: (
+          <LazyPage>
+            <ServicesPage />
+          </LazyPage>
+        ),
       },
       {
         path: "/tours",
-        element: <LazyPage><ToursPage /></LazyPage>,
+        element: (
+          <LazyPage>
+            <ToursPage />
+          </LazyPage>
+        ),
       },
+
       {
-        path: "/admin",
-        element: <LazyPage><AdminPage /></LazyPage>,
+        path: "/login",
+        element: (
+          <LazyPage>
+            <LoginPage />
+          </LazyPage>
+        ),
       },
+
       {
-        path: "/admin/reservaciones",
-        element: <LazyPage><ReservacionesPage /></LazyPage>,
+        element: <AdminGuard />,
+        children: [
+          {
+            path: "/matamoros",
+            element: (
+              <LazyPage>
+                <AdminPage />
+              </LazyPage>
+            ),
+          },
+          {
+            path: "/matamoros/reservaciones",
+            element: (
+              <LazyPage>
+                <ReservacionesPage />
+              </LazyPage>
+            ),
+          },
+          {
+            path: "/matamoros/cabalgatas",
+            element: (
+              <LazyPage>
+                <CabalgatasPage />
+              </LazyPage>
+            ),
+          },
+        ],
       },
-      {
-        path: "/admin/cabalgatas",
-        element: <LazyPage><CabalgatasPage /></LazyPage>,
-      },
-      {
-        path: "*",
-        element: <NotFound />,
-      },
+
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);
