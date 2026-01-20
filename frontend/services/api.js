@@ -22,9 +22,7 @@ async function request(path, options = {}) {
 
   if (!res.ok) {
     const message =
-      data?.message ||
-      data?.error?.formErrors?.[0] ||
-      "Request failed";
+      data?.message || data?.error?.formErrors?.[0] || "Request failed";
     throw new Error(message);
   }
 
@@ -45,5 +43,9 @@ export const api = {
       method: "PATCH",
       body: body ? JSON.stringify(body) : undefined,
     }),
-};
 
+  delete: (path) =>
+    request(path, {
+      method: "DELETE",
+    }),
+};
