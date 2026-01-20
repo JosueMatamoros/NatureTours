@@ -4,16 +4,12 @@ import {
   deleteDayBlock,
   getDayBlocksByRange,
 } from "../controllers/availability.blocks.controller.js";
+import { authenticateToken } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// listar bloqueos (rango)
 router.get("/", getDayBlocksByRange);
-
-// bloquear día (upsert)
-router.post("/", upsertDayBlock);
-
-// desbloquear día
-router.delete("/", deleteDayBlock);
+router.post("/", authenticateToken, upsertDayBlock);
+router.delete("/", authenticateToken, deleteDayBlock);
 
 export default router;
