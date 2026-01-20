@@ -8,6 +8,7 @@ import customersRoutes from "./routes/customers.routes.js";
 import paymentsRoutes from "./routes/payments.routes.js";
 import availabilityRoutes from "./routes/availability.routes.js";
 import emailRoutes from "./routes/email.routes.js";
+import availabilityBlocksRoutes from "./routes/availability.blocks.routes.js";
 
 dotenv.config();
 
@@ -46,6 +47,8 @@ app.use("/api/customers", customersRoutes);
 app.use("/api/payments", paymentsRoutes);
 app.use("/api/availability", availabilityRoutes);
 app.use("/api/email", emailRoutes);
+app.use("/api/availability/blocks", availabilityBlocksRoutes);
+
 
 const port = process.env.PORT || 3001;
 app.listen(port, () => {

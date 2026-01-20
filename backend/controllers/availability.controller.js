@@ -18,7 +18,6 @@ function slotsForTour(tourId) {
   return TOUR1_SLOTS;
 }
 
-
 export async function getBlockedByRange(req, res) {
   const tourId = Number(req.query.tourId);
   const from = req.query.from;
@@ -28,16 +27,19 @@ export async function getBlockedByRange(req, res) {
     return res.status(400).json({ ok: false, message: "tourId inválido" });
   }
   if (!from || typeof from !== "string" || !to || typeof to !== "string") {
-    return res.status(400).json({ ok: false, message: "from y to requeridos (YYYY-MM-DD)" });
+    return res
+      .status(400)
+      .json({ ok: false, message: "from y to requeridos (YYYY-MM-DD)" });
   }
 
-  const candidateSlots = slotsForTour(tourId);
+  const candidateSlots = slotsForTour(tourId).map((s) => String(s).trim());
   const totalSlots = candidateSlots.length;
 
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
+    // Expirar pendientes vencidas (igual que ya tenías)
     await client.query(
       `
       UPDATE bookings
@@ -48,10 +50,11 @@ export async function getBlockedByRange(req, res) {
         AND status = 'pending'
         AND expires_at <= now();
       `,
-      [tourId, from, to]
+      [tourId, from.trim(), to.trim()]
     );
 
-    const q = await client.query(
+    // 1) Bloqueos por bookings (overlaps)
+    const bookingsBlockedQ = await client.query(
       `
       WITH days AS (
         SELECT generate_series($2::date, $3::date, interval '1 day')::date AS day
@@ -88,33 +91,64 @@ export async function getBlockedByRange(req, res) {
       HAVING COUNT(*) > 0
       ORDER BY day;
       `,
-      [tourId, from, to, candidateSlots]
+      [tourId, from.trim(), to.trim(), candidateSlots]
+    );
+
+    // 2) Bloqueos admin
+    const dayBlocksQ = await client.query(
+      `
+      SELECT to_char(day, 'YYYY-MM-DD') AS date
+      FROM tour_day_blocks
+      WHERE tour_id = $1
+        AND day BETWEEN $2::date AND $3::date
+      ORDER BY day;
+      `,
+      [tourId, from.trim(), to.trim()]
     );
 
     await client.query("COMMIT");
 
-    const days = q.rows.map((r) => {
-      const blocked = Array.isArray(r.blocked) ? r.blocked : JSON.parse(r.blocked);
-      return {
-        date: r.date,
-        blocked,
-        isFull: blocked.length >= totalSlots,
-      };
-    });
+    const map = new Map();
+
+    // bookings bloqueados
+    for (const r of bookingsBlockedQ.rows) {
+      const date = String(r.date).trim();
+      const arr = Array.isArray(r.blocked) ? r.blocked : JSON.parse(r.blocked);
+      map.set(date, new Set(arr.map((s) => String(s).trim())));
+    }
+
+    const adminBlockedDays = dayBlocksQ.rows.map((r) => String(r.date).trim());
+    for (const date of adminBlockedDays) {
+      map.set(date, new Set(candidateSlots)); // full day
+    }
+
+    const days = Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, set]) => {
+        const blocked = Array.from(set).sort();
+        return {
+          date,
+          blocked,
+          isFull: blocked.length >= totalSlots,
+        };
+      });
 
     return res.json({
       ok: true,
       tourId,
-      from,
-      to,
+      from: from.trim(),
+      to: to.trim(),
       days,
     });
   } catch (err) {
-    try { await client.query("ROLLBACK"); } catch (_) {}
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {}
     console.error("getBlockedByRange error:", err);
-    return res.status(500).json({ ok: false, message: "Error consultando disponibilidad" });
+    return res
+      .status(500)
+      .json({ ok: false, message: "Error consultando disponibilidad" });
   } finally {
     client.release();
   }
 }
-
