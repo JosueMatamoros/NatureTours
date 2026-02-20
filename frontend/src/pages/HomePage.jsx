@@ -18,7 +18,9 @@ export default function Home() {
   useSEO(SEO_CONFIG.home);
 
   return (
-    <div className="min-h-dvh">
+    <div
+      className="min-h-dvh w-screen "
+    >
       <Navbar variant="overlay" />
       <HeroSection />
       <ToursSection />
