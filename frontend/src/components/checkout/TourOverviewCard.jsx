@@ -12,15 +12,12 @@ export default function TourOverviewCard({ tour }) {
   return (
     <section className="space-y-4 w-full">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-gray-900">{tour.name}</h1>
-
-          <div className="flex items-center gap-1 text-sm text-gray-500">
-            <FiClock className="h-4 w-4" />
-            {tour.duration}
-          </div>
-        </div>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
+        <h1 className="text-2xl font-bold text-gray-900">{tour.name}</h1>
+        <span className="flex items-center gap-1 text-sm text-gray-500 mt-1 md:mt-0 md:ml-4">
+          <FiClock className="h-4 w-4" />
+          {tour.duration}
+        </span>
       </div>
 
       {/* Image carousel */}
