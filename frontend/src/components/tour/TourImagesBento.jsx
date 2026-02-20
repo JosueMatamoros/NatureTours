@@ -48,7 +48,7 @@ const TourImagesBento = ({ images }) => {
   const pose = mobilePoses[active % mobilePoses.length];
 
   return (
-    <section className="mx-auto max-w-6xl px-4 sm:py-14 py-2 sm:px-6 lg:px-8 space-y-6">
+    <section className="mx-auto max-w-6xl px-4 py-6 sm:py-10 sm:px-6 lg:px-8 space-y-6">
       <div className="text-center">
         <h2 className="mt-6 text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
           River crossings on horseback

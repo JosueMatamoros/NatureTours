@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import CalendarPicker from "./CalendarPicker";
 import GuestsInput from "./GuestsInput";
 
@@ -12,7 +12,6 @@ export default function ContactForm({ onSubmit, initialMessage = "" }) {
     message: initialMessage,
   });
 
-  // Update message if initialMessage changes
   useEffect(() => {
     if (initialMessage) {
       setForm((s) => ({ ...s, message: initialMessage }));
@@ -28,21 +27,33 @@ export default function ContactForm({ onSubmit, initialMessage = "" }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const to = "naturetourslafortuna@gmail.com";
+    const subject = encodeURIComponent("Nature Tours Inquiry from Website");
+
+    const body = encodeURIComponent(
+      [
+        "Client request:",
+        form.message || "",
+        "",
+        "Contact information:",
+        `Phone number: ${form.phone || "Not provided"}`,
+        `Number of people: ${form.people}`,
+      ].join("\n")
+    );
+
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
     onSubmit?.(form);
   };
 
   return (
     <section className="h-full rounded-2xl border border-gray-200 bg-white p-5 md:p-6 pb-3 shadow-sm">
       <h2 className="text-2xl font-extrabold text-gray-900">Contact Us</h2>
-      <p className="mt-1 text-sm text-gray-600">
-        Book your nature adventure
-      </p>
+      <p className="mt-1 text-sm text-gray-600">Book your nature adventure</p>
 
       <form onSubmit={handleSubmit} className="mt-3 space-y-4">
         <div>
-          <label className="text-sm font-semibold text-gray-900">
-            Full Name
-          </label>
+          <label className="text-sm font-semibold text-gray-900">Full Name</label>
           <input
             name="fullName"
             value={form.fullName}
@@ -54,9 +65,7 @@ export default function ContactForm({ onSubmit, initialMessage = "" }) {
         </div>
 
         <div>
-          <label className="text-sm font-semibold text-gray-900">
-            Email Address
-          </label>
+          <label className="text-sm font-semibold text-gray-900">Email Address</label>
           <input
             type="email"
             name="email"
@@ -69,9 +78,7 @@ export default function ContactForm({ onSubmit, initialMessage = "" }) {
         </div>
 
         <div>
-          <label className="text-sm font-semibold text-gray-900">
-            Phone Number
-          </label>
+          <label className="text-sm font-semibold text-gray-900">Phone Number</label>
           <input
             name="phone"
             value={form.phone}
@@ -82,10 +89,8 @@ export default function ContactForm({ onSubmit, initialMessage = "" }) {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Date with calendar */}
           <div>
             <label className="text-sm font-semibold text-gray-900">Date</label>
-
             <button
               type="button"
               onClick={() => setCalendarOpen((v) => !v)}
@@ -107,11 +112,8 @@ export default function ContactForm({ onSubmit, initialMessage = "" }) {
             )}
           </div>
 
-          {/* People */}
           <div>
-            <label className="text-sm font-semibold text-gray-900 ">
-              People
-            </label>
+            <label className="text-sm font-semibold text-gray-900">People</label>
             <GuestsInput
               value={form.people}
               onChange={(val) => setForm((s) => ({ ...s, people: val }))}
@@ -137,8 +139,7 @@ export default function ContactForm({ onSubmit, initialMessage = "" }) {
 
         <button
           type="submit"
-          className=" mt-2 inline-flex w-full items-center justify-center rounded-2xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-emerald-800"
-
+          className="mt-2 inline-flex w-full items-center justify-center rounded-2xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-emerald-800"
         >
           Send Request
         </button>

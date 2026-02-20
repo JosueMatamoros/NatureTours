@@ -3,7 +3,7 @@ import { FaLeaf, FaCoffee } from "react-icons/fa";
 export default function LocalFlavors() {
   return (
     <section className="w-full">
-      <div className="mx-auto max-w-6xl px-4 sm:py-14 py-2  sm:px-6 lg:px-8 ">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10 sm:px-6 lg:px-8">
         {/* Header */}
         <div>
           <p className="text-sm font-semibold uppercase tracking-widest text-emerald-600">
@@ -12,7 +12,7 @@ export default function LocalFlavors() {
           <h2 className=" text-4xl font-extrabold text-gray-900">
             Local Flavors
           </h2>
-          <p className="mt-2 max-w-3xl text-lg text-gray-600 leading-relaxed">
+          <p className="mt-4 max-w-3xl text-lg text-gray-600 leading-relaxed">
             Depending on availability, we offer a selection of local
             refreshments to enhance your experience. Enjoy the authentic taste
             of Costa Rica during your adventure.

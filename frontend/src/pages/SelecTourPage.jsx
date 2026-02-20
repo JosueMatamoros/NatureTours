@@ -40,7 +40,7 @@ export default function SelecTour() {
 
       <main className="mx-auto max-w-6xl px-4 ">
         {/* HEADER */}
-        <header className="mb-16 text-center">
+        <header className=" mb-6 md:mb-16  text-center">
           <h2 className="mt-6 text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
             Our tours
           </h2>
@@ -53,7 +53,7 @@ export default function SelecTour() {
         </header>
 
         {/* GRID */}
-        <section className="grid gap-10 md:grid-cols-2">
+        <section className="grid gap-10 md:grid-cols-2  mb-6  md:mb-16">
           {TOURS.map((tour) => {
             const isDisabled = !tour.available;
 

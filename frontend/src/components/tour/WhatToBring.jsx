@@ -9,7 +9,7 @@ const WhatToBring = ({ tourId = 2 }) => {
 
   return (
     <section className="w-full">
-      <div className="mx-auto max-w-6xl px-4 sm:py-14 py-2  sm:px-6 lg:px-8 ">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10 sm:px-6 lg:px-8">
         <div>
           <p className="text-sm font-semibold uppercase tracking-widest text-emerald-600">
             BEFORE YOU GO
@@ -17,7 +17,7 @@ const WhatToBring = ({ tourId = 2 }) => {
           <h2 className=" text-4xl font-extrabold text-gray-900">
             What to Bring
           </h2>
-          <p className="mt-2 max-w-3xl text-lg text-gray-600 leading-relaxed">
+          <p className="mt-4 max-w-3xl text-lg text-gray-600 leading-relaxed">
             We provide all necessary riding equipment. Here&apos;s what we
             recommend you bring for the best experience.
           </p>

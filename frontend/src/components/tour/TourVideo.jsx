@@ -1,6 +1,6 @@
 const TourVideo = () => {
   return (
-    <section className="my-10 flex flex-col items-center px-4">
+    <section className="my-6 sm:my-10 flex flex-col items-center px-4">
       {/* Título */}
       <div className="mb-6 text-center">
         <p className="mb-2 text-sm tracking-widest text-gray-500 uppercase">
