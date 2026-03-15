@@ -34,7 +34,7 @@ export default function Home() {
           "/tours/bento/image6.webp",
         ]}
       />
-      <div className="w-full  flex justify-center sm:-mt-12">
+      <div className="w-full  flex justify-center sm:-mt-8">
         <button
           type="button"
           onClick={() => navigate("/tours")}

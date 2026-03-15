@@ -44,6 +44,8 @@ function isSameLocalDayYMD(ymd, dateObj) {
 
 export default function ReserveTourCard({ tour }) {
   const whatsappPhoneE164 = "50689893335";
+  const isTour2 = Number(tour?.id) === 2;
+  const baseCapacity = isTour2 ? Number(tour?.capacity) || 16 : 12;
 
   const [slot, setSlot] = useState(null);
   const [guests, setGuests] = useState(1);
@@ -53,6 +55,10 @@ export default function ReserveTourCard({ tour }) {
 
   const [blockedByDay, setBlockedByDay] = useState(() => new Map());
   const [fullDays, setFullDays] = useState(() => new Set());
+  const [remainingByDateAndSlot, setRemainingByDateAndSlot] = useState(
+    () => new Map()
+  );
+  const [dayCapacity, setDayCapacity] = useState(baseCapacity);
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const d = new Date();
     d.setHours(12, 0, 0, 0);
@@ -107,6 +113,20 @@ export default function ReserveTourCard({ tour }) {
     return new Set(arr.map((s) => String(s).trim()));
   }, [blockedByDay, selectedDate]);
 
+  const remainingForSelectedSlot = useMemo(() => {
+    if (!selectedDate || !selectedSlot?.startTime || !isTour2) return null;
+    const dateKey = String(selectedDate).trim();
+    const bySlot = remainingByDateAndSlot.get(dateKey);
+    if (!bySlot) return dayCapacity;
+    return Number(bySlot.get(selectedSlot.startTime) ?? dayCapacity);
+  }, [selectedDate, selectedSlot, isTour2, remainingByDateAndSlot, dayCapacity]);
+
+  const maxGuestsSelectable = useMemo(() => {
+    if (!isTour2) return 12;
+    if (remainingForSelectedSlot == null) return dayCapacity;
+    return Math.max(0, Math.min(dayCapacity, remainingForSelectedSlot));
+  }, [isTour2, remainingForSelectedSlot, dayCapacity]);
+
   async function loadMonthAvailability(monthDate) {
     if (!tourId) return;
 
@@ -117,17 +137,37 @@ export default function ReserveTourCard({ tour }) {
 
       const map = new Map();
       const set = new Set();
+      const remainingSlotMap = new Map();
+
+      if (Number.isFinite(Number(data?.capacity))) {
+        setDayCapacity(Number(data.capacity));
+      } else {
+        setDayCapacity(baseCapacity);
+      }
 
       for (const day of data?.days ?? []) {
         const date = String(day.date).trim();
         const blocked = (day.blocked ?? []).map((s) => String(s).trim());
+        const slotRemaining = day.slotRemaining || {};
 
         if (blocked.length > 0) map.set(date, blocked);
         if (day.isFull) set.add(date);
+
+        const bySlot = new Map();
+        for (const [slotTime, remaining] of Object.entries(slotRemaining)) {
+          const n = Number(remaining);
+          if (Number.isFinite(n)) {
+            bySlot.set(String(slotTime).trim(), Math.max(0, n));
+          }
+        }
+        if (bySlot.size > 0) {
+          remainingSlotMap.set(date, bySlot);
+        }
       }
 
       setBlockedByDay(map);
       setFullDays(set);
+      setRemainingByDateAndSlot(remainingSlotMap);
     } catch (e) {
       console.error("availability error:", e);
     }
@@ -150,8 +190,23 @@ export default function ReserveTourCard({ tour }) {
     : false;
 
   const isComplete = Boolean(
-    selectedDate && slot && !isSelectedBlocked && !isSelectedPastByClock
+    selectedDate &&
+      slot &&
+      !isSelectedBlocked &&
+      !isSelectedPastByClock &&
+      (!isTour2 || guests <= maxGuestsSelectable)
   );
+
+  useEffect(() => {
+    if (!isTour2) return;
+
+    if (maxGuestsSelectable <= 0) {
+      setGuests(1);
+      return;
+    }
+
+    setGuests((prev) => Math.min(prev, maxGuestsSelectable));
+  }, [isTour2, maxGuestsSelectable]);
 
   const customScheduleWhatsAppUrl = useMemo(() => {
     if (!selectedDate) return null;
@@ -187,6 +242,15 @@ export default function ReserveTourCard({ tour }) {
 
     if (blockedSlotsForSelectedDay.has(selectedSlot.startTime)) {
       setError("Ese horario ya está ocupado. Elegí otro.");
+      return;
+    }
+
+    if (isTour2 && guests > maxGuestsSelectable) {
+      setError(
+        maxGuestsSelectable <= 0
+          ? "Ese horario ya no tiene espacios disponibles."
+          : `Solo quedan ${maxGuestsSelectable} espacios para ese horario.`
+      );
       return;
     }
 
@@ -349,7 +413,15 @@ export default function ReserveTourCard({ tour }) {
               </p>
             ) : null}
 
-            {customScheduleWhatsAppUrl ? (
+            {slot && isTour2 && selectedDate ? (
+              <p className="-mt-1 text-xs text-gray-400">
+                {maxGuestsSelectable <= 0
+                  ? "No spots left for this selected time."
+                  : `${maxGuestsSelectable} spot${maxGuestsSelectable === 1 ? "" : "s"} left for this selected time.`}
+              </p>
+            ) : null}
+
+            {customScheduleWhatsAppUrl && !slot ? (
               <a
                 href={customScheduleWhatsAppUrl}
                 target="_blank"
@@ -390,8 +462,10 @@ export default function ReserveTourCard({ tour }) {
 
               <button
                 type="button"
-                onClick={() => setGuests((g) => Math.min(12, g + 1))}
-                disabled={guests >= 12 || loading}
+                onClick={() =>
+                  setGuests((g) => Math.min(Math.max(1, maxGuestsSelectable), g + 1))
+                }
+                disabled={guests >= maxGuestsSelectable || loading || maxGuestsSelectable <= 0}
                 className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 bg-white text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Increase guests"
               >

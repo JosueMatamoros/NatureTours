@@ -5,6 +5,7 @@ const TOUR1_SLOTS = ["18:00", "20:00"];
 
 // Tour 2: slots fijos
 const TOUR2_SLOTS = ["08:00", "12:00", "15:00"];
+const TOUR2_CAPACITY = 16;
 
 function slotsForTour(tourId) {
   if (tourId === 1) return TOUR1_SLOTS;
@@ -28,6 +29,7 @@ export async function getBlockedByRange(req, res) {
 
   const candidateSlots = slotsForTour(tourId).map((s) => String(s).trim());
   const totalSlots = candidateSlots.length;
+  const dayCapacity = tourId === 2 ? TOUR2_CAPACITY : totalSlots;
 
   const client = await pool.connect();
   try {
@@ -47,24 +49,41 @@ export async function getBlockedByRange(req, res) {
       [tourId, from.trim(), to.trim()]
     );
 
-    // 1) Bloqueos por bookings exactos dentro de los slots permitidos
-    const bookingsBlockedQ = await client.query(
-      `
-      SELECT
-        to_char(b.tour_date, 'YYYY-MM-DD') AS date,
-        json_agg(to_char(b.start_time, 'HH24:MI') ORDER BY b.start_time) AS blocked
-      FROM bookings b
-      WHERE b.tour_id = $1
-        AND b.tour_date BETWEEN $2::date AND $3::date
-        AND b.status IN ('paid','pending')
-        AND (b.status <> 'pending' OR b.expires_at > now())
-        AND to_char(b.start_time, 'HH24:MI') = ANY($4::text[])
-      GROUP BY b.tour_date
-      HAVING COUNT(*) > 0
-      ORDER BY b.tour_date;
-      `,
-      [tourId, from.trim(), to.trim(), candidateSlots]
-    );
+    const bookingsBlockedQ =
+      tourId === 2
+        ? await client.query(
+            `
+            SELECT
+              to_char(b.tour_date, 'YYYY-MM-DD') AS date,
+              to_char(b.start_time, 'HH24:MI') AS start_time,
+              coalesce(sum(b.guests), 0)::int AS guests_taken
+            FROM bookings b
+            WHERE b.tour_id = $1
+              AND b.tour_date BETWEEN $2::date AND $3::date
+              AND b.status IN ('paid','pending')
+              AND (b.status <> 'pending' OR b.expires_at > now())
+            GROUP BY b.tour_date, b.start_time
+            ORDER BY b.tour_date, b.start_time;
+            `,
+            [tourId, from.trim(), to.trim()]
+          )
+        : await client.query(
+            `
+            SELECT
+              to_char(b.tour_date, 'YYYY-MM-DD') AS date,
+              json_agg(to_char(b.start_time, 'HH24:MI') ORDER BY b.start_time) AS blocked
+            FROM bookings b
+            WHERE b.tour_id = $1
+              AND b.tour_date BETWEEN $2::date AND $3::date
+              AND b.status IN ('paid','pending')
+              AND (b.status <> 'pending' OR b.expires_at > now())
+              AND to_char(b.start_time, 'HH24:MI') = ANY($4::text[])
+            GROUP BY b.tour_date
+            HAVING COUNT(*) > 0
+            ORDER BY b.tour_date;
+            `,
+            [tourId, from.trim(), to.trim(), candidateSlots]
+          );
 
     // 2) Bloqueos admin
     const dayBlocksQ = await client.query(
@@ -82,11 +101,44 @@ export async function getBlockedByRange(req, res) {
 
     const map = new Map();
 
+    const remainingMap = new Map();
+    const slotRemainingMap = new Map();
+
     // bookings bloqueados
-    for (const r of bookingsBlockedQ.rows) {
-      const date = String(r.date).trim();
-      const arr = Array.isArray(r.blocked) ? r.blocked : JSON.parse(r.blocked);
-      map.set(date, new Set(arr.map((s) => String(s).trim())));
+    if (tourId === 2) {
+      for (const r of bookingsBlockedQ.rows) {
+        const date = String(r.date).trim();
+        const startTime = String(r.start_time).trim();
+        const guestsTaken = Number(r.guests_taken ?? 0);
+        const remaining = Math.max(0, TOUR2_CAPACITY - guestsTaken);
+
+        if (!slotRemainingMap.has(date)) {
+          const bySlot = new Map();
+          for (const slot of candidateSlots) bySlot.set(slot, TOUR2_CAPACITY);
+          slotRemainingMap.set(date, bySlot);
+        }
+
+        slotRemainingMap.get(date).set(startTime, remaining);
+
+        if (remaining <= 0) {
+          if (!map.has(date)) map.set(date, new Set());
+          map.get(date).add(startTime);
+        }
+      }
+
+      for (const [date, bySlot] of slotRemainingMap.entries()) {
+        let dayRemaining = 0;
+        for (const slot of candidateSlots) {
+          dayRemaining += Number(bySlot.get(slot) ?? TOUR2_CAPACITY);
+        }
+        remainingMap.set(date, dayRemaining);
+      }
+    } else {
+      for (const r of bookingsBlockedQ.rows) {
+        const date = String(r.date).trim();
+        const arr = Array.isArray(r.blocked) ? r.blocked : JSON.parse(r.blocked);
+        map.set(date, new Set(arr.map((s) => String(s).trim())));
+      }
     }
 
     const adminBlockedDays = dayBlocksQ.rows.map((r) => String(r.date).trim());
@@ -98,18 +150,57 @@ export async function getBlockedByRange(req, res) {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, set]) => {
         const blocked = Array.from(set).sort();
+        const isAdminOrFullyBlockedWithoutRows =
+          tourId === 2 && blocked.length >= totalSlots && !slotRemainingMap.has(date);
+        const slotRemaining =
+          tourId === 2
+            ? Object.fromEntries(
+                candidateSlots.map((slot) => [
+                  slot,
+                  isAdminOrFullyBlockedWithoutRows
+                    ? 0
+                    : Number(slotRemainingMap.get(date)?.get(slot) ?? TOUR2_CAPACITY),
+                ])
+              )
+            : undefined;
         return {
           date,
           blocked,
           isFull: blocked.length >= totalSlots,
+          remaining: remainingMap.get(date) ?? dayCapacity,
+          slotRemaining,
         };
       });
+
+    if (tourId === 2) {
+      for (const [date, bySlot] of slotRemainingMap.entries()) {
+        if (map.has(date)) continue;
+
+        let dayRemaining = 0;
+        const slotRemaining = {};
+        for (const slot of candidateSlots) {
+          const value = Number(bySlot.get(slot) ?? TOUR2_CAPACITY);
+          slotRemaining[slot] = value;
+          dayRemaining += value;
+        }
+
+        days.push({
+          date,
+          blocked: [],
+          isFull: false,
+          remaining: dayRemaining,
+          slotRemaining,
+        });
+      }
+      days.sort((a, b) => a.date.localeCompare(b.date));
+    }
 
     return res.json({
       ok: true,
       tourId,
       from: from.trim(),
       to: to.trim(),
+      capacity: dayCapacity,
       days,
     });
   } catch (err) {

@@ -4,6 +4,7 @@ import { createBookingSchema, bookingIdSchema} from "../schemas/bookings.schema.
 
 const TOUR1_SLOTS = ["18:00", "20:00"];
 const TOUR2_SLOTS = ["08:00", "12:00", "15:00"];
+const TOUR2_CAPACITY = 16;
 
 function slotsForTour(tourId) {
   if (tourId === 1) return TOUR1_SLOTS;
@@ -31,26 +32,75 @@ export async function createBooking(req, res) {
 
   const client = await pool.connect();
   try {
-    // 1) Chequear si el slot exacto ya fue tomado
-    const existingBooking = await client.query(
+    await client.query("BEGIN");
+
+    // Limpiar pendientes vencidos para calcular disponibilidad real.
+    await client.query(
       `
-      select 1
-      from bookings b
-      where b.tour_id = $1
-        and b.tour_date = $2::date
-        and b.start_time = $3::time
-        and b.status in ('paid','pending')
-        and (b.status <> 'pending' or b.expires_at > now())
-      limit 1;
+      update bookings
+      set status = 'expired',
+          updated_at = now()
+      where tour_id = $1
+        and tour_date = $2::date
+        and status = 'pending'
+        and expires_at <= now();
       `,
-      [tourId, tourDate, startTime]
+      [tourId, tourDate]
     );
 
-    if (existingBooking.rowCount > 0) {
-      return res.status(409).json({
-        ok: false,
-        message: "Ese horario ya está ocupado. Elegí otro.",
-      });
+    if (tourId === 2) {
+      // Tour 2 bloquea por capacidad por slot (fecha + horario).
+      const slotLoadQ = await client.query(
+        `
+        select coalesce(sum(b.guests), 0)::int as guests_taken
+        from bookings b
+        where b.tour_id = $1
+          and b.tour_date = $2::date
+          and b.start_time = $3::time
+          and b.status in ('paid','pending')
+          and (b.status <> 'pending' or b.expires_at > now());
+        `,
+        [tourId, tourDate, startTime]
+      );
+
+      const guestsTaken = Number(slotLoadQ.rows[0]?.guests_taken ?? 0);
+      const remaining = Math.max(0, TOUR2_CAPACITY - guestsTaken);
+
+      if (guests > remaining) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({
+          ok: false,
+          message:
+            remaining === 0
+              ? "Ese horario ya no tiene espacios disponibles."
+              : `Solo quedan ${remaining} espacios disponibles para ese horario.`,
+          remaining,
+          capacity: TOUR2_CAPACITY,
+        });
+      }
+    } else {
+      // Tour 1 mantiene bloqueo por horario exacto.
+      const existingBooking = await client.query(
+        `
+        select 1
+        from bookings b
+        where b.tour_id = $1
+          and b.tour_date = $2::date
+          and b.start_time = $3::time
+          and b.status in ('paid','pending')
+          and (b.status <> 'pending' or b.expires_at > now())
+        limit 1;
+        `,
+        [tourId, tourDate, startTime]
+      );
+
+      if (existingBooking.rowCount > 0) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({
+          ok: false,
+          message: "Ese horario ya está ocupado. Elegí otro.",
+        });
+      }
     }
 
     const created = await client.query(
@@ -65,8 +115,13 @@ export async function createBooking(req, res) {
       [tourId, tourDate, startTime, guests, BOOKING_HOLD_MINUTES]
     );
 
+    await client.query("COMMIT");
+
     return res.status(201).json({ ok: true, id: created.rows[0].id });
   } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {}
     console.error(err);
     return res.status(500).json({ ok: false, message: "Error creando booking" });
   } finally {

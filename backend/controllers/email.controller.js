@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
 });
 
 /**
- * Genera el HTML del recibo para el email
+ * Genera el HTML del recibo para el email — espejo exacto del PDF (ReceiptPDF.jsx)
  */
 function generateReceiptHTML(receipt) {
   const subtotal = receipt.pricePerPerson * receipt.personas;
@@ -22,203 +22,88 @@ function generateReceiptHTML(receipt) {
     day: "numeric",
   });
 
+  const ROW = (label, value, isTotal = false) => `
+    <tr>
+      <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:${isTotal ? '18px' : '14px'};">${label}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;font-weight:600;color:${isTotal ? '#047857' : '#1f2937'};font-size:${isTotal ? '18px' : '14px'};text-align:right;">${value}</td>
+    </tr>`;
+
+  const SECTION = (title, rows, extra = '', green = false) => {
+    const bg = green ? '#ecfdf5' : '#f9fafb';
+    const border = green ? '#a7f3d0' : '#e5e7eb';
+    return `
+    <div style="border-radius:12px;overflow:hidden;border:1px solid ${border};margin-bottom:14px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:${bg};width:100%;">
+        <tr><td style="padding:16px;">
+          <p style="font-size:14px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 12px 0;">${title}</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            ${rows}
+          </table>
+          ${extra}
+        </td></tr>
+      </table>
+    </div>`;
+  };
+
+  const paymentBadge = receipt.mode === 'full'
+    ? `<span style="display:inline-block;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;background:#d1fae5;color:#047857;">Full Payment</span>`
+    : `<span style="display:inline-block;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;background:#fef3c7;color:#92400e;">20% Deposit</span>`;
+
+  const idBox = (id) =>
+    `<span style="background:#f3f4f6;padding:4px 10px;border-radius:6px;font-family:monospace;font-size:12px;">${id}</span>`;
+
+  const remainingNote = receipt.mode === 'deposit'
+    ? `<p style="color:#92400e;font-size:13px;margin-top:10px;">The remaining balance of <strong>$${remaining.toFixed(2)}</strong> is due on the day of the tour.</p>`
+    : '';
+
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
       <title>Receipt - Nature Tours</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          padding: 20px;
-          color: #1f2937;
-          max-width: 600px;
-          margin: 0 auto;
-          background: #ffffff;
-        }
-        .header { text-align: center; margin-bottom: 24px; }
-        .logo-text { font-size: 22px; font-weight: bold; color: #047857; margin-bottom: 4px; }
-        .success-badge {
-          display: inline-block;
-          background: #d1fae5;
-          color: #047857;
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-weight: 600;
-          margin: 16px 0;
-        }
-        .section {
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          padding: 16px;
-          margin-bottom: 14px;
-        }
-        .section-title {
-          font-size: 14px;
-          font-weight: 600;
-          color: #6b7280;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-bottom: 16px;
-        }
-        .row {
-          display: table;
-          width: 100%;
-          padding: 10px 0;
-          border-bottom: 1px solid #e5e7eb;
-        }
-        .row:last-child { border-bottom: none; }
-        .row-label {
-          display: table-cell;
-          color: #6b7280;
-          font-size: 14px;
-          width: 140px;
-          padding-right: 16px;
-          vertical-align: middle;
-        }
-        .row-value {
-          display: table-cell;
-          font-weight: 600;
-          color: #1f2937;
-          font-size: 14px;
-          text-align: right;
-          vertical-align: middle;
-        }
-        .payment-section { background: #ecfdf5; border-color: #a7f3d0; }
-        .payment-badge {
-          display: inline-block;
-          padding: 4px 12px;
-          border-radius: 6px;
-          font-size: 12px;
-          font-weight: 600;
-        }
-        .badge-full { background: #d1fae5; color: #047857; }
-        .badge-deposit { background: #fef3c7; color: #92400e; }
-        .total-row { font-size: 18px; }
-        .total-row .row-value { color: #047857; font-size: 18px; }
-        .remaining { color: #92400e; font-size: 13px; margin-top: 8px; }
-        .footer {
-          text-align: center;
-          margin-top: 20px;
-          padding-top: 16px;
-          border-top: 1px solid #e5e7eb;
-          color: #9ca3af;
-          font-size: 11px;
-        }
-        .id-box {
-          background: #f3f4f6;
-          padding: 8px 12px;
-          border-radius: 6px;
-          font-family: monospace;
-          font-size: 12px;
-        }
-        .customer-info {
-          background: #eff6ff;
-          border-color: #bfdbfe;
-        }
-      </style>
     </head>
-    <body>
-      <div class="header">
-        <div class="logo-text">🌿 Nature Tours</div>
-        <div class="success-badge">✓ Payment Confirmed</div>
-      </div>
+    <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2937;background:#ffffff;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;padding:20px;">
+        <tr><td>
 
-      ${receipt.customerName || receipt.customerEmail ? `
-      <div class="section customer-info">
-        <div class="section-title">Customer Information</div>
-        ${receipt.customerName ? `
-        <div class="row">
-          <span class="row-label">Name: </span>
-          <span class="row-value">${receipt.customerName}</span>
-        </div>
-        ` : ''}
-        ${receipt.customerEmail ? `
-        <div class="row">
-          <span class="row-label">Email: </span>
-          <span class="row-value">${receipt.customerEmail}</span>
-        </div>
-        ` : ''}
-      </div>
-      ` : ''}
+          <!-- header -->
+          <div style="text-align:center;margin-bottom:18px;">
+            <div style="font-size:24px;font-weight:800;color:#047857;letter-spacing:0.2px;line-height:1.15;margin:0 0 6px 0;">Nature Tours</div>
+            <div style="display:inline-block;background:linear-gradient(135deg,#d1fae5 0%,#ecfdf5 100%);color:#065f46;padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;letter-spacing:0.3px;box-shadow:0 2px 6px rgba(4,120,87,0.14);">✓ Payment Confirmed</div>
+          </div>
 
-      <div class="section">
-        <div class="section-title">Booking Details</div>
-        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
-          <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 10px 0; color: #6b7280; font-size: 14px;">Tour:</td>
-            <td style="padding: 10px 0; font-weight: 600; color: #1f2937; font-size: 14px; text-align: right;">${receipt.tour}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 10px 0; color: #6b7280; font-size: 14px;">Date:</td>
-            <td style="padding: 10px 0; font-weight: 600; color: #1f2937; font-size: 14px; text-align: right;">${fecha}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 10px 0; color: #6b7280; font-size: 14px;">Time:</td>
-            <td style="padding: 10px 0; font-weight: 600; color: #1f2937; font-size: 14px; text-align: right;">${receipt.hora.slice(0, 5)}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 0; color: #6b7280; font-size: 14px;">People:</td>
-            <td style="padding: 10px 0; font-weight: 600; color: #1f2937; font-size: 14px; text-align: right;">${receipt.personas} people</td>
-          </tr>
-        </table>
-      </div>
+          <!-- Booking Details -->
+          ${SECTION('Booking Details', [
+            ROW('Tour', receipt.tour),
+            ROW('Date', fecha),
+            ROW('Time', receipt.hora.slice(0, 5)),
+            ROW('People', `${receipt.personas} people`),
+          ].join(''))}
 
-      <div class="section payment-section">
-        <div class="section-title">Payment Information</div>
-        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
-          <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 10px 0; color: #6b7280; font-size: 14px;">Payment Type:</td>
-            <td style="padding: 10px 0; font-weight: 600; color: #1f2937; font-size: 14px; text-align: right;">
-              <span class="payment-badge ${receipt.mode === 'full' ? 'badge-full' : 'badge-deposit'}">
-                ${receipt.mode === 'full' ? 'Full Payment' : '50% Deposit'}
-              </span>
-            </td>
-          </tr>
-          <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 10px 0; color: #6b7280; font-size: 14px;">Price per person:</td>
-            <td style="padding: 10px 0; font-weight: 600; color: #1f2937; font-size: 14px; text-align: right;">$${Number(receipt.pricePerPerson).toFixed(2)}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 10px 0; color: #6b7280; font-size: 14px;">Subtotal (${receipt.personas} × $${Number(receipt.pricePerPerson).toFixed(2)}):</td>
-            <td style="padding: 10px 0; font-weight: 600; color: #1f2937; font-size: 14px; text-align: right;">$${subtotal.toFixed(2)}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 0; color: #6b7280; font-size: 18px;">Amount Paid:</td>
-            <td style="padding: 10px 0; font-weight: 600; color: #047857; font-size: 18px; text-align: right;">$${Number(receipt.amount).toFixed(2)}</td>
-          </tr>
-        </table>
-        ${receipt.mode === 'deposit' ? `
-        <div class="remaining">
-          ⚠️ Remaining balance to pay on tour day: <strong>$${remaining.toFixed(2)}</strong>
-        </div>
-        ` : ''}
-      </div>
+          <!-- Payment Information -->
+          ${SECTION('Payment Information', [
+            ROW('Payment Type', paymentBadge),
+            ROW('Price per person', `$${Number(receipt.pricePerPerson).toFixed(2)}`),
+            ROW(`Subtotal (${receipt.personas} × $${Number(receipt.pricePerPerson).toFixed(2)})`, `$${subtotal.toFixed(2)}`),
+            ROW('Amount Paid', `$${Number(receipt.amount).toFixed(2)}`, true),
+          ].join(''), remainingNote, true)}
 
-      <div class="section">
-        <div class="section-title">Reference IDs</div>
-        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
-          <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 10px 0; color: #6b7280; font-size: 14px;">Purchase ID:</td>
-            <td style="padding: 10px 0; font-weight: 600; color: #1f2937; font-size: 14px; text-align: right;"><span class="id-box">${receipt.reservaId}</span></td>
-          </tr>
-          ${receipt.paypalCaptureId ? `
-          <tr>
-            <td style="padding: 10px 0; color: #6b7280; font-size: 14px;">PayPal ID:</td>
-            <td style="padding: 10px 0; font-weight: 600; color: #1f2937; font-size: 14px; text-align: right;"><span class="id-box">${receipt.paypalCaptureId}</span></td>
-          </tr>
-          ` : ''}
-        </table>
-      </div>
+          <!-- Reference IDs -->
+          ${SECTION('Reference IDs', [
+            ROW('Purchase ID', idBox(receipt.reservaId)),
+            receipt.paypalCaptureId ? ROW('PayPal ID', idBox(receipt.paypalCaptureId)) : '',
+          ].join(''))}
 
-      <div class="footer">
-        <p>Thank you for choosing Nature Tours!</p>
-        <p style="margin-top: 8px;">Please arrive 15 minutes before your scheduled time.</p>
-        <p style="margin-top: 16px;">Questions? Contact us at naturetourslafortuna@gmail.com</p>
-      </div>
+          <!-- footer -->
+          <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;color:#9ca3af;font-size:11px;">
+            <p>Thank you for choosing Nature Tours!</p>
+            <p style="margin-top:8px;">Please arrive 15 minutes before your scheduled time.</p>
+            <p style="margin-top:16px;">Questions? Contact us at naturetourslafortuna@gmail.com</p>
+          </div>
+
+        </td></tr>
+      </table>
     </body>
     </html>
   `;
@@ -243,14 +128,27 @@ export async function sendReceiptEmail(req, res) {
       day: "numeric",
     });
 
-    // Enviar email a Nature Tours
-    await transporter.sendMail({
-      from: `"Nature Tours System" <${process.env.EMAIL_USER}>`,
-      to: "naturetourslafortuna@gmail.com",
-      subject: `🎫 New Booking: ${receipt.tour} - ${fecha} - ${receipt.personas} people`,
-      html: htmlContent,
-    });
+    const sends = [
+      transporter.sendMail({
+        from: `"Nature Tours System" <${process.env.EMAIL_USER}>`,
+        to: "naturetourslafortuna@gmail.com",
+        subject: `🎫 New Booking: ${receipt.tour} - ${fecha} - ${receipt.personas} people`,
+        html: htmlContent,
+      }),
+    ];
 
+    if (receipt.customerEmail) {
+      sends.push(
+        transporter.sendMail({
+          from: `"Nature Tours" <${process.env.EMAIL_USER}>`,
+          to: receipt.customerEmail,
+          subject: `Nature Tours: ${receipt.tour} - ${fecha}`,
+          html: htmlContent,
+        })
+      );
+    }
+
+    await Promise.all(sends);
 
     res.json({ ok: true, message: "Email sent successfully" });
   } catch (error) {

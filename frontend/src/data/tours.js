@@ -66,6 +66,7 @@ export const TOURS = {
   2: {
     id: 2,
     name: "Horseback Riding Tour",
+    capacity: 16,
     duration: "2 hours",
     price: 30,
     oldPrice: null,

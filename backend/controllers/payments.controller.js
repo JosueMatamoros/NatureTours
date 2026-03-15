@@ -143,10 +143,13 @@ export async function getPaymentById(req, res) {
         b.start_time        AS hora,
         b.guests            AS personas,
         t.name              AS tour,
-        t.price             AS price_per_person
+        t.price             AS price_per_person,
+        c.email             AS customer_email,
+        c.name              AS customer_name
       FROM payments p
       JOIN bookings b ON b.id = p.booking_id
       JOIN tours t ON t.id = b.tour_id
+      LEFT JOIN customers c ON c.id = p.customer_id
       WHERE p.id = $1
       `,
       [id],
@@ -172,6 +175,8 @@ export async function getPaymentById(req, res) {
         fecha: r.fecha,
         hora: r.hora,
         pricePerPerson: parseFloat(r.price_per_person),
+        customerEmail: r.customer_email ?? null,
+        customerName: r.customer_name ?? null,
       },
     });
   } catch (err) {
