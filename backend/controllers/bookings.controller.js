@@ -2,7 +2,14 @@
 import { pool } from "../db.js";
 import { createBookingSchema, bookingIdSchema} from "../schemas/bookings.schema.js";
 
-const DURATION_HOURS = 2;
+const TOUR1_SLOTS = ["18:00", "20:00"];
+const TOUR2_SLOTS = ["08:00", "12:00", "15:00"];
+
+function slotsForTour(tourId) {
+  if (tourId === 1) return TOUR1_SLOTS;
+  if (tourId === 2) return TOUR2_SLOTS;
+  return TOUR1_SLOTS;
+}
 
 export async function createBooking(req, res) {
   const parsed = createBookingSchema.safeParse(req.body);
@@ -11,28 +18,33 @@ export async function createBooking(req, res) {
   }
 
   const { tourId, tourDate, startTime, guests } = parsed.data;
+  const allowedSlots = slotsForTour(tourId);
+
+  if (!allowedSlots.includes(startTime)) {
+    return res.status(400).json({
+      ok: false,
+      message: "Ese horario no es valido para este tour.",
+    });
+  }
 
   const client = await pool.connect();
   try {
-    // 1) Chequear traslape (bloquea 9,10,11 si existe 10, etc.)
-    const overlap = await client.query(
+    // 1) Chequear si el slot exacto ya fue tomado
+    const existingBooking = await client.query(
       `
       select 1
       from bookings b
       where b.tour_id = $1
         and b.tour_date = $2::date
+        and b.start_time = $3::time
         and b.status in ('paid','pending')
         and (b.status <> 'pending' or b.expires_at > now())
-        and (
-          ($3::time, ($3::time + interval '${DURATION_HOURS} hours')) overlaps
-          (b.start_time, (b.start_time + interval '${DURATION_HOURS} hours'))
-        )
       limit 1;
       `,
       [tourId, tourDate, startTime]
     );
 
-    if (overlap.rowCount > 0) {
+    if (existingBooking.rowCount > 0) {
       return res.status(409).json({
         ok: false,
         message: "Ese horario ya está ocupado. Elegí otro.",

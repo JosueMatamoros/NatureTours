@@ -11,34 +11,11 @@ const fixedSlotsTour1 = [
   { id: 2, startHour: 20, label: "8:00 PM - 10:00 PM" },
 ];
 
-function formatHourLabel(hour24) {
-  if (hour24 === 12) return "12:00 MD";
-  const ampm = hour24 < 12 ? "AM" : "PM";
-  const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
-  return `${hour12}:00 ${ampm}`;
-}
-
-function buildHourlySlots(startHour = 6, endHour = 16, durationHours = 2) {
-  const slots = [];
-  let id = 1;
-
-  for (let h = startHour; h <= endHour; h++) {
-    const end = h + durationHours;
-
-    const startLabel = formatHourLabel(h);
-    const endHourClamped = Math.min(end, 23);
-    const endLabel = formatHourLabel(endHourClamped);
-
-    slots.push({
-      id: id++,
-      startHour: h,
-      startTime: `${String(h).padStart(2, "0")}:00`,
-      label: `${startLabel} - ${endLabel}`,
-    });
-  }
-
-  return slots;
-}
+const fixedSlotsTour2 = [
+  { id: 1, startHour: 8, label: "8:00 AM - 10:00 AM" },
+  { id: 2, startHour: 12, label: "12:00 MD - 2:00 PM" },
+  { id: 3, startHour: 15, label: "3:00 PM - 5:00 PM" },
+];
 
 function monthRangeYMD(dateObj) {
   const y = dateObj.getFullYear();
@@ -99,7 +76,12 @@ export default function ReserveTourCard({ tour }) {
       }));
     }
 
-    if (tourId === 2) return buildHourlySlots(6, 16, 2);
+    if (tourId === 2) {
+      return fixedSlotsTour2.map((s) => ({
+        ...s,
+        startTime: `${String(s.startHour).padStart(2, "0")}:00`,
+      }));
+    }
 
     return fixedSlotsTour1.map((s) => ({
       ...s,

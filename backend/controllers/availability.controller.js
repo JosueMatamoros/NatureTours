@@ -1,20 +1,14 @@
 import { pool } from "../db.js";
 
-const DURATION_HOURS = 2;
-
 // Tour 1: slots fijos
 const TOUR1_SLOTS = ["18:00", "20:00"];
 
-// Tour 2: slots por hora 06:00..16:00
-function tour2Slots() {
-  const out = [];
-  for (let h = 6; h <= 16; h++) out.push(`${String(h).padStart(2, "0")}:00`);
-  return out;
-}
+// Tour 2: slots fijos
+const TOUR2_SLOTS = ["08:00", "12:00", "15:00"];
 
 function slotsForTour(tourId) {
   if (tourId === 1) return TOUR1_SLOTS;
-  if (tourId === 2) return tour2Slots();
+  if (tourId === 2) return TOUR2_SLOTS;
   return TOUR1_SLOTS;
 }
 
@@ -53,43 +47,21 @@ export async function getBlockedByRange(req, res) {
       [tourId, from.trim(), to.trim()]
     );
 
-    // 1) Bloqueos por bookings (overlaps)
+    // 1) Bloqueos por bookings exactos dentro de los slots permitidos
     const bookingsBlockedQ = await client.query(
       `
-      WITH days AS (
-        SELECT generate_series($2::date, $3::date, interval '1 day')::date AS day
-      ),
-      slots AS (
-        SELECT d.day, unnest($4::text[])::time AS slot_time
-        FROM days d
-      ),
-      active_bookings AS (
-        SELECT
-          b.tour_date::date AS day,
-          b.start_time
-        FROM bookings b
-        WHERE b.tour_id = $1
-          AND b.tour_date BETWEEN $2::date AND $3::date
-          AND b.status IN ('paid','pending')
-          AND (b.status <> 'pending' OR b.expires_at > now())
-      ),
-      blocked AS (
-        SELECT DISTINCT
-          s.day,
-          s.slot_time
-        FROM slots s
-        JOIN active_bookings b
-          ON b.day = s.day
-         AND (s.slot_time, (s.slot_time + interval '${DURATION_HOURS} hours')) overlaps
-             (b.start_time, (b.start_time + interval '${DURATION_HOURS} hours'))
-      )
       SELECT
-        to_char(day, 'YYYY-MM-DD') AS date,
-        json_agg(to_char(slot_time, 'HH24:MI') ORDER BY slot_time) AS blocked
-      FROM blocked
-      GROUP BY day
+        to_char(b.tour_date, 'YYYY-MM-DD') AS date,
+        json_agg(to_char(b.start_time, 'HH24:MI') ORDER BY b.start_time) AS blocked
+      FROM bookings b
+      WHERE b.tour_id = $1
+        AND b.tour_date BETWEEN $2::date AND $3::date
+        AND b.status IN ('paid','pending')
+        AND (b.status <> 'pending' OR b.expires_at > now())
+        AND to_char(b.start_time, 'HH24:MI') = ANY($4::text[])
+      GROUP BY b.tour_date
       HAVING COUNT(*) > 0
-      ORDER BY day;
+      ORDER BY b.tour_date;
       `,
       [tourId, from.trim(), to.trim(), candidateSlots]
     );
