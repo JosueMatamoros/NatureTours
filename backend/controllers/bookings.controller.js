@@ -11,6 +11,8 @@ function slotsForTour(tourId) {
   return TOUR1_SLOTS;
 }
 
+const BOOKING_HOLD_MINUTES = 20;
+
 export async function createBooking(req, res) {
   const parsed = createBookingSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -53,14 +55,14 @@ export async function createBooking(req, res) {
 
     const created = await client.query(
       `
-      insert into bookings (tour_id, tour_date, start_time, guests, status)
-      values ($1, $2::date, $3::time, $4, 'pending')
+      insert into bookings (tour_id, tour_date, start_time, guests, status, expires_at)
+      values ($1, $2::date, $3::time, $4, 'pending', now() + ($5 || ' minutes')::interval)
       returning
         id, tour_id, tour_date, start_time, guests,
         subtotal, paypal_fee, total,
         status, expires_at, created_at, updated_at, deposit_amount;
       `,
-      [tourId, tourDate, startTime, guests]
+      [tourId, tourDate, startTime, guests, BOOKING_HOLD_MINUTES]
     );
 
     return res.status(201).json({ ok: true, id: created.rows[0].id });
@@ -128,7 +130,7 @@ export async function validateBooking(req, res) {
 
   const r = await pool.query(
     `
-    select id, status, created_at
+    select id, status, expires_at
     from bookings
     where id = $1
     `,
@@ -142,11 +144,10 @@ export async function validateBooking(req, res) {
     return res.json({ ok: true, valid: false, reason: "not_pending" });
   }
 
-  const created = new Date(booking.created_at).getTime();
+  const expiresAt = new Date(booking.expires_at).getTime();
   const now = Date.now();
-  const tenMinutes = 10 * 60 * 1000;
 
-  const expired = now - created > tenMinutes;
+  const expired = !Number.isFinite(expiresAt) || now >= expiresAt;
 
   if (expired) {
     await pool.query(
@@ -161,6 +162,6 @@ export async function validateBooking(req, res) {
     return res.json({ ok: true, valid: false, reason: "expired" });
   }
 
-  const msLeft = tenMinutes - (now - created);
+  const msLeft = Math.max(0, expiresAt - now);
   return res.json({ ok: true, valid: true, msLeft });
 }

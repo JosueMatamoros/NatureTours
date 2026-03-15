@@ -16,7 +16,7 @@ export default function TimeoutModal({ open, onClose, onHelp }) {
               Time out
             </h3>
             <p className="mt-1 text-sm text-gray-600">
-              You have a maximum of <span className="font-semibold">10 minutes</span> to pay for your reservation.
+              You have a maximum of <span className="font-semibold">20 minutes</span> to pay for your reservation.
               Otherwise, it will be released for other customers.
             </p>
 

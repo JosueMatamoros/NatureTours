@@ -43,6 +43,8 @@ function isSameLocalDayYMD(ymd, dateObj) {
 }
 
 export default function ReserveTourCard({ tour }) {
+  const whatsappPhoneE164 = "50689893335";
+
   const [slot, setSlot] = useState(null);
   const [guests, setGuests] = useState(1);
   const [selectedDate, setSelectedDate] = useState(undefined);
@@ -150,6 +152,20 @@ export default function ReserveTourCard({ tour }) {
   const isComplete = Boolean(
     selectedDate && slot && !isSelectedBlocked && !isSelectedPastByClock
   );
+
+  const customScheduleWhatsAppUrl = useMemo(() => {
+    if (!selectedDate) return null;
+
+    const tourName = tour?.title || tour?.name || "the tour";
+    const message =
+      `Hello! I selected ${selectedDate} for ${tourName}. ` +
+      "Do you have a custom time schedule available for that day? " +
+      "I would also like to request extra options not listed on the booking page.";
+
+    return `https://wa.me/${whatsappPhoneE164}?text=${encodeURIComponent(
+      message
+    )}`;
+  }, [selectedDate, tour]);
 
   async function handleConfirm() {
     setError("");
@@ -331,6 +347,17 @@ export default function ReserveTourCard({ tour }) {
                   </span>
                 ) : null}
               </p>
+            ) : null}
+
+            {customScheduleWhatsAppUrl ? (
+              <a
+                href={customScheduleWhatsAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+              >
+                Ask for a custom tour on WhatsApp
+              </a>
             ) : null}
           </section>
         )}

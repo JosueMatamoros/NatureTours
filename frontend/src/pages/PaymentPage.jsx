@@ -1,5 +1,5 @@
 // src/pages/PaymentPage.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiLock, FiDollarSign } from "react-icons/fi";
 import { TbLogout2 } from "react-icons/tb";
 
@@ -12,12 +12,15 @@ import OrderSummaryBox from "../components/payment/OrderSummaryBox";
 import DepositToggleCard from "../components/payment/DepositToggleCard";
 import SinpeInfoCard from "../components/payment/SinpeInfoCard";
 import PaymentPanel from "../components/payment/PaymentPanel";
+import HoldSpotCountdown from "../components/payment/HoldSpotCountdown";
 import Collapse from "../components/ui/Collapse";
 import { getBookingById } from "../../services/bookings.api";
 import { createPayment } from "../../services/payments.api";
 import CancelBookingModal from "../components/ui/CancelBookingModal";
 import { expireBooking } from "../../services/bookings.api";
 import TimeoutModal from "../components/ui/TimeoutModal";
+
+const HOLD_WINDOW_MS = 20 * 60 * 1000;
 
 export default function PaymentPage() {
   const { bookingId } = useParams();
@@ -54,6 +57,8 @@ export default function PaymentPage() {
   const [pendingNav, setPendingNav] = useState(null);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [showTimeout, setShowTimeout] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(null);
+  const [timedOut, setTimedOut] = useState(false);
 
   const shouldBlockExit = Boolean(
     bookingId &&
@@ -178,6 +183,61 @@ export default function PaymentPage() {
     return `${pct.toFixed(1)}%`;
   }, [subtotal, paypalFee]);
 
+  const holdDeadlineMs = useMemo(() => {
+    if (!booking) return null;
+
+    const expiresAt = Date.parse(booking.expires_at ?? "");
+    if (Number.isFinite(expiresAt)) return expiresAt;
+
+    const createdAt = Date.parse(booking.created_at ?? "");
+    if (Number.isFinite(createdAt)) return createdAt + HOLD_WINDOW_MS;
+
+    return null;
+  }, [booking]);
+
+  const handleBookingTimeout = useCallback(async () => {
+    if (!bookingId || timedOut || paymentCompleted) return;
+
+    setTimedOut(true);
+
+    try {
+      await expireBooking(bookingId);
+    } catch (e) {
+      console.error("expireBooking on timeout error:", e);
+    } finally {
+      setBooking((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "expired",
+            }
+          : prev
+      );
+      setShowTimeout(true);
+    }
+  }, [bookingId, timedOut, paymentCompleted]);
+
+  useEffect(() => {
+    if (!holdDeadlineMs || booking?.status !== "pending" || paymentCompleted) {
+      setSecondsLeft(null);
+      return;
+    }
+
+    const tick = () => {
+      const next = Math.max(0, Math.floor((holdDeadlineMs - Date.now()) / 1000));
+      setSecondsLeft(next);
+
+      if (next === 0) {
+        void handleBookingTimeout();
+      }
+    };
+
+    tick();
+    const intervalId = setInterval(tick, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [holdDeadlineMs, booking?.status, paymentCompleted, handleBookingTimeout]);
+
   if (loadingBooking) {
     return (
       <main className="min-h-screen bg-white grid place-items-center px-6">
@@ -209,6 +269,7 @@ export default function PaymentPage() {
             <FiLock className="h-4 w-4" />
             Secure and encrypted payment
           </p>
+
         </div>
       </header>
       <TimeoutModal
@@ -257,13 +318,21 @@ export default function PaymentPage() {
           {/* LEFT */}
 
           <div className="relative rounded-2xl border border-gray-200 bg-white shadow-sm ">
-            <button
-              type="button"
-              onClick={() => openExitModal(null)}
-              className="absolute -top-12 inline-flex items-center justify-center h-10 w-10 z-10 rounded-full bg-white border border-red-200 text-red-600 hover:text-red-700 hover:border-red-300 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-red-500/30"
-            >
-              <TbLogout2 className="h-5 w-5" />
-            </button>
+            <div className="absolute -top-12 left-0 right-0 z-10 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => openExitModal(null)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white border border-red-200 text-red-600 hover:text-red-700 hover:border-red-300 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-red-500/30"
+              >
+                <TbLogout2 className="h-5 w-5" />
+              </button>
+
+              {booking?.status === "pending" &&
+                !paymentCompleted &&
+                Number.isInteger(secondsLeft) && (
+                  <HoldSpotCountdown secondsLeft={secondsLeft} />
+                )}
+            </div>
 
             <div className="px-8 pt-7 pb-5  ">
               <h2 className="text-xl font-semibold text-gray-900 ">
@@ -307,7 +376,7 @@ export default function PaymentPage() {
                 onCustomerId={(id) => {
                   setCustomerId(id);
                 }}
-                onTimeout={() => setShowTimeout(true)}
+                onTimeout={handleBookingTimeout}
                 onSuccess={async (summary) => {
                   try {
                     setPaymentCompleted(true);
@@ -388,7 +457,7 @@ export default function PaymentPage() {
                       onCustomerId={(id) => {
                         setCustomerId(id);
                       }}
-                      onTimeout={() => setShowTimeout(true)}
+                      onTimeout={handleBookingTimeout}
                       onSuccess={async (summary) => {
                         try {
                           setPaymentCompleted(true);
