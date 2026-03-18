@@ -260,7 +260,7 @@ export default function PaymentPage() {
 
   return (
     <main className="min-h-screen bg-white">
-      <header className="px-6 pt-10 pb-6">
+      <header className="px-6 pt-10 pb-10">
         <div className="mx-auto max-w-6xl text-center">
           <h1 className="text-3xl font-bold text-gray-900">
             Complete Your Booking

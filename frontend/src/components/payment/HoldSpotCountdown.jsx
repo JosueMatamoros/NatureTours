@@ -8,7 +8,7 @@ export default function HoldSpotCountdown({ secondsLeft = 0 }) {
   const seconds = safeSeconds % 60;
 
   return (
-    <div className="flex h-10 min-w-0 items-center mt-4 md:mt-0">
+    <div className="flex h-10 min-w-0 items-center">
       <p className="truncate text-sm font-semibold text-slate-700 sm:text-base">
         Spot on hold
         <span className="text-red-600">{` ${pad(minutes)}:${pad(seconds)}`}</span>
