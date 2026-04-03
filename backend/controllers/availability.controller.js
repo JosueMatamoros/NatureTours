@@ -6,11 +6,20 @@ const TOUR1_SLOTS = ["18:00", "20:00"];
 // Tour 2: slots fijos
 const TOUR2_SLOTS = ["08:00", "12:00", "15:00"];
 const TOUR2_CAPACITY = 16;
+const MIN_BOOKING_LEAD_TIME_MS = 2 * 60 * 60 * 1000;
 
 function slotsForTour(tourId) {
   if (tourId === 1) return TOUR1_SLOTS;
   if (tourId === 2) return TOUR2_SLOTS;
   return TOUR1_SLOTS;
+}
+
+function getBlockedLeadTimeSlots(date, candidateSlots) {
+  const slotCutoffMs = Date.now() + MIN_BOOKING_LEAD_TIME_MS;
+  return candidateSlots.filter((slot) => {
+    const slotMs = new Date(`${date}T${slot}:00`).getTime();
+    return Number.isFinite(slotMs) && slotMs <= slotCutoffMs;
+  });
 }
 
 export async function getBlockedByRange(req, res) {
@@ -138,6 +147,35 @@ export async function getBlockedByRange(req, res) {
         const date = String(r.date).trim();
         const arr = Array.isArray(r.blocked) ? r.blocked : JSON.parse(r.blocked);
         map.set(date, new Set(arr.map((s) => String(s).trim())));
+      }
+    }
+
+    const today = new Date();
+    const todayYMD = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    if (todayYMD >= from.trim() && todayYMD <= to.trim()) {
+      const leadTimeBlocked = getBlockedLeadTimeSlots(todayYMD, candidateSlots);
+
+      if (leadTimeBlocked.length > 0) {
+        if (!map.has(todayYMD)) {
+          map.set(todayYMD, new Set());
+        }
+
+        for (const slot of leadTimeBlocked) {
+          map.get(todayYMD).add(slot);
+        }
+
+        if (tourId === 2) {
+          if (!slotRemainingMap.has(todayYMD)) {
+            const bySlot = new Map();
+            for (const slot of candidateSlots) bySlot.set(slot, TOUR2_CAPACITY);
+            slotRemainingMap.set(todayYMD, bySlot);
+          }
+
+          const bySlot = slotRemainingMap.get(todayYMD);
+          for (const slot of leadTimeBlocked) {
+            bySlot.set(slot, 0);
+          }
+        }
       }
     }
 

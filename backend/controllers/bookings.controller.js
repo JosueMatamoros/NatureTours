@@ -5,6 +5,7 @@ import { createBookingSchema, bookingIdSchema} from "../schemas/bookings.schema.
 const TOUR1_SLOTS = ["18:00", "20:00"];
 const TOUR2_SLOTS = ["08:00", "12:00", "15:00"];
 const TOUR2_CAPACITY = 16;
+const MIN_BOOKING_LEAD_TIME_MS = 2 * 60 * 60 * 1000;
 
 function slotsForTour(tourId) {
   if (tourId === 1) return TOUR1_SLOTS;
@@ -27,6 +28,16 @@ export async function createBooking(req, res) {
     return res.status(400).json({
       ok: false,
       message: "Ese horario no es valido para este tour.",
+    });
+  }
+
+  const bookingStartMs = new Date(`${tourDate}T${startTime}:00`).getTime();
+  const minLeadTimeMs = Date.now() + MIN_BOOKING_LEAD_TIME_MS;
+
+  if (!Number.isFinite(bookingStartMs) || bookingStartMs <= minLeadTimeMs) {
+    return res.status(400).json({
+      ok: false,
+      message: "Las reservas deben hacerse con al menos 2 horas de anticipación.",
     });
   }
 

@@ -17,6 +17,19 @@ const fixedSlotsTour2 = [
   { id: 3, startHour: 15, label: "3:00 PM - 5:00 PM" },
 ];
 
+const MIN_BOOKING_LEAD_TIME_MS = 2 * 60 * 60 * 1000;
+
+function parseLocalDateTime(ymd, startTime) {
+  if (!ymd || !startTime) return NaN;
+  return new Date(`${ymd}T${startTime}:00`).getTime();
+}
+
+function isWithinMinimumLeadTime(ymd, startTime) {
+  const slotTime = parseLocalDateTime(ymd, startTime);
+  if (!Number.isFinite(slotTime)) return false;
+  return slotTime - Date.now() <= MIN_BOOKING_LEAD_TIME_MS;
+}
+
 function monthRangeYMD(dateObj) {
   const y = dateObj.getFullYear();
   const m = dateObj.getMonth(); // 0-based
@@ -179,11 +192,12 @@ export default function ReserveTourCard({ tour }) {
   }, [tourId]);
 
   const isTodaySelected = selectedDate && isSameLocalDayYMD(selectedDate, now);
-  const currentHour = now.getHours();
 
-  const isSelectedPastByClock =
-    Boolean(isTodaySelected && selectedSlot?.startHour != null) &&
-    selectedSlot.startHour <= currentHour;
+  const isSelectedWithinLeadTime = Boolean(
+    selectedDate &&
+      selectedSlot?.startTime &&
+      isWithinMinimumLeadTime(selectedDate, selectedSlot.startTime)
+  );
 
   const isSelectedBlocked = selectedSlot?.startTime
     ? blockedSlotsForSelectedDay.has(selectedSlot.startTime)
@@ -193,7 +207,7 @@ export default function ReserveTourCard({ tour }) {
     selectedDate &&
       slot &&
       !isSelectedBlocked &&
-      !isSelectedPastByClock &&
+      !isSelectedWithinLeadTime &&
       (!isTour2 || guests <= maxGuestsSelectable)
   );
 
@@ -231,12 +245,8 @@ export default function ReserveTourCard({ tour }) {
     }
     if (!selectedDate || !selectedSlot?.startTime) return;
 
-    const now2 = new Date();
-    const isToday2 = isSameLocalDayYMD(selectedDate, now2);
-    const currentHour2 = now2.getHours();
-
-    if (isToday2 && selectedSlot.startHour <= currentHour2) {
-      setError("Ese horario ya pasó. Elegí otro.");
+    if (isWithinMinimumLeadTime(selectedDate, selectedSlot.startTime)) {
+      setError("Las reservas deben hacerse con al menos 2 horas de anticipación.");
       return;
     }
 
@@ -351,8 +361,10 @@ export default function ReserveTourCard({ tour }) {
               {visibleSlots.map((t) => {
                 const active = slot === t.id;
 
-                // Regla de reloj para "HOY": deshabilitar <= hora actual
-                const isPastByClock = Boolean(isTodaySelected) && t.startHour <= currentHour;
+                const isPastByClock = isWithinMinimumLeadTime(
+                  selectedDate,
+                  t.startTime
+                );
 
                 const isBlocked =
                   blockedSlotsForSelectedDay.has(t.startTime) || isPastByClock;
@@ -405,7 +417,7 @@ export default function ReserveTourCard({ tour }) {
                 <span className="font-semibold text-gray-700">
                   {selectedSlot?.label}
                 </span>
-                {isSelectedBlocked || isSelectedPastByClock ? (
+                {isSelectedBlocked || isSelectedWithinLeadTime ? (
                   <span className="ml-2 font-semibold text-red-600">
                     (Not available)
                   </span>
