@@ -1,4 +1,9 @@
 import { pool } from "../db.js";
+import {
+  nowPlusMsInBusinessZone,
+  parseBookingDateTimeMs,
+  todayYmdInBusinessZone,
+} from "../utils/businessTime.js";
 
 // Tour 1: slots fijos
 const TOUR1_SLOTS = ["18:00", "20:00"];
@@ -15,9 +20,9 @@ function slotsForTour(tourId) {
 }
 
 function getBlockedLeadTimeSlots(date, candidateSlots) {
-  const slotCutoffMs = Date.now() + MIN_BOOKING_LEAD_TIME_MS;
+  const slotCutoffMs = nowPlusMsInBusinessZone(MIN_BOOKING_LEAD_TIME_MS).toMillis();
   return candidateSlots.filter((slot) => {
-    const slotMs = new Date(`${date}T${slot}:00`).getTime();
+    const slotMs = parseBookingDateTimeMs(date, slot);
     return Number.isFinite(slotMs) && slotMs <= slotCutoffMs;
   });
 }
@@ -150,8 +155,7 @@ export async function getBlockedByRange(req, res) {
       }
     }
 
-    const today = new Date();
-    const todayYMD = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const todayYMD = todayYmdInBusinessZone();
     if (todayYMD >= from.trim() && todayYMD <= to.trim()) {
       const leadTimeBlocked = getBlockedLeadTimeSlots(todayYMD, candidateSlots);
 

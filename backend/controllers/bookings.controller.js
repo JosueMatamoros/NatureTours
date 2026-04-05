@@ -1,6 +1,10 @@
 // src/controllers/bookings.controller.js
 import { pool } from "../db.js";
 import { createBookingSchema, bookingIdSchema} from "../schemas/bookings.schema.js";
+import {
+  nowPlusMsInBusinessZone,
+  parseBookingDateTimeMs,
+} from "../utils/businessTime.js";
 
 const TOUR1_SLOTS = ["18:00", "20:00"];
 const TOUR2_SLOTS = ["08:00", "12:00", "15:00"];
@@ -31,8 +35,8 @@ export async function createBooking(req, res) {
     });
   }
 
-  const bookingStartMs = new Date(`${tourDate}T${startTime}:00`).getTime();
-  const minLeadTimeMs = Date.now() + MIN_BOOKING_LEAD_TIME_MS;
+  const bookingStartMs = parseBookingDateTimeMs(tourDate, startTime);
+  const minLeadTimeMs = nowPlusMsInBusinessZone(MIN_BOOKING_LEAD_TIME_MS).toMillis();
 
   if (!Number.isFinite(bookingStartMs) || bookingStartMs <= minLeadTimeMs) {
     return res.status(400).json({
