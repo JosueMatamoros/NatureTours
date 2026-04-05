@@ -2,15 +2,58 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FiCopy, FiCheck } from "react-icons/fi";
 import { getPayments } from "../../services/payments.api";
 
+const BUSINESS_TIME_ZONE = "America/Costa_Rica";
+const MONTH_NAMES_ES = [
+  "ene",
+  "feb",
+  "mar",
+  "abr",
+  "may",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "oct",
+  "nov",
+  "dic",
+];
+
+function getTodayYmdInTimeZone(timeZone = BUSINESS_TIME_ZONE) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const value = (type) => parts.find((part) => part.type === type)?.value ?? "00";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+function shiftYmd(ymd, days) {
+  if (!ymd || typeof ymd !== "string" || ymd.length < 10) return "";
+  const base = new Date(`${ymd.slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(base.getTime())) return "";
+  base.setUTCDate(base.getUTCDate() + days);
+  return base.toISOString().slice(0, 10);
+}
+
+function getBookingDateYmd(p) {
+  return String(p?.booking?.fecha ?? "").slice(0, 10);
+}
+
+function getBookingSortKey(p) {
+  const date = getBookingDateYmd(p);
+  const time = String(p?.booking?.hora ?? "00:00").slice(0, 5);
+  return `${date}T${time}`;
+}
+
 function formatDate(isoStr) {
   if (!isoStr) return "-";
-  const d = new Date(isoStr);
-  return d.toLocaleDateString("es-CR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "America/Costa_Rica",
-  });
+  const date = String(isoStr).slice(0, 10);
+  const [year, month, day] = date.split("-");
+  if (!year || !month || !day) return isoStr;
+  return `${day} ${MONTH_NAMES_ES[Number(month) - 1] ?? month} ${year}`;
 }
 
 function formatTimeFromBooking(fechaIso, horaStr) {
@@ -37,20 +80,6 @@ function formatTimeFromBooking(fechaIso, horaStr) {
   });
 }
 
-function getBookingDateTimeMs(p) {
-  const fechaIso = p?.booking?.fecha;
-  if (!fechaIso) return 0;
-
-  const d = new Date(fechaIso);
-
-  const horaStr = p?.booking?.hora;
-  if (horaStr) {
-    const [hh, mm] = horaStr.split(":");
-    d.setHours(Number(hh), Number(mm), 0, 0);
-  }
-  return d.getTime();
-}
-
 function CopyButton({ text, label = "Copiar", truncate = true }) {
   const [copied, setCopied] = useState(false);
 
@@ -69,7 +98,7 @@ function CopyButton({ text, label = "Copiar", truncate = true }) {
   return (
     <div className="flex items-center justify-center gap-1">
       <span
-        className="font-mono text-xs text-gray-700 bg-gray-100 rounded px-2 py-0.5 cursor-pointer select-all max-w-[90px] truncate inline-block"
+        className="font-mono text-xs text-gray-700 bg-gray-100 rounded px-2 py-0.5 cursor-pointer select-all max-w-22.5 truncate inline-block"
         title={text}
         onClick={handleCopy}
       >
@@ -101,14 +130,16 @@ export default function ReservacionesPage() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedRange, setSelectedRange] = useState("today");
+  const todayYmd = useMemo(() => getTodayYmdInTimeZone(), []);
+  const tomorrowYmd = useMemo(() => shiftYmd(todayYmd, 1), [todayYmd]);
 
   useEffect(() => {
     getPayments()
       .then((res) => {
         const pagos = (res.payments || [])
           .slice()
-          .sort((a, b) => getBookingDateTimeMs(b) - getBookingDateTimeMs(a));
+          .sort((a, b) => getBookingSortKey(b).localeCompare(getBookingSortKey(a)));
         setPayments(pagos);
         setLoading(false);
       })
@@ -118,28 +149,31 @@ export default function ReservacionesPage() {
       });
   }, []);
 
-  const months = useMemo(() => {
-    const set = new Set();
-    for (const p of payments) {
-      const fechaIso = p?.booking?.fecha;
-      if (!fechaIso) continue;
-      const d = new Date(fechaIso);
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      set.add(ym);
-    }
-    return Array.from(set).sort((a, b) => b.localeCompare(a));
-  }, [payments]);
-
-  const filteredPayments = useMemo(() => {
-    if (selectedMonth === "all") return payments;
+  const visiblePayments = useMemo(() => {
     return payments.filter((p) => {
-      const fechaIso = p?.booking?.fecha;
-      if (!fechaIso) return false;
-      const d = new Date(fechaIso);
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      return ym === selectedMonth;
+      const fechaYmd = getBookingDateYmd(p);
+      if (!fechaYmd || fechaYmd < todayYmd) return false;
+      if (selectedRange === "today") return fechaYmd === todayYmd;
+      if (selectedRange === "tomorrow") return fechaYmd === tomorrowYmd;
+      return fechaYmd >= todayYmd;
     });
-  }, [payments, selectedMonth]);
+  }, [payments, selectedRange, todayYmd, tomorrowYmd]);
+
+  const counts = useMemo(() => {
+    let todayCount = 0;
+    let tomorrowCount = 0;
+    let futureCount = 0;
+
+    for (const p of payments) {
+      const fechaYmd = getBookingDateYmd(p);
+      if (!fechaYmd || fechaYmd < todayYmd) continue;
+      futureCount += 1;
+      if (fechaYmd === todayYmd) todayCount += 1;
+      if (fechaYmd === tomorrowYmd) tomorrowCount += 1;
+    }
+
+    return { todayCount, tomorrowCount, futureCount };
+  }, [payments, todayYmd, tomorrowYmd]);
 
   if (loading)
     return (
@@ -156,38 +190,55 @@ export default function ReservacionesPage() {
     );
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4">
-      <div className="bg-white rounded-xl shadow border border-gray-200 p-6 w-full">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6">
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-linear-to-br from-white via-emerald-50/70 to-amber-50/60 p-4 sm:p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+        <div className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-emerald-500 via-lime-400 to-amber-400" />
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-emerald-700 mb-1">
+            <p className="mb-2 inline-flex rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 shadow-sm">
+              Panel de Reservaciones
+            </p>
+            <h2 className="text-3xl font-black tracking-tight text-slate-900 mb-1">
               Historial de Pagos
             </h2>
-            <p className="text-gray-500">
-              Lista completa de todas las transacciones
+            <p className="max-w-2xl text-sm text-slate-600">
+              Hoy es la vista principal. Puedes revisar mañana o ver todas las reservaciones futuras.
             </p>
           </div>
-          <div className="flex gap-2 items-center">
-            <select
-              className="border rounded px-2 py-1 text-sm text-gray-700 focus:outline-emerald-500"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+          <div className="grid gap-2 rounded-2xl border border-white/70 bg-white/75 p-2 shadow-sm sm:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => setSelectedRange("today")}
+              className={`rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
+                selectedRange === "today"
+                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/30"
+                  : "bg-transparent text-slate-700 hover:bg-emerald-50"
+              }`}
             >
-              <option value="all">Todos los meses</option>
-              {months.map((m) => {
-                const [year, month] = m.split("-");
-                const date = new Date(`${year}-${month}-01T00:00:00`);
-                return (
-                  <option key={m} value={m}>
-                    {date.toLocaleString("es-CR", {
-                      month: "long",
-                      year: "numeric",
-                      timeZone: "America/Costa_Rica",
-                    })}
-                  </option>
-                );
-              })}
-            </select>
+              Hoy <span className="ml-1 opacity-80">({counts.todayCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedRange("tomorrow")}
+              className={`rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
+                selectedRange === "tomorrow"
+                  ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+                  : "bg-transparent text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              Mañana <span className="ml-1 opacity-80">({counts.tomorrowCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedRange("all")}
+              className={`rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
+                selectedRange === "all"
+                  ? "bg-amber-500 text-white shadow-lg shadow-amber-500/30"
+                  : "bg-transparent text-slate-700 hover:bg-amber-50"
+              }`}
+            >
+              Todos <span className="ml-1 opacity-80">({counts.futureCount})</span>
+            </button>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -199,6 +250,9 @@ export default function ReservacionesPage() {
                 </th>
                 <th className="text-center text-xs font-semibold text-gray-500 pb-2">
                   Cliente
+                </th>
+                <th className="text-center text-xs font-semibold text-gray-500 pb-2">
+                  Teléfono
                 </th>
                 <th className="text-center text-xs font-semibold text-gray-500 pb-2">
                   Monto
@@ -218,17 +272,17 @@ export default function ReservacionesPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredPayments.length === 0 && (
+              {visiblePayments.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-6 text-gray-400">
-                    No hay pagos registrados.
+                  <td colSpan={8} className="text-center py-6 text-gray-400">
+                    No hay reservaciones para este filtro.
                   </td>
                 </tr>
               )}
-              {filteredPayments.map((p) => (
+              {visiblePayments.map((p) => (
                 <tr
                   key={p.id}
-                  className="border-b last:border-0 hover:bg-emerald-50 group transition text-center align-middle"
+                  className="border-b last:border-0 hover:bg-emerald-50/70 group transition text-center align-middle"
                 >
                   <td className="py-3 px-2 align-middle">
                     <CopyButton text={p.id} label="Copiar ID" />
@@ -239,6 +293,17 @@ export default function ReservacionesPage() {
                         <span className="text-gray-400">-</span>
                       )}
                     </div>
+                  </td>
+                  <td className="py-3 px-2 align-middle">
+                    {p.customer?.phone ? (
+                      <CopyButton
+                        text={p.customer.phone}
+                        label="Copiar teléfono"
+                        truncate={false}
+                      />
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="py-3 px-2 align-middle">
                     <span className="font-bold text-emerald-700 text-sm">

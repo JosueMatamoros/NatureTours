@@ -210,7 +210,8 @@ export async function getAllPayments(req, res) {
       b.guests             AS guests,
 
       c.id                 AS customer_id,
-      c.name               AS customer_name
+      c.name               AS customer_name,
+      c.phone              AS customer_phone
     FROM payments p
     JOIN bookings b ON b.id = p.booking_id
     LEFT JOIN customers c ON c.id = p.customer_id
@@ -239,7 +240,7 @@ export async function getAllPayments(req, res) {
         },
 
         customer: r.customer_id
-          ? { id: r.customer_id, name: r.customer_name }
+          ? { id: r.customer_id, name: r.customer_name, phone: r.customer_phone }
           : null,
       })),
     });
