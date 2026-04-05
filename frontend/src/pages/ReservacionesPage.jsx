@@ -222,8 +222,8 @@ export default function ReservacionesPage() {
               onClick={() => setSelectedRange("tomorrow")}
               className={`rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
                 selectedRange === "tomorrow"
-                  ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
-                  : "bg-transparent text-slate-700 hover:bg-slate-100"
+                  ? "bg-orange-200 text-orange-900 shadow-lg shadow-orange-200/50"
+                  : "bg-transparent text-slate-700 hover:bg-orange-50"
               }`}
             >
               Mañana <span className="ml-1 opacity-80">({counts.tomorrowCount})</span>
