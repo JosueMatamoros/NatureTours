@@ -45,6 +45,31 @@ export async function getBlockedByRange(req, res) {
   const totalSlots = candidateSlots.length;
   const dayCapacity = tourId === 2 ? TOUR2_CAPACITY : totalSlots;
 
+  // Fetch slot overrides separately so a missing table doesn't break availability
+  const overrideMap = new Map();
+  try {
+    const ovRows = await pool.query(
+      `SELECT to_char(tour_date, 'YYYY-MM-DD') AS date,
+              to_char(start_time, 'HH24:MI') AS start_time,
+              capacity_override
+       FROM tour_slot_overrides
+       WHERE tour_id = $1 AND tour_date BETWEEN $2::date AND $3::date`,
+      [tourId, from.trim(), to.trim()]
+    );
+    for (const r of ovRows.rows) {
+      const d = String(r.date).trim();
+      const s = String(r.start_time).trim();
+      if (!overrideMap.has(d)) overrideMap.set(d, new Map());
+      overrideMap.get(d).set(s, Number(r.capacity_override));
+    }
+  } catch (_) {
+    // table may not exist yet — continue with no overrides
+  }
+
+  function phantomGuests(date, slot) {
+    return overrideMap.get(date)?.get(slot) ?? 0;
+  }
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -124,11 +149,14 @@ export async function getBlockedByRange(req, res) {
         const date = String(r.date).trim();
         const startTime = String(r.start_time).trim();
         const guestsTaken = Number(r.guests_taken ?? 0);
-        const remaining = Math.max(0, TOUR2_CAPACITY - guestsTaken);
+        const phantom = phantomGuests(date, startTime);
+        const remaining = Math.max(0, TOUR2_CAPACITY - guestsTaken - phantom);
 
         if (!slotRemainingMap.has(date)) {
           const bySlot = new Map();
-          for (const slot of candidateSlots) bySlot.set(slot, TOUR2_CAPACITY);
+          for (const slot of candidateSlots) {
+            bySlot.set(slot, Math.max(0, TOUR2_CAPACITY - phantomGuests(date, slot)));
+          }
           slotRemainingMap.set(date, bySlot);
         }
 
@@ -143,7 +171,7 @@ export async function getBlockedByRange(req, res) {
       for (const [date, bySlot] of slotRemainingMap.entries()) {
         let dayRemaining = 0;
         for (const slot of candidateSlots) {
-          dayRemaining += Number(bySlot.get(slot) ?? TOUR2_CAPACITY);
+          dayRemaining += Number(bySlot.get(slot) ?? Math.max(0, TOUR2_CAPACITY - phantomGuests(date, slot)));
         }
         remainingMap.set(date, dayRemaining);
       }
@@ -171,7 +199,9 @@ export async function getBlockedByRange(req, res) {
         if (tourId === 2) {
           if (!slotRemainingMap.has(todayYMD)) {
             const bySlot = new Map();
-            for (const slot of candidateSlots) bySlot.set(slot, TOUR2_CAPACITY);
+            for (const slot of candidateSlots) {
+              bySlot.set(slot, Math.max(0, TOUR2_CAPACITY - phantomGuests(todayYMD, slot)));
+            }
             slotRemainingMap.set(todayYMD, bySlot);
           }
 
@@ -201,9 +231,13 @@ export async function getBlockedByRange(req, res) {
                   slot,
                   isAdminOrFullyBlockedWithoutRows
                     ? 0
-                    : Number(slotRemainingMap.get(date)?.get(slot) ?? TOUR2_CAPACITY),
+                    : Number(slotRemainingMap.get(date)?.get(slot) ?? Math.max(0, TOUR2_CAPACITY - phantomGuests(date, slot))),
                 ])
               )
+            : undefined;
+        const slotCap =
+          tourId === 2
+            ? Object.fromEntries(candidateSlots.map((slot) => [slot, TOUR2_CAPACITY]))
             : undefined;
         return {
           date,
@@ -211,6 +245,7 @@ export async function getBlockedByRange(req, res) {
           isFull: blocked.length >= totalSlots,
           remaining: remainingMap.get(date) ?? dayCapacity,
           slotRemaining,
+          slotCapacity: slotCap,
         };
       });
 
@@ -220,9 +255,11 @@ export async function getBlockedByRange(req, res) {
 
         let dayRemaining = 0;
         const slotRemaining = {};
+        const slotCap = {};
         for (const slot of candidateSlots) {
-          const value = Number(bySlot.get(slot) ?? TOUR2_CAPACITY);
+          const value = Number(bySlot.get(slot) ?? Math.max(0, TOUR2_CAPACITY - phantomGuests(date, slot)));
           slotRemaining[slot] = value;
+          slotCap[slot] = TOUR2_CAPACITY;
           dayRemaining += value;
         }
 
@@ -232,6 +269,7 @@ export async function getBlockedByRange(req, res) {
           isFull: false,
           remaining: dayRemaining,
           slotRemaining,
+          slotCapacity: slotCap,
         });
       }
       days.sort((a, b) => a.date.localeCompare(b.date));

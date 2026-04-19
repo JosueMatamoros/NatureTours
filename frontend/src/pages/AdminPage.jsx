@@ -1,7 +1,7 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { FiCalendar, FiMapPin } from "react-icons/fi";
+import { FiCalendar, FiMapPin, FiSliders } from "react-icons/fi";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -49,6 +49,23 @@ export default function AdminPage() {
               <span className="mt-1 block text-2xl font-bold">Cabalgatas</span>
               <span className="mt-2 block text-sm text-slate-950/80">
                 Administrar bloqueos y días no disponibles.
+              </span>
+            </span>
+          </button>
+          <button
+            className="group flex items-center gap-4 rounded-3xl border border-sky-300/20 bg-linear-to-br from-sky-500 to-blue-700 px-6 py-6 text-left text-white shadow-[0_18px_40px_rgba(14,165,233,0.25)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(14,165,233,0.35)] focus:outline-none focus:ring-4 focus:ring-sky-300/30"
+            onClick={() => navigate("/matamoros/slots")}
+          >
+            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white/15 text-white transition-transform duration-300 group-hover:scale-105">
+              <FiSliders className="h-7 w-7" />
+            </span>
+            <span className="flex-1">
+              <span className="block text-sm uppercase tracking-[0.22em] text-sky-50/80">
+                Slots
+              </span>
+              <span className="mt-1 block text-2xl font-bold">Disponibilidad</span>
+              <span className="mt-2 block text-sm text-sky-50/90">
+                Bloquear días o ajustar espacios por horario.
               </span>
             </span>
           </button>

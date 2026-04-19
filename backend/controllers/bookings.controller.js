@@ -79,7 +79,24 @@ export async function createBooking(req, res) {
       );
 
       const guestsTaken = Number(slotLoadQ.rows[0]?.guests_taken ?? 0);
-      const remaining = Math.max(0, TOUR2_CAPACITY - guestsTaken);
+
+      // Check phantom guests override — acts as a phantom reservation reducing available slots
+      let phantom = 0;
+      try {
+        const overrideQ = await client.query(
+          `SELECT capacity_override FROM tour_slot_overrides
+           WHERE tour_id = $1 AND tour_date = $2::date AND start_time = $3::time`,
+          [tourId, tourDate, startTime]
+        );
+        if (overrideQ.rowCount > 0) {
+          phantom = Number(overrideQ.rows[0].capacity_override);
+        }
+      } catch (_) {
+        // table may not exist yet — no phantom guests
+      }
+
+      const effectiveCapacity = TOUR2_CAPACITY - phantom;
+      const remaining = Math.max(0, effectiveCapacity - guestsTaken);
 
       if (guests > remaining) {
         await client.query("ROLLBACK");
@@ -90,7 +107,7 @@ export async function createBooking(req, res) {
               ? "Ese horario ya no tiene espacios disponibles."
               : `Solo quedan ${remaining} espacios disponibles para ese horario.`,
           remaining,
-          capacity: TOUR2_CAPACITY,
+          capacity: effectiveCapacity,
         });
       }
     } else {

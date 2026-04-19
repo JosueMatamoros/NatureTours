@@ -21,6 +21,7 @@ const ToursPage = lazy(() => import("./pages/ToursPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ReservacionesPage = lazy(() => import("./pages/ReservacionesPage"));
 const CabalgatasPage = lazy(() => import("./pages/CabalgatasPage"));
+const SlotsPage = lazy(() => import("./pages/SlotsPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 
 function PageLoader() {
@@ -149,6 +150,14 @@ const router = createBrowserRouter([
             element: (
               <LazyPage>
                 <CabalgatasPage />
+              </LazyPage>
+            ),
+          },
+          {
+            path: "/matamoros/slots",
+            element: (
+              <LazyPage>
+                <SlotsPage />
               </LazyPage>
             ),
           },

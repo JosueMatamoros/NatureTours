@@ -26,10 +26,11 @@ router.post("/login", loginLimiter, (req, res) => {
       { expiresIn: "2h" }
     );
 
+    const isProd = process.env.NODE_ENV === "production";
     res.cookie("admin_token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
       maxAge: 2 * 60 * 60 * 1000,
       path: "/",
     });

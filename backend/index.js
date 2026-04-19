@@ -11,6 +11,7 @@ import paymentsRoutes from "./routes/payments.routes.js";
 import availabilityRoutes from "./routes/availability.routes.js";
 import emailRoutes from "./routes/email.routes.js";
 import availabilityBlocksRoutes from "./routes/availability.blocks.routes.js";
+import slotOverridesRoutes from "./routes/availability.slot-overrides.routes.js";
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.use("/api/payments", paymentsRoutes);
 app.use("/api/availability", availabilityRoutes);
 app.use("/api/email", emailRoutes);
 app.use("/api/availability/blocks", availabilityBlocksRoutes);
+app.use("/api/availability/slot-overrides", slotOverridesRoutes);
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => console.log(`API running on http://localhost:${port}`));

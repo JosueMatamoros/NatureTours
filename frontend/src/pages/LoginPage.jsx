@@ -21,7 +21,7 @@ export default function LoginPage() {
 
     try {
       await api.post("/api/auth/login", { username, password });
-      navigate(from, { replace: true });
+      window.location.href = from;
     } catch (e) {
       setErr(e.message || "Login inválido");
     } finally {
