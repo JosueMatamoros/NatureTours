@@ -68,7 +68,7 @@ export const TOURS = {
     name: "Horseback Riding Tour",
     capacity: 16,
     duration: "2 hours",
-    price: 30,
+    price: 40,
     oldPrice: null,
     currency: "$",
     per: "/ person",

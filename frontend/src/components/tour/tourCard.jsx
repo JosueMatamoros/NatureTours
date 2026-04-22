@@ -67,15 +67,11 @@ export default function TourCard({
             </p>
           </div>
 
-          <div className="flex gap-2">
+          {/* Mobile: column, Desktop: row */}
+          <div className="flex flex-col gap-2 lg:flex-row">
             <Stat icon={HiOutlineClock} label="Duration" value={stats.duration} />
             <Stat icon={HiOutlineUsers} label="Group" value={stats.group} />
-            <Stat
-              icon={HiOutlineMapPin}
-              label="Location"
-              value={stats.location}
-              allowWrap
-            />
+            <Stat icon={HiOutlineMapPin} label="Location" value={stats.location} allowWrap />
           </div>
 
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -139,37 +135,42 @@ function Stat({ icon: Icon, label, value, allowWrap = false }) {
   const { first, rest, hasSplit } = splitValue(value);
 
   return (
-    <div className="flex-1 min-w-0 rounded-[28px] bg-[#F5F5F0] p-2 lg:p-4 text-center">
-      <div className="flex justify-center">
-        <Icon className="h-7 w-7 text-emerald-700" />
+    <div className="lg:flex-1 min-w-0 rounded-2xl bg-[#F5F5F0]">
+      {/* Mobile: full-width row */}
+      <div className="flex lg:hidden items-center gap-3 px-4 py-3">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-emerald-100">
+          <Icon className="h-4 w-4 text-emerald-700" />
+        </span>
+        <span className="text-xs font-medium text-slate-400 w-16 shrink-0 uppercase tracking-wide">{label}</span>
+        <span className="text-sm font-semibold text-slate-800">
+          {hasSplit ? `${first} ${rest}` : value}
+        </span>
       </div>
 
-      <div className="mt-3 text-[15px] text-slate-500">{label}</div>
-
-      {hasSplit ? (
-        <div className="mt-2 font-semibold text-slate-900">
-          <div className="flex flex-col items-center sm:hidden">
-            <span className="text-md">{first}</span>
-            <span className="text-md">{rest}</span>
-          </div>
-
-          <div className="hidden sm:block text-md">
+      {/* Desktop: vertical card */}
+      <div className="hidden lg:block p-4 text-center">
+        <div className="flex justify-center">
+          <Icon className="h-7 w-7 text-emerald-700" />
+        </div>
+        <div className="mt-3 text-[15px] text-slate-500">{label}</div>
+        {hasSplit ? (
+          <div className="mt-2 font-semibold text-slate-900 text-md">
             {first} {rest}
           </div>
-        </div>
-      ) : (
-        <div
-          className={[
-            "mt-2 font-semibold text-slate-900 text-md",
-            allowWrap
-              ? "whitespace-normal leading-snug break-words line-clamp-2 [text-wrap:balance]"
-              : "truncate",
-          ].join(" ")}
-          title={typeof value === "string" ? value : undefined}
-        >
-          {value}
-        </div>
-      )}
+        ) : (
+          <div
+            className={[
+              "mt-2 font-semibold text-slate-900 text-md",
+              allowWrap
+                ? "whitespace-normal leading-snug break-words line-clamp-2 [text-wrap:balance]"
+                : "truncate",
+            ].join(" ")}
+            title={typeof value === "string" ? value : undefined}
+          >
+            {value}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

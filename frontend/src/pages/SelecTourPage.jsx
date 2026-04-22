@@ -11,7 +11,7 @@ const TOURS = [
       "Enjoy a memorable horseback riding experience along scenic forest trails and crystal-clear rivers. Ride through lush tropical landscapes, spot local wildlife, and take in the natural beauty that makes Costa Rica truly unforgettable.",
     image: "/tours/familyHorsebackRiding.webp",
     duration: "2 hours",
-    price: 30,
+    price: 40,
     objectPosition: "object-center",
     available: true,
     cta: "Select date",
