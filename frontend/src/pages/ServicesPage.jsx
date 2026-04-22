@@ -44,9 +44,9 @@ export default function ServicesPage() {
 
           {/* Title */}
           <div className="text-center">
-            <h2 className="mt-4 text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
+            <h1 className="mt-4 text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
               Additional Services
-            </h2>
+            </h1>
 
             <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-emerald-900/70 sm:text-lg">
               While we don&apos;t offer these services directly, we work with{" "}

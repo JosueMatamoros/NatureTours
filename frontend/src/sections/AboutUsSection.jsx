@@ -1,14 +1,14 @@
 import React from "react";
 import { FaHeart } from "react-icons/fa";
 
-export default function AboutUsSection() {
+export default function AboutUsSection({ headingLevel: Heading = "h2" }) {
   return (
     <section className="w-full">
       <div className="mx-auto max-w-6xl px-4 sm:py-14 py-2  sm:px-6 lg:px-8">
         {/* Title */}
-        <h2 className="mt-6  text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
+        <Heading className="mt-6  text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
           A dream born from the heart
-        </h2>
+        </Heading>
 
         {/* Main content */}
         <div className="mt-6 sm:mt-12 grid gap-10 lg:grid-cols-2 lg:items-start">

@@ -62,7 +62,7 @@ export default function Footer() {
           {/* Copyright & Credits */}
           <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between">
             <p className="text-sm text-gray-500">
-              © {new Date().getFullYear()} <span className="hover:text-gray-700 transition-colors"><Link to="/matamoros">Nature Tours La Fortuna</Link></span>.
+              © {new Date().getFullYear()} Nature Tours La Fortuna.
             </p>
             <div className="flex flex-col items-center gap-1 sm:items-end">
               <p className="text-sm text-gray-500">

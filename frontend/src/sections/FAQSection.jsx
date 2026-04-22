@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HiPlus, HiMinus } from "react-icons/hi2";
 
 const FAQS = [
@@ -78,6 +78,24 @@ function FAQItem({ question, answer }) {
 }
 
 export default function FAQSection() {
+  useEffect(() => {
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": FAQS.map(({ question, answer }) => ({
+        "@type": "Question",
+        "name": question,
+        "acceptedAnswer": { "@type": "Answer", "text": answer },
+      })),
+    };
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.id = "faq-schema";
+    script.textContent = JSON.stringify(schema);
+    document.head.appendChild(script);
+    return () => document.getElementById("faq-schema")?.remove();
+  }, []);
+
   // Split FAQs into two columns
   const midpoint = Math.ceil(FAQS.length / 2);
   const leftColumn = FAQS.slice(0, midpoint);

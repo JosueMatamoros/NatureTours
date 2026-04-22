@@ -6,9 +6,9 @@ const TourVideo = () => {
         <p className="mb-2 text-sm tracking-widest text-gray-500 uppercase">
           Costa Rica Experience
         </p>
-        <h2 className="text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
+        <h1 className="text-center text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
           Horseback Riding Tour
-        </h2>
+        </h1>
       </div>
 
       {/* Frame del video - YouTube Embed */}

@@ -25,7 +25,7 @@ export default function AboutUs() {
     <div>
       <Navbar variant="solid" />
       <div className="-mt-3 sm:-mt-10">
-        <AboutUsSection />
+        <AboutUsSection headingLevel="h1" />
       </div>
       <HorsesSection />
       <DogSection />

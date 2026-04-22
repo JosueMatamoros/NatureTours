@@ -5,9 +5,11 @@
 User-agent: *
 Allow: /
 
-# Pages we don't want indexed (payment/transaction pages)
+# Pages we don't want indexed (payment/transaction/admin pages)
 Disallow: /payment/
 Disallow: /success/
+Disallow: /matamoros
+Disallow: /login
 
 # Sitemap location
 Sitemap: https://naturetourslafortuna.com/sitemap.xml
@@ -20,6 +22,8 @@ User-agent: Googlebot
 Allow: /
 Disallow: /payment/
 Disallow: /success/
+Disallow: /matamoros
+Disallow: /login
 
 # Image bots
 User-agent: Googlebot-Image
