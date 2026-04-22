@@ -80,6 +80,7 @@ export default function Navbar({ variant = "overlay" }) {
           ].join(" ")}
           style={{ backgroundColor: isOverlay ? "rgba(7,16,9,0.82)" : "rgba(255,255,255,0.95)" }}
         >
+
           {/* Brand */}
           <Link to="/" className="flex items-center gap-2.5 shrink-0">
             <img

@@ -12,6 +12,7 @@ import WhatsAppButton from "../components/ui/WhatsAppButton";
 import TourImagesBento from "../components/tour/TourImagesBento";
 import HorsesSection from "../sections/HorsesSection";
 import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
+import InstagramSection from "../sections/InstagramSection";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export default function Home() {
       <Navbar variant="overlay" />
       <HeroSection />
       <ToursSection />
+       <InstagramSection />
       <TourImagesBento
         images={[
           "/tours/bento/image1.webp",
@@ -56,6 +58,7 @@ export default function Home() {
           <FiArrowRight className="h-4 w-4" />
         </button>
       </div>
+
       <MapSection />
       <FAQSection />
       <Footer />
