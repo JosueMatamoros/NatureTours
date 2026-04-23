@@ -8,7 +8,7 @@ export default function HeroSection() {
     <section
       className="
         relative h-dvh overflow-hidden
-        bg-[url('/hero/rioHorse.webp')] bg-cover bg-[center_15%]
+        bg-[url('/hero/rioHorse_mobile.webp')] bg-cover bg-[center_15%]
         md:bg-[url('/hero/tourGroup.webp')] md:bg-cover md:bg-[center_20%]
       "
     >
