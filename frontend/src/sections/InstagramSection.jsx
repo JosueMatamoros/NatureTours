@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FiInstagram, FiArrowRight } from "react-icons/fi";
 
 const INSTAGRAM_HANDLE = "nature_tours_la_fortuna";
@@ -6,36 +6,31 @@ const INSTAGRAM_URL    = `https://www.instagram.com/${INSTAGRAM_HANDLE}/`;
 
 const BEHOLD_WIDGET_ID = "NWyktedasPPj1n2HLcwE";
 
-// Placeholder posts shown before Behold is configured
-const PLACEHOLDER_IMAGES = [
-  "/horses/caballo1.webp",
-  "/horses/caballo3.webp",
-  "/horses/caballo5.webp",
-  "/horses/caballo7.webp",
-  "/horses/caballo9.webp",
-  "/horses/caballo11.webp",
+const STATIC_POSTS = [
+  { src: "/instagram/post1.webp", alt: "Nature Tours La Fortuna adventure 1" },
+  { src: "/instagram/post2.webp", alt: "Nature Tours La Fortuna adventure 2" },
+  { src: "/instagram/post3.webp", alt: "Nature Tours La Fortuna adventure 3" },
 ];
 
-function PlaceholderFeed() {
+function StaticInstagramGrid() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-      {PLACEHOLDER_IMAGES.map((src, i) => (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {STATIC_POSTS.map((post, i) => (
         <a
           key={i}
           href={INSTAGRAM_URL}
           target="_blank"
           rel="noreferrer"
-          className="group relative aspect-square overflow-hidden rounded-2xl bg-gray-100"
+          className="group relative aspect-square overflow-hidden rounded-xl bg-gray-100 block"
         >
           <img
-            src={src}
-            alt={`Nature Tours La Fortuna Instagram post ${i + 1}`}
+            src={post.src}
+            alt={post.alt}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
-          {/* hover overlay */}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-300 group-hover:bg-black/30">
-            <FiInstagram className="h-8 w-8 text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-300 group-hover:bg-black/40">
+            <FiInstagram className="h-9 w-9 text-white opacity-0 drop-shadow transition-opacity duration-300 group-hover:opacity-100" />
           </div>
         </a>
       ))}
@@ -73,11 +68,24 @@ function BeholdFeed({ widgetId }) {
 }
 
 export default function InstagramSection() {
+  // null = checking, true = reachable, false = 403/error
+  const [beholdOk, setBeholdOk] = useState(null);
+
+  useEffect(() => {
+    if (!BEHOLD_WIDGET_ID) {
+      setBeholdOk(false);
+      return;
+    }
+    fetch(`https://feeds.behold.so/${BEHOLD_WIDGET_ID}`)
+      .then((res) => setBeholdOk(res.ok))
+      .catch(() => setBeholdOk(false));
+  }, []);
+
   return (
-    <section className="py-16 sm:py-20 hidden">
+    <section className="py-16 sm:py-20">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
 
-        {/* Header */}
+        {/* Header — always visible */}
         <div className="mb-10 flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
           <div>
             <div className="mb-2 inline-flex items-center gap-2 text-sm font-medium text-gray-400 uppercase tracking-widest">
@@ -105,21 +113,8 @@ export default function InstagramSection() {
         </div>
 
         {/* Feed */}
-        {BEHOLD_WIDGET_ID
-          ? <BeholdFeed widgetId={BEHOLD_WIDGET_ID} />
-          : <PlaceholderFeed />
-        }
-
-        {/* Footer note when using placeholder */}
-        {!BEHOLD_WIDGET_ID && (
-          <p className="mt-6 text-center text-xs text-gray-400">
-            Preview using local photos — connect your Instagram at{" "}
-            <a href="https://behold.so" target="_blank" rel="noreferrer" className="underline hover:text-gray-600">
-              behold.so
-            </a>{" "}
-            to show your real feed.
-          </p>
-        )}
+        {beholdOk === true && <BeholdFeed widgetId={BEHOLD_WIDGET_ID} />}
+        {beholdOk === false && <StaticInstagramGrid />}
       </div>
     </section>
   );
