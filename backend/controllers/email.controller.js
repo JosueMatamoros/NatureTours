@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { pool } from "../db.js";
 
 // Configurar transporter de nodemailer
 const transporter = nodemailer.createTransport({
@@ -20,6 +21,7 @@ function generateReceiptHTML(receipt) {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "UTC",
   });
 
   const ROW = (label, value, isTotal = false) => `
@@ -114,10 +116,23 @@ function generateReceiptHTML(receipt) {
  */
 export async function sendReceiptEmail(req, res) {
   try {
-    const { receipt } = req.body;
+    const { receipt, paymentId } = req.body;
 
     if (!receipt) {
       return res.status(400).json({ ok: false, message: "Receipt data is required" });
+    }
+
+    // Idempotency: mark email_sent atomically; skip if already sent
+    if (paymentId) {
+      const mark = await pool.query(
+        `UPDATE payments SET email_sent = TRUE
+         WHERE id = $1 AND email_sent = FALSE
+         RETURNING id`,
+        [paymentId],
+      );
+      if (mark.rowCount === 0) {
+        return res.json({ ok: true, message: "Email already sent" });
+      }
     }
 
     const htmlContent = generateReceiptHTML(receipt);
@@ -126,6 +141,7 @@ export async function sendReceiptEmail(req, res) {
       year: "numeric",
       month: "short",
       day: "numeric",
+      timeZone: "UTC",
     });
 
     const sends = [

@@ -12,6 +12,7 @@ import availabilityRoutes from "./routes/availability.routes.js";
 import emailRoutes from "./routes/email.routes.js";
 import availabilityBlocksRoutes from "./routes/availability.blocks.routes.js";
 import slotOverridesRoutes from "./routes/availability.slot-overrides.routes.js";
+import { pool } from "./db.js";
 
 dotenv.config();
 
@@ -54,4 +55,12 @@ app.use("/api/availability/blocks", availabilityBlocksRoutes);
 app.use("/api/availability/slot-overrides", slotOverridesRoutes);
 
 const port = process.env.PORT || 4000;
-app.listen(port, () => console.log(`API running on http://localhost:${port}`));
+
+pool.query(
+  `ALTER TABLE payments ADD COLUMN IF NOT EXISTS email_sent BOOLEAN NOT NULL DEFAULT FALSE`
+).then(() => {
+  app.listen(port, () => console.log(`API running on http://localhost:${port}`));
+}).catch((err) => {
+  console.error("Migration failed:", err);
+  process.exit(1);
+});

@@ -60,7 +60,7 @@ export default function Success() {
   useEffect(() => {
     if (receipt && !emailSentRef.current) {
       emailSentRef.current = true;
-      sendReceiptEmail(receipt).catch((err) => {
+      sendReceiptEmail(receipt, receipt.reservaId).catch((err) => {
         console.error("Error sending receipt email:", err);
       });
     }
@@ -127,6 +127,7 @@ export default function Success() {
                 year: "numeric",
                 month: "long",
                 day: "numeric",
+                timeZone: "UTC",
               })}
             />
             <Row
