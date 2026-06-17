@@ -75,6 +75,12 @@ function generateReceiptHTML(receipt) {
             <div style="display:inline-block;background:linear-gradient(135deg,#d1fae5 0%,#ecfdf5 100%);color:#065f46;padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;letter-spacing:0.3px;box-shadow:0 2px 6px rgba(4,120,87,0.14);">✓ Payment Confirmed</div>
           </div>
 
+          <!-- Customer -->
+          ${(receipt.customerName || receipt.customerPhone) ? SECTION('Customer', [
+            receipt.customerName ? ROW('Name', receipt.customerName) : '',
+            receipt.customerPhone ? ROW('Phone', receipt.customerPhone) : '',
+          ].join('')) : ''}
+
           <!-- Booking Details -->
           ${SECTION('Booking Details', [
             ROW('Tour', receipt.tour),

@@ -9,6 +9,7 @@ export default function ReceiptPDF({ receipt }) {
       year: "numeric",
       month: "long",
       day: "numeric",
+      timeZone: "UTC",
     });
 
     const content = `
