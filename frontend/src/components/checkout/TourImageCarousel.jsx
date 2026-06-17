@@ -1,20 +1,48 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 export default function TourImageCarousel({ images = [] }) {
   const [current, setCurrent] = useState(0);
+  const thumbRefs = useRef([]);
+
+  // On phones: hide desktopOnly images and apply the mobile-specific order
+  const isMobile = useIsMobile();
+  const visibleImages = useMemo(() => {
+    const normalized = images.map((img) =>
+      typeof img === "string" ? { src: img } : img
+    );
+
+    if (!isMobile) return normalized.map((img) => img.src);
+
+    return normalized
+      .filter((img) => !img.desktopOnly)
+      .sort((a, b) => (a.mobileOrder ?? 0) - (b.mobileOrder ?? 0))
+      .map((img) => img.src);
+  }, [images, isMobile]);
 
   useEffect(() => {
     setCurrent(0);
-  }, [images]);
+  }, [visibleImages.length]);
+
+  // Keep the active thumbnail in view as the carousel advances
+  useEffect(() => {
+    const el = thumbRefs.current[current];
+    if (el) {
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [current]);
 
   const prev = () =>
-    setCurrent((c) => (c === 0 ? images.length - 1 : c - 1));
+    setCurrent((c) => (c === 0 ? visibleImages.length - 1 : c - 1));
 
   const next = () =>
-    setCurrent((c) => (c === images.length - 1 ? 0 : c + 1));
+    setCurrent((c) => (c === visibleImages.length - 1 ? 0 : c + 1));
 
-  if (!images.length) return null;
+  if (!visibleImages.length) return null;
 
   return (
     <section className="space-y-4">
@@ -23,7 +51,7 @@ export default function TourImageCarousel({ images = [] }) {
           className="flex transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${current * 100}%)` }}
         >
-          {images.map((img, i) => (
+          {visibleImages.map((img, i) => (
             <img
               key={i}
               src={img}
@@ -39,7 +67,7 @@ export default function TourImageCarousel({ images = [] }) {
         <ArrowButton side="right" onClick={next} icon={FiChevronRight} />
 
         <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
-          {images.map((_, i) => (
+          {visibleImages.map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrent(i)}
@@ -53,13 +81,14 @@ export default function TourImageCarousel({ images = [] }) {
         </div>
       </div>
 
-      <div className="flex gap-3">
-        {images.map((img, i) => (
+      <div className="flex gap-3 overflow-x-auto scroll-smooth p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {visibleImages.map((img, i) => (
           <button
             key={i}
+            ref={(el) => (thumbRefs.current[i] = el)}
             onClick={() => setCurrent(i)}
             className={[
-              "relative overflow-hidden rounded-lg transition-all duration-300",
+              "relative shrink-0 overflow-hidden rounded-lg transition-all duration-300",
               i === current ? "ring-2 ring-emerald-600" : "opacity-80 hover:opacity-100",
             ].join(" ")}
           >
@@ -74,6 +103,23 @@ export default function TourImageCarousel({ images = [] }) {
       </div>
     </section>
   );
+}
+
+function useIsMobile(breakpoint = 768) {
+  const query = `(max-width: ${breakpoint - 1}px)`;
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(query).matches
+  );
+
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const onChange = (e) => setIsMobile(e.matches);
+    mql.addEventListener("change", onChange);
+    setIsMobile(mql.matches);
+    return () => mql.removeEventListener("change", onChange);
+  }, [query]);
+
+  return isMobile;
 }
 
 function ArrowButton({ side, onClick, icon: Icon }) {

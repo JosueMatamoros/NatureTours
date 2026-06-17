@@ -12,7 +12,7 @@ const TOURS = [
     image: "/tours/familyHorsebackRiding.webp",
     duration: "2 hours",
     price: 40,
-    objectPosition: "object-center",
+    objectPosition: "object-[center_65%]",
     available: true,
     cta: "Select date",
   },
