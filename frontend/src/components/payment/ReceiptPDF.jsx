@@ -101,6 +101,24 @@ export default function ReceiptPDF({ receipt }) {
           <div class="success-badge">✓ Payment Confirmed</div>
         </div>
 
+        ${(receipt.customerName || receipt.customerPhone) ? `
+        <div class="section">
+          <div class="section-title">Customer</div>
+          ${receipt.customerName ? `
+          <div class="row">
+            <span class="row-label">Name</span>
+            <span class="row-value">${receipt.customerName}</span>
+          </div>
+          ` : ''}
+          ${receipt.customerPhone ? `
+          <div class="row">
+            <span class="row-label">Phone</span>
+            <span class="row-value">${receipt.customerPhone}</span>
+          </div>
+          ` : ''}
+        </div>
+        ` : ''}
+
         <div class="section">
           <div class="section-title">Booking Details</div>
           <div class="row">
