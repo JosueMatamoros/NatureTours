@@ -19,8 +19,8 @@ export default function ReceiptPDF({ receipt }) {
     const peopleText = hasBreakdown
       ? [
           `${adults} adult${adults === 1 ? "" : "s"}`,
-          children > 0 ? `${children} child${children === 1 ? "" : "ren"} (4–12)` : "",
-          babies > 0 ? `${babies} bab${babies === 1 ? "y" : "ies"} (under 4)` : "",
+          children > 0 ? `${children} child${children === 1 ? "" : "ren"}` : "",
+          babies > 0 ? `${babies} bab${babies === 1 ? "y" : "ies"}` : "",
         ]
           .filter(Boolean)
           .join(" · ")

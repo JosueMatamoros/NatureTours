@@ -26,6 +26,7 @@ app.use(express.json());
 // CORS
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174", // Vite usa este puerto cuando el 5173 está ocupado
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 

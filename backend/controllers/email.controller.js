@@ -24,8 +24,8 @@ function guestsBreakdownText(receipt) {
   }
 
   const parts = [`${adults} adult${adults === 1 ? "" : "s"}`];
-  if (children > 0) parts.push(`${children} child${children === 1 ? "" : "ren"} (4–12)`);
-  if (babies > 0) parts.push(`${babies} bab${babies === 1 ? "y" : "ies"} (under 4)`);
+  if (children > 0) parts.push(`${children} child${children === 1 ? "" : "ren"}`);
+  if (babies > 0) parts.push(`${babies} bab${babies === 1 ? "y" : "ies"}`);
   return parts.join(" · ");
 }
 
