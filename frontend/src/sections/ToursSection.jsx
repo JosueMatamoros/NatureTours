@@ -37,7 +37,7 @@ export default function ToursSection() {
           "Calm, well-trained horses",
           "All riding equipment included",
         ]}
-        price={40}
+        price={60}
         currency="$"
         per="/ person"
         onReserve={() =>

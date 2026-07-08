@@ -68,7 +68,9 @@ export const TOURS = {
     name: "Horseback Riding Tour",
     capacity: 16,
     duration: "2 hours",
-    price: 40,
+    price: 60, // adultos (13+)
+    childPrice: 40, // niños 4–12 años
+    // bebés (<4) gratis: van montados con un adulto
     oldPrice: null,
     currency: "$",
     per: "/ person",

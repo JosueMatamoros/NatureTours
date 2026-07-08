@@ -8,9 +8,43 @@ export default function OrderSummaryBox({
   feePercentText,
   showPaypalFeeInfo,
   setShowPaypalFeeInfo,
+  breakdown = null, // { adults, children, babies, adultPrice, childPrice }
 }) {
+  const hasBreakdown = Boolean(breakdown && breakdown.adults > 0);
+
   return (
     <div className="rounded-2xl bg-gray-50 px-6 py-5">
+      {hasBreakdown && (
+        <div className="mb-3 space-y-2 border-b border-gray-200 pb-3">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>
+              Adults ({breakdown.adults} × {fmt(breakdown.adultPrice)})
+            </span>
+            <span className="font-medium text-gray-900">
+              {fmt(breakdown.adults * breakdown.adultPrice)}
+            </span>
+          </div>
+
+          {breakdown.children > 0 && (
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>
+                Children ({breakdown.children} × {fmt(breakdown.childPrice)})
+              </span>
+              <span className="font-medium text-gray-900">
+                {fmt(breakdown.children * breakdown.childPrice)}
+              </span>
+            </div>
+          )}
+
+          {breakdown.babies > 0 && (
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>Babies ({breakdown.babies})</span>
+              <span className="font-medium text-emerald-600">Free</span>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center justify-between text-sm text-gray-600">
         <span>Subtotal</span>
         <span className="font-semibold text-gray-900">{fmt(subtotal)}</span>

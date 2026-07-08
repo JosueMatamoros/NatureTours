@@ -55,13 +55,61 @@ function isSameLocalDayYMD(ymd, dateObj) {
   return ymd === `${y}-${m}-${d}`;
 }
 
+function GuestCounterRow({
+  label,
+  sublabel,
+  value,
+  onDecrease,
+  onIncrease,
+  decreaseDisabled,
+  increaseDisabled,
+}) {
+  return (
+    <div className="flex items-center justify-between px-4 py-3">
+      <div>
+        <p className="text-sm font-medium text-gray-800">{label}</p>
+        <p className="text-xs text-gray-500">{sublabel}</p>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onDecrease}
+          disabled={decreaseDisabled}
+          className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 bg-white text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label={`Decrease ${label.toLowerCase()}`}
+        >
+          <FiMinus />
+        </button>
+
+        <span className="w-8 text-center text-base font-semibold text-gray-900">
+          {value}
+        </span>
+
+        <button
+          type="button"
+          onClick={onIncrease}
+          disabled={increaseDisabled}
+          className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 bg-white text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label={`Increase ${label.toLowerCase()}`}
+        >
+          <FiPlus />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ReserveTourCard({ tour }) {
   const whatsappPhoneE164 = "50689893335";
   const isTour2 = Number(tour?.id) === 2;
   const baseCapacity = isTour2 ? Number(tour?.capacity) || 16 : 12;
 
   const [slot, setSlot] = useState(null);
-  const [guests, setGuests] = useState(1);
+  // Desglose por edad: adultos (13+), niños (4–12) y bebés (<4, gratis).
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
+  const [babies, setBabies] = useState(0);
   const [selectedDate, setSelectedDate] = useState(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -87,7 +135,13 @@ export default function ReserveTourCard({ tour }) {
   const navigate = useNavigate();
   const tourId = Number(tour?.id);
 
-  const total = useMemo(() => tour.price * guests, [tour.price, guests]);
+  const childPrice = Number(tour?.childPrice ?? tour?.price) || 0;
+  // Los bebés van con un adulto: no pagan ni ocupan espacio.
+  const seats = adults + children;
+  const total = useMemo(
+    () => adults * tour.price + children * childPrice,
+    [tour.price, childPrice, adults, children]
+  );
 
   const timeSlots = useMemo(() => {
     if (tourId === 1) {
@@ -208,19 +262,34 @@ export default function ReserveTourCard({ tour }) {
       slot &&
       !isSelectedBlocked &&
       !isSelectedWithinLeadTime &&
-      (!isTour2 || guests <= maxGuestsSelectable)
+      seats <= maxGuestsSelectable
   );
 
+  // Ajustar el desglose cuando cambia la disponibilidad del slot.
   useEffect(() => {
     if (!isTour2) return;
 
     if (maxGuestsSelectable <= 0) {
-      setGuests(1);
+      setAdults(1);
+      setChildren(0);
+      setBabies(0);
       return;
     }
 
-    setGuests((prev) => Math.min(prev, maxGuestsSelectable));
+    setAdults((prev) => Math.max(1, Math.min(prev, maxGuestsSelectable)));
   }, [isTour2, maxGuestsSelectable]);
+
+  useEffect(() => {
+    if (!isTour2 || maxGuestsSelectable <= 0) return;
+    setChildren((prev) =>
+      Math.max(0, Math.min(prev, maxGuestsSelectable - adults))
+    );
+  }, [isTour2, maxGuestsSelectable, adults]);
+
+  // Cada bebé debe ir acompañado por un adulto.
+  useEffect(() => {
+    setBabies((prev) => Math.min(prev, adults));
+  }, [adults]);
 
   const customScheduleWhatsAppUrl = useMemo(() => {
     if (!selectedDate) return null;
@@ -255,7 +324,7 @@ export default function ReserveTourCard({ tour }) {
       return;
     }
 
-    if (isTour2 && guests > maxGuestsSelectable) {
+    if (isTour2 && seats > maxGuestsSelectable) {
       setError(
         maxGuestsSelectable <= 0
           ? "Ese horario ya no tiene espacios disponibles."
@@ -268,7 +337,9 @@ export default function ReserveTourCard({ tour }) {
       tourId,
       tourDate: selectedDate,
       startTime: selectedSlot.startTime,
-      guests,
+      adults,
+      children,
+      babies,
     };
 
     try {
@@ -310,8 +381,13 @@ export default function ReserveTourCard({ tour }) {
             <span className="text-2xl font-bold text-emerald-600">
               ${tour.price}
             </span>
-            <span className="text-sm text-gray-500">/ person</span>
+            <span className="text-sm text-gray-500">/ adult</span>
           </div>
+          {childPrice !== Number(tour.price) && (
+            <p className="text-xs text-gray-500">
+              Kids (4–12) ${childPrice} · Babies free
+            </p>
+          )}
         </div>
       </div>
 
@@ -449,50 +525,77 @@ export default function ReserveTourCard({ tour }) {
         <section className="space-y-3">
           <label className="flex items-center gap-2 text-sm font-semibold text-gray-800">
             <FiUsers className="h-4 w-4 text-emerald-600" />
-            Number of guests
+            Guests
           </label>
 
-          <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3">
-            <span className="text-sm text-gray-700">
-              {guests} {guests === 1 ? "guest" : "guests"}
-            </span>
+          <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+            <GuestCounterRow
+              label="Adults"
+              sublabel={`Ages 13+ · $${tour.price}`}
+              value={adults}
+              onDecrease={() => setAdults((a) => Math.max(1, a - 1))}
+              onIncrease={() => setAdults((a) => a + 1)}
+              decreaseDisabled={adults <= 1 || loading}
+              increaseDisabled={
+                seats >= maxGuestsSelectable || loading || maxGuestsSelectable <= 0
+              }
+            />
 
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setGuests((g) => Math.max(1, g - 1))}
-                disabled={guests <= 1 || loading}
-                className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 bg-white text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Decrease guests"
-              >
-                <FiMinus />
-              </button>
+            <GuestCounterRow
+              label="Children"
+              sublabel={`Ages 4–12 · $${childPrice}`}
+              value={children}
+              onDecrease={() => setChildren((c) => Math.max(0, c - 1))}
+              onIncrease={() => setChildren((c) => c + 1)}
+              decreaseDisabled={children <= 0 || loading}
+              increaseDisabled={
+                seats >= maxGuestsSelectable || loading || maxGuestsSelectable <= 0
+              }
+            />
 
-              <span className="w-8 text-center text-base font-semibold text-gray-900">
-                {guests}
-              </span>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setGuests((g) => Math.min(Math.max(1, maxGuestsSelectable), g + 1))
-                }
-                disabled={guests >= maxGuestsSelectable || loading || maxGuestsSelectable <= 0}
-                className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 bg-white text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Increase guests"
-              >
-                <FiPlus />
-              </button>
-            </div>
+            <GuestCounterRow
+              label="Babies"
+              sublabel="Under 4 · Free, rides with an adult"
+              value={babies}
+              onDecrease={() => setBabies((b) => Math.max(0, b - 1))}
+              onIncrease={() => setBabies((b) => Math.min(adults, b + 1))}
+              decreaseDisabled={babies <= 0 || loading}
+              increaseDisabled={babies >= adults || loading}
+            />
           </div>
         </section>
 
         <section className="rounded-xl bg-gray-50 px-4 py-4 text-sm">
-          <div className="flex justify-between text-gray-600">
-            <span>
-              ${tour.price} x {guests} {guests === 1 ? "guest" : "guests"}
-            </span>
-            <span className="font-medium text-gray-900">${total}</span>
+          <div className="space-y-2">
+            <div className="flex justify-between text-gray-600">
+              <span>
+                ${tour.price} x {adults} {adults === 1 ? "adult" : "adults"}
+              </span>
+              <span className="font-medium text-gray-900">
+                ${adults * tour.price}
+              </span>
+            </div>
+
+            {children > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>
+                  ${childPrice} x {children}{" "}
+                  {children === 1 ? "child" : "children"}
+                </span>
+                <span className="font-medium text-gray-900">
+                  ${children * childPrice}
+                </span>
+              </div>
+            )}
+
+            {babies > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>
+                  {babies} {babies === 1 ? "baby" : "babies"}
+                </span>
+                <span className="font-medium text-emerald-600">Free</span>
+              </div>
+            )}
           </div>
 
           <div className="mt-3 border-t border-gray-200 pt-3">

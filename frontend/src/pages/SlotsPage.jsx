@@ -174,8 +174,14 @@ function SlotRow({
     [reservations, slot]
   );
 
+  // seats = espacios ocupados (adultos + niños); los bebés van con un adulto y no cuentan
   const guestsTaken = useMemo(
-    () => slotReservations.reduce((sum, p) => sum + (Number(p.booking?.personas) || 0), 0),
+    () =>
+      slotReservations.reduce(
+        (sum, p) =>
+          sum + (Number(p.booking?.seats ?? p.booking?.personas) || 0),
+        0
+      ),
     [slotReservations]
   );
 
@@ -272,7 +278,12 @@ function SlotRow({
               <div key={p.id} className="text-xs bg-gray-50 rounded-lg px-3 py-2 border border-gray-100 flex flex-wrap items-center gap-2">
                 <span className="font-medium text-gray-800">{p.customer?.name || "–"}</span>
                 {p.customer?.phone && <span className="text-gray-500">{p.customer.phone}</span>}
-                <span className="ml-auto text-emerald-700 font-semibold">{p.booking?.personas ?? "?"} pers.</span>
+                <span className="ml-auto text-emerald-700 font-semibold">
+                  {p.booking?.personas ?? "?"} pers.
+                  {Number(p.booking?.children) > 0 || Number(p.booking?.babies) > 0
+                    ? ` (${p.booking.adults} adultos · ${p.booking.children} niños · ${p.booking.babies} bebés)`
+                    : ""}
+                </span>
               </div>
             ))}
           </div>

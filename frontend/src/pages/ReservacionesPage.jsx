@@ -331,6 +331,18 @@ export default function ReservacionesPage() {
                     <span className="text-sm font-semibold text-gray-800">
                       {p.booking?.personas ?? "-"}
                     </span>
+                    {(Number(p.booking?.children) > 0 ||
+                      Number(p.booking?.babies) > 0) && (
+                      <div className="text-[11px] text-gray-500 whitespace-nowrap">
+                        {p.booking.adults} adultos
+                        {Number(p.booking.children) > 0
+                          ? ` · ${p.booking.children} niños`
+                          : ""}
+                        {Number(p.booking.babies) > 0
+                          ? ` · ${p.booking.babies} bebés`
+                          : ""}
+                      </div>
+                    )}
                   </td>
                   <td className="py-3 px-2 align-middle">
                     {p.paypal?.orderId ? (

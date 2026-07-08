@@ -25,7 +25,9 @@ export async function createBooking(req, res) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
 
-  const { tourId, tourDate, startTime, guests } = parsed.data;
+  const { tourId, tourDate, startTime, adults, children, babies } = parsed.data;
+  // Espacios ocupados: los bebés van con un adulto y no cuentan para la capacidad.
+  const seats = adults + children;
   const allowedSlots = slotsForTour(tourId);
 
   if (!allowedSlots.includes(startTime)) {
@@ -98,7 +100,7 @@ export async function createBooking(req, res) {
       const effectiveCapacity = TOUR2_CAPACITY - phantom;
       const remaining = Math.max(0, effectiveCapacity - guestsTaken);
 
-      if (guests > remaining) {
+      if (seats > remaining) {
         await client.query("ROLLBACK");
         return res.status(409).json({
           ok: false,
@@ -135,16 +137,17 @@ export async function createBooking(req, res) {
       }
     }
 
+    // El trigger de la BD calcula guests (adults + children), subtotal, fee, total y deposit.
     const created = await client.query(
       `
-      insert into bookings (tour_id, tour_date, start_time, guests, status, expires_at)
-      values ($1, $2::date, $3::time, $4, 'pending', now() + ($5 || ' minutes')::interval)
+      insert into bookings (tour_id, tour_date, start_time, adults, children, babies, status, expires_at)
+      values ($1, $2::date, $3::time, $4, $5, $6, 'pending', now() + ($7 || ' minutes')::interval)
       returning
-        id, tour_id, tour_date, start_time, guests,
+        id, tour_id, tour_date, start_time, guests, adults, children, babies,
         subtotal, paypal_fee, total,
         status, expires_at, created_at, updated_at, deposit_amount;
       `,
-      [tourId, tourDate, startTime, guests, BOOKING_HOLD_MINUTES]
+      [tourId, tourDate, startTime, adults, children, babies, BOOKING_HOLD_MINUTES]
     );
 
     await client.query("COMMIT");
@@ -174,7 +177,9 @@ export async function getBookingById(req, res) {
       `
       select
         b.id, b.tour_id, t.name as tour_name, t.price as tour_price,
+        coalesce(t.child_price, t.price) as tour_child_price,
         b.tour_date, b.start_time, b.guests,
+        b.adults, b.children, b.babies,
         b.subtotal, b.paypal_fee, b.total,
         b.status, b.expires_at, b.created_at, b.updated_at, b.deposit_amount
       from bookings b

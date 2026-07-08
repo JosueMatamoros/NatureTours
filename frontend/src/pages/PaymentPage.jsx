@@ -510,6 +510,15 @@ export default function PaymentPage() {
                 feePercentText={feePercentText}
                 showPaypalFeeInfo={showPaypalFeeInfo}
                 setShowPaypalFeeInfo={setShowPaypalFeeInfo}
+                breakdown={{
+                  adults: Number(booking.adults) || 0,
+                  children: Number(booking.children) || 0,
+                  babies: Number(booking.babies) || 0,
+                  adultPrice: toMoney(booking.tour_price),
+                  childPrice: toMoney(
+                    booking.tour_child_price ?? booking.tour_price
+                  ),
+                }}
               />
 
               <DepositToggleCard

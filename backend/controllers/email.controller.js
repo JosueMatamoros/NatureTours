@@ -13,8 +13,35 @@ const transporter = nodemailer.createTransport({
 /**
  * Genera el HTML del recibo para el email — espejo exacto del PDF (ReceiptPDF.jsx)
  */
+function guestsBreakdownText(receipt) {
+  const adults = Number(receipt.adults ?? 0);
+  const children = Number(receipt.children ?? 0);
+  const babies = Number(receipt.babies ?? 0);
+
+  if (adults + children + babies === 0) {
+    // Reservas antiguas sin desglose
+    return `${receipt.personas} people`;
+  }
+
+  const parts = [`${adults} adult${adults === 1 ? "" : "s"}`];
+  if (children > 0) parts.push(`${children} child${children === 1 ? "" : "ren"} (4–12)`);
+  if (babies > 0) parts.push(`${babies} bab${babies === 1 ? "y" : "ies"} (under 4)`);
+  return parts.join(" · ");
+}
+
 function generateReceiptHTML(receipt) {
-  const subtotal = receipt.pricePerPerson * receipt.personas;
+  const adults = Number(receipt.adults ?? 0);
+  const children = Number(receipt.children ?? 0);
+  const babies = Number(receipt.babies ?? 0);
+  const hasBreakdown = adults + children + babies > 0;
+
+  const adultPrice = Number(receipt.pricePerPerson);
+  const childPrice = Number(receipt.childPrice ?? receipt.pricePerPerson);
+
+  // Subtotal real de la BD; fallback para recibos antiguos sin desglose
+  const subtotal = Number.isFinite(Number(receipt.subtotal))
+    ? Number(receipt.subtotal)
+    : receipt.pricePerPerson * receipt.personas;
   const remaining = receipt.mode === "deposit" ? subtotal - receipt.amount : 0;
 
   const fecha = new Date(receipt.fecha).toLocaleDateString("en-US", {
@@ -86,14 +113,23 @@ function generateReceiptHTML(receipt) {
             ROW('Tour', receipt.tour),
             ROW('Date', fecha),
             ROW('Time', receipt.hora.slice(0, 5)),
-            ROW('People', `${receipt.personas} people`),
+            ROW('People', guestsBreakdownText(receipt)),
           ].join(''))}
 
           <!-- Payment Information -->
           ${SECTION('Payment Information', [
             ROW('Payment Type', paymentBadge),
-            ROW('Price per person', `$${Number(receipt.pricePerPerson).toFixed(2)}`),
-            ROW(`Subtotal (${receipt.personas} × $${Number(receipt.pricePerPerson).toFixed(2)})`, `$${subtotal.toFixed(2)}`),
+            ...(hasBreakdown
+              ? [
+                  ROW(`Adults (${adults} × $${adultPrice.toFixed(2)})`, `$${(adults * adultPrice).toFixed(2)}`),
+                  children > 0 ? ROW(`Children (${children} × $${childPrice.toFixed(2)})`, `$${(children * childPrice).toFixed(2)}`) : '',
+                  babies > 0 ? ROW(`Babies (${babies})`, 'Free') : '',
+                ]
+              : [
+                  ROW('Price per person', `$${Number(receipt.pricePerPerson).toFixed(2)}`),
+                  ROW(`Subtotal (${receipt.personas} × $${Number(receipt.pricePerPerson).toFixed(2)})`, `$${subtotal.toFixed(2)}`),
+                ]),
+            hasBreakdown ? ROW('Subtotal', `$${subtotal.toFixed(2)}`) : '',
             ROW('Amount Paid', `$${Number(receipt.amount).toFixed(2)}`, true),
           ].join(''), remainingNote, true)}
 

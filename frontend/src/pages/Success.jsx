@@ -92,6 +92,28 @@ export default function Success() {
 
   if (!receipt) return null;
 
+  // Subtotal real de la reserva (adultos + niños; bebés gratis).
+  // Fallback para recibos antiguos sin desglose.
+  const subtotal = Number.isFinite(Number(receipt.subtotal))
+    ? Number(receipt.subtotal)
+    : Number(receipt.pricePerPerson) * receipt.personas;
+
+  const adults = Number(receipt.adults ?? 0);
+  const children = Number(receipt.children ?? 0);
+  const babies = Number(receipt.babies ?? 0);
+
+  const peopleText =
+    adults + children + babies > 0
+      ? [
+          `${adults} ${adults === 1 ? "adult" : "adults"}`,
+          children > 0 &&
+            `${children} ${children === 1 ? "child" : "children"}`,
+          babies > 0 && `${babies} ${babies === 1 ? "baby" : "babies"}`,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : `${receipt.personas} people`;
+
   return (
     <main className="min-h-screen bg-white px-6 py-12">
       <div className="mx-auto max-w-2xl space-y-8">
@@ -119,7 +141,7 @@ export default function Success() {
 
           <div className="space-y-4 text-sm">
             <Row icon={FiMapPin} label="TOUR" value={receipt.tour} />
-            <Row icon={FiUsers} label="PEOPLE" value={`${receipt.personas} people`} />
+            <Row icon={FiUsers} label="PEOPLE" value={peopleText} />
             <Row
               icon={FiCalendar}
               label="DATE"
@@ -177,7 +199,7 @@ export default function Success() {
                       : "border border-emerald-200 bg-emerald-50 text-emerald-800"
                   }`}
                 >
-                  {receipt.mode === "deposit" ? "50% Deposit" : "Full Payment"}
+                  {receipt.mode === "deposit" ? "20% Deposit" : "Full Payment"}
                 </span>
               }
             />
@@ -192,7 +214,7 @@ export default function Success() {
                 label="REMAINING BALANCE"
                 value={
                   <span className="text-amber-700">
-                    ${(Number(receipt.pricePerPerson) * receipt.personas - Number(receipt.amount)).toFixed(2)}
+                    ${(subtotal - Number(receipt.amount)).toFixed(2)}
                   </span>
                 }
               />
@@ -200,7 +222,7 @@ export default function Success() {
             <Row
               icon={FiDollarSign}
               label="TOUR TOTAL"
-              value={`$${(Number(receipt.pricePerPerson) * receipt.personas).toFixed(2)}`}
+              value={`$${subtotal.toFixed(2)}`}
             />
           </div>
 
@@ -208,7 +230,7 @@ export default function Success() {
             <p className="mt-4 text-xs text-amber-700 bg-amber-50 rounded-lg p-3 border border-amber-200">
               <strong>Note:</strong> The remaining balance of{" "}
               <span className="font-semibold">
-                ${(Number(receipt.pricePerPerson) * receipt.personas - Number(receipt.amount)).toFixed(2)}
+                ${(subtotal - Number(receipt.amount)).toFixed(2)}
               </span>{" "}
               is due on the day of the tour.
             </p>

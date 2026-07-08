@@ -2,8 +2,29 @@ import { FiDownload } from "react-icons/fi";
 
 export default function ReceiptPDF({ receipt }) {
   const generatePDF = () => {
-    const subtotal = receipt.pricePerPerson * receipt.personas;
+    const adults = Number(receipt.adults ?? 0);
+    const children = Number(receipt.children ?? 0);
+    const babies = Number(receipt.babies ?? 0);
+    const hasBreakdown = adults + children + babies > 0;
+
+    const adultPrice = Number(receipt.pricePerPerson);
+    const childPrice = Number(receipt.childPrice ?? receipt.pricePerPerson);
+
+    // Subtotal real de la BD; fallback para recibos antiguos sin desglose
+    const subtotal = Number.isFinite(Number(receipt.subtotal))
+      ? Number(receipt.subtotal)
+      : receipt.pricePerPerson * receipt.personas;
     const remaining = receipt.mode === "deposit" ? subtotal - receipt.amount : 0;
+
+    const peopleText = hasBreakdown
+      ? [
+          `${adults} adult${adults === 1 ? "" : "s"}`,
+          children > 0 ? `${children} child${children === 1 ? "" : "ren"} (4–12)` : "",
+          babies > 0 ? `${babies} bab${babies === 1 ? "y" : "ies"} (under 4)` : "",
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : `${receipt.personas} people`;
 
     const fecha = new Date(receipt.fecha).toLocaleDateString("en-US", {
       year: "numeric",
@@ -135,7 +156,7 @@ export default function ReceiptPDF({ receipt }) {
           </div>
           <div class="row">
             <span class="row-label">People</span>
-            <span class="row-value">${receipt.personas} people</span>
+            <span class="row-value">${peopleText}</span>
           </div>
         </div>
 
@@ -149,12 +170,31 @@ export default function ReceiptPDF({ receipt }) {
               </span>
             </span>
           </div>
+          ${hasBreakdown ? `
+          <div class="row">
+            <span class="row-label">Adults (${adults} × $${adultPrice.toFixed(2)})</span>
+            <span class="row-value">$${(adults * adultPrice).toFixed(2)}</span>
+          </div>
+          ${children > 0 ? `
+          <div class="row">
+            <span class="row-label">Children (${children} × $${childPrice.toFixed(2)})</span>
+            <span class="row-value">$${(children * childPrice).toFixed(2)}</span>
+          </div>
+          ` : ''}
+          ${babies > 0 ? `
+          <div class="row">
+            <span class="row-label">Babies (${babies})</span>
+            <span class="row-value">Free</span>
+          </div>
+          ` : ''}
+          ` : `
           <div class="row">
             <span class="row-label">Price per person</span>
-            <span class="row-value">$${receipt.pricePerPerson.toFixed(2)}</span>
+            <span class="row-value">$${adultPrice.toFixed(2)}</span>
           </div>
+          `}
           <div class="row">
-            <span class="row-label">Subtotal (${receipt.personas} × $${receipt.pricePerPerson.toFixed(2)})</span>
+            <span class="row-label">Subtotal</span>
             <span class="row-value">$${subtotal.toFixed(2)}</span>
           </div>
           <div class="row total-row">
