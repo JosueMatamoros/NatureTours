@@ -15,7 +15,7 @@ const FAQS = [
   {
     question: "Do children pay a different price for the tour?",
     answer:
-      "Yes. Adults (13 and older) pay $60, children from 4 to 12 years old ride their own horse and pay $40, and babies under 4 ride together with an adult at no cost.",
+      "Yes. Adults (13 and older) pay $50, children from 4 to 12 years old ride their own horse and pay $35, and babies under 4 ride together with an adult at no cost.",
   },
   {
     question: "Is the horseback riding tour safe?",
