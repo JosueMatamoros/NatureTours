@@ -131,8 +131,10 @@ export function generateReceiptHTML(receipt, reseller = null) {
     </tr>`
     : '';
 
+  // Apartado (deposit): la comisión solo se paga si los clientes llegan y
+  // pagan el saldo; si no se cobra la reserva, no hay comisión.
   const commissionNote = reseller && receipt.mode === 'deposit'
-    ? `<p style="color:#b91c1c;font-size:13px;margin-top:6px;">The commission is calculated on the full original sale, not the deposit.</p>`
+    ? `<p style="color:#b91c1c;font-size:13px;margin-top:6px;">⚠️ Commission payment is subject to the clients showing up and paying the remaining balance. Otherwise, this commission will not be paid, as the booking is not charged.</p>`
     : '';
 
   return `
@@ -190,7 +192,7 @@ export function generateReceiptHTML(receipt, reseller = null) {
             commissionRow,
             // Neto del dueño sobre la venta completa: subtotal (sin fee de
             // PayPal, que se lo queda PayPal) menos la comisión del reseller.
-            reseller ? ROW('After commission (PayPal fee excluded)', `$${(subtotal - reseller.commissionAmount).toFixed(2)}`, true) : '',
+            reseller ? ROW('After commission', `$${(subtotal - reseller.commissionAmount).toFixed(2)}`, true) : '',
           ].join(''), remainingNote + commissionNote, true)}
 
           <!-- Reference IDs -->
