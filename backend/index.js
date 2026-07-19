@@ -12,6 +12,7 @@ import availabilityRoutes from "./routes/availability.routes.js";
 import emailRoutes from "./routes/email.routes.js";
 import availabilityBlocksRoutes from "./routes/availability.blocks.routes.js";
 import slotOverridesRoutes from "./routes/availability.slot-overrides.routes.js";
+import resellersRoutes from "./routes/resellers.routes.js";
 import { pool } from "./db.js";
 
 dotenv.config();
@@ -54,6 +55,7 @@ app.use("/api/availability", availabilityRoutes);
 app.use("/api/email", emailRoutes);
 app.use("/api/availability/blocks", availabilityBlocksRoutes);
 app.use("/api/availability/slot-overrides", slotOverridesRoutes);
+app.use("/api/resellers", resellersRoutes);
 
 const port = process.env.PORT || 4000;
 

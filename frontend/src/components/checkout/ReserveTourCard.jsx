@@ -100,7 +100,9 @@ function GuestCounterRow({
   );
 }
 
-export default function ReserveTourCard({ tour }) {
+// `reseller` (opcional): { id, name, discount } — aplica el descuento del
+// reseller a los precios y asocia el booking a su id.
+export default function ReserveTourCard({ tour, reseller = null }) {
   const whatsappPhoneE164 = "50689893335";
   const isTour2 = Number(tour?.id) === 2;
   const baseCapacity = isTour2 ? Number(tour?.capacity) || 16 : 12;
@@ -135,12 +137,20 @@ export default function ReserveTourCard({ tour }) {
   const navigate = useNavigate();
   const tourId = Number(tour?.id);
 
-  const childPrice = Number(tour?.childPrice ?? tour?.price) || 0;
+  // Descuento del reseller: (30 - commission)%. Sin reseller no hay descuento.
+  const discountPct = Number(reseller?.discount) || 0;
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const applyDiscount = (p) => round2((Number(p) || 0) * (100 - discountPct) / 100);
+
+  const adultPrice = applyDiscount(tour?.price);
+  const childPrice = applyDiscount(tour?.childPrice ?? tour?.price);
+  // "45" se muestra tal cual; "31.5" se muestra "31.50".
+  const fmtPrice = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
   // Los bebés van con un adulto: no pagan ni ocupan espacio.
   const seats = adults + children;
   const total = useMemo(
-    () => adults * tour.price + children * childPrice,
-    [tour.price, childPrice, adults, children]
+    () => round2(adults * adultPrice + children * childPrice),
+    [adultPrice, childPrice, adults, children]
   );
 
   const timeSlots = useMemo(() => {
@@ -340,6 +350,7 @@ export default function ReserveTourCard({ tour }) {
       adults,
       children,
       babies,
+      resellerId: reseller?.id ?? null,
     };
 
     try {
@@ -378,14 +389,19 @@ export default function ReserveTourCard({ tour }) {
 
         <div className="text-right">
           <div className="flex items-baseline justify-end gap-1">
+            {discountPct > 0 && (
+              <span className="text-sm text-gray-400 line-through">
+                ${tour.price}
+              </span>
+            )}
             <span className="text-2xl font-bold text-emerald-600">
-              ${tour.price}
+              ${fmtPrice(adultPrice)}
             </span>
             <span className="text-sm text-gray-500">/ adult</span>
           </div>
-          {childPrice !== Number(tour.price) && (
+          {childPrice !== adultPrice && (
             <p className="text-xs text-gray-500">
-              Kids (4–12) ${childPrice} · Babies free
+              Kids (4–12) ${fmtPrice(childPrice)} · Babies free
             </p>
           )}
         </div>
@@ -531,7 +547,7 @@ export default function ReserveTourCard({ tour }) {
           <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
             <GuestCounterRow
               label="Adults"
-              sublabel={`Ages 13+ · $${tour.price}`}
+              sublabel={`Ages 13+ · $${fmtPrice(adultPrice)}`}
               value={adults}
               onDecrease={() => setAdults((a) => Math.max(1, a - 1))}
               onIncrease={() => setAdults((a) => a + 1)}
@@ -543,7 +559,7 @@ export default function ReserveTourCard({ tour }) {
 
             <GuestCounterRow
               label="Children"
-              sublabel={`Ages 4–12 · $${childPrice}`}
+              sublabel={`Ages 4–12 · $${fmtPrice(childPrice)}`}
               value={children}
               onDecrease={() => setChildren((c) => Math.max(0, c - 1))}
               onIncrease={() => setChildren((c) => c + 1)}
@@ -569,10 +585,10 @@ export default function ReserveTourCard({ tour }) {
           <div className="space-y-2">
             <div className="flex justify-between text-gray-600">
               <span>
-                ${tour.price} x {adults} {adults === 1 ? "adult" : "adults"}
+                ${adultPrice} x {adults} {adults === 1 ? "adult" : "adults"}
               </span>
               <span className="font-medium text-gray-900">
-                ${adults * tour.price}
+                ${round2(adults * adultPrice)}
               </span>
             </div>
 
@@ -583,7 +599,7 @@ export default function ReserveTourCard({ tour }) {
                   {children === 1 ? "child" : "children"}
                 </span>
                 <span className="font-medium text-gray-900">
-                  ${children * childPrice}
+                  ${round2(children * childPrice)}
                 </span>
               </div>
             )}

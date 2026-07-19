@@ -23,6 +23,7 @@ const ReservacionesPage = lazy(() => import("./pages/ReservacionesPage"));
 const CabalgatasPage = lazy(() => import("./pages/CabalgatasPage"));
 const SlotsPage = lazy(() => import("./pages/SlotsPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
+const ResellerPage = lazy(() => import("./pages/ResellerPage"));
 
 function PageLoader() {
   return (
@@ -57,6 +58,14 @@ const router = createBrowserRouter([
         element: (
           <LazyPage>
             <Checkout />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/reseller/:resellerId",
+        element: (
+          <LazyPage>
+            <ResellerPage />
           </LazyPage>
         ),
       },

@@ -25,7 +25,8 @@ export async function createBooking(req, res) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
 
-  const { tourId, tourDate, startTime, adults, children, babies } = parsed.data;
+  const { tourId, tourDate, startTime, adults, children, babies, resellerId } =
+    parsed.data;
   // Espacios ocupados: los bebés van con un adulto y no cuentan para la capacidad.
   const seats = adults + children;
   const allowedSlots = slotsForTour(tourId);
@@ -50,6 +51,22 @@ export async function createBooking(req, res) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+
+    // Si viene de un reseller, validar que exista y esté activo.
+    if (resellerId) {
+      const resellerQ = await client.query(
+        `select 1 from resellers where id = $1 and active = true`,
+        [resellerId]
+      );
+
+      if (resellerQ.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          ok: false,
+          message: "Reseller inválido o inactivo.",
+        });
+      }
+    }
 
     // Limpiar pendientes vencidos para calcular disponibilidad real.
     await client.query(
@@ -140,14 +157,14 @@ export async function createBooking(req, res) {
     // El trigger de la BD calcula guests (adults + children), subtotal, fee, total y deposit.
     const created = await client.query(
       `
-      insert into bookings (tour_id, tour_date, start_time, adults, children, babies, status, expires_at)
-      values ($1, $2::date, $3::time, $4, $5, $6, 'pending', now() + ($7 || ' minutes')::interval)
+      insert into bookings (tour_id, tour_date, start_time, adults, children, babies, status, expires_at, reseller_id)
+      values ($1, $2::date, $3::time, $4, $5, $6, 'pending', now() + ($7 || ' minutes')::interval, $8)
       returning
         id, tour_id, tour_date, start_time, guests, adults, children, babies,
         subtotal, paypal_fee, total,
         status, expires_at, created_at, updated_at, deposit_amount;
       `,
-      [tourId, tourDate, startTime, adults, children, babies, BOOKING_HOLD_MINUTES]
+      [tourId, tourDate, startTime, adults, children, babies, BOOKING_HOLD_MINUTES, resellerId || null]
     );
 
     await client.query("COMMIT");
@@ -176,14 +193,18 @@ export async function getBookingById(req, res) {
     const result = await pool.query(
       `
       select
-        b.id, b.tour_id, t.name as tour_name, t.price as tour_price,
-        coalesce(t.child_price, t.price) as tour_child_price,
+        b.id, b.tour_id, t.name as tour_name,
+        -- Precios por persona con descuento de reseller aplicado (si hay).
+        round(t.price * (100 - coalesce(greatest(30 - r.commission, 0), 0)) / 100, 2) as tour_price,
+        round(coalesce(t.child_price, t.price) * (100 - coalesce(greatest(30 - r.commission, 0), 0)) / 100, 2) as tour_child_price,
+        b.reseller_id,
         b.tour_date, b.start_time, b.guests,
         b.adults, b.children, b.babies,
         b.subtotal, b.paypal_fee, b.total,
         b.status, b.expires_at, b.created_at, b.updated_at, b.deposit_amount
       from bookings b
       join tours t on t.id = b.tour_id
+      left join resellers r on r.id = b.reseller_id
       where b.id = $1;
       `,
       [id]

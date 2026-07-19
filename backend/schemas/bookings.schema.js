@@ -14,6 +14,8 @@ export const createBookingSchema = z
     tourId: z.number().int().positive(),
     tourDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "tourDate debe ser YYYY-MM-DD"),
     startTime: z.string().regex(/^\d{2}:\d{2}$/, "startTime debe ser HH:MM (24h)"),
+    // Venta hecha por un reseller (opcional). NULL = venta propia.
+    resellerId: z.string().uuid().nullable().optional(),
     ...ageBreakdown,
   })
   .refine((d) => d.adults + d.children <= 25, {

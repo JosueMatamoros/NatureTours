@@ -10,6 +10,7 @@ Disallow: /payment/
 Disallow: /success/
 Disallow: /matamoros
 Disallow: /login
+Disallow: /reseller/
 
 # Sitemap location
 Sitemap: https://naturetourslafortuna.com/sitemap.xml
@@ -24,6 +25,7 @@ Disallow: /payment/
 Disallow: /success/
 Disallow: /matamoros
 Disallow: /login
+Disallow: /reseller/
 
 # Image bots
 User-agent: Googlebot-Image

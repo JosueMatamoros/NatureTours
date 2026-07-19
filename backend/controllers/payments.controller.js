@@ -32,7 +32,7 @@ export async function createPayment(req, res) {
 
     const bookingQ = await client.query(
       `
-      SELECT id, status, total, deposit_amount
+      SELECT id, status, total, deposit_amount, reseller_id
       FROM bookings
       WHERE id = $1
       FOR UPDATE
@@ -74,9 +74,9 @@ export async function createPayment(req, res) {
     const paymentQ = await client.query(
       `
       INSERT INTO payments
-        (booking_id, customer_id, mode, amount, paypal_order_id, paypal_capture_id, status)
+        (booking_id, customer_id, mode, amount, paypal_order_id, paypal_capture_id, status, reseller_id)
       VALUES
-        ($1, $2, $3, $4, $5, $6, $7)
+        ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING id
       `,
       [
@@ -87,6 +87,8 @@ export async function createPayment(req, res) {
         paypalOrderId,
         paypalCaptureId || null,
         status,
+        // Se copia del booking: NULL = venta propia.
+        booking.reseller_id || null,
       ],
     );
 
@@ -147,8 +149,8 @@ export async function getPaymentById(req, res) {
         b.babies            AS babies,
         b.subtotal          AS subtotal,
         t.name              AS tour,
-        t.price             AS price_per_person,
-        COALESCE(t.child_price, t.price) AS child_price,
+        round(t.price * (100 - COALESCE(GREATEST(30 - r.commission, 0), 0)) / 100, 2) AS price_per_person,
+        round(COALESCE(t.child_price, t.price) * (100 - COALESCE(GREATEST(30 - r.commission, 0), 0)) / 100, 2) AS child_price,
         c.email             AS customer_email,
         c.name              AS customer_name,
         c.phone             AS customer_phone
@@ -156,6 +158,7 @@ export async function getPaymentById(req, res) {
       JOIN bookings b ON b.id = p.booking_id
       JOIN tours t ON t.id = b.tour_id
       LEFT JOIN customers c ON c.id = p.customer_id
+      LEFT JOIN resellers r ON r.id = p.reseller_id
       WHERE p.id = $1
       `,
       [id],
@@ -226,10 +229,15 @@ export async function getAllPayments(req, res) {
 
       c.id                 AS customer_id,
       c.name               AS customer_name,
-      c.phone              AS customer_phone
+      c.phone              AS customer_phone,
+
+      r.id                 AS reseller_id,
+      r.name               AS reseller_name,
+      r.commission         AS reseller_commission
     FROM payments p
     JOIN bookings b ON b.id = p.booking_id
     LEFT JOIN customers c ON c.id = p.customer_id
+    LEFT JOIN resellers r ON r.id = p.reseller_id
     ORDER BY b.tour_date DESC, b.start_time DESC, p.created_at DESC;
 
       `,
@@ -261,6 +269,15 @@ export async function getAllPayments(req, res) {
 
         customer: r.customer_id
           ? { id: r.customer_id, name: r.customer_name, phone: r.customer_phone }
+          : null,
+
+        // null = venta propia
+        reseller: r.reseller_id
+          ? {
+              id: r.reseller_id,
+              name: r.reseller_name,
+              commission: Number(r.reseller_commission),
+            }
           : null,
       })),
     });

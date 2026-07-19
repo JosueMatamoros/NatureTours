@@ -1,6 +1,6 @@
 import { api } from "./api";
 
-export function createBooking({ tourId, tourDate, startTime, adults, children, babies }) {
+export function createBooking({ tourId, tourDate, startTime, adults, children, babies, resellerId }) {
   return api.post("/api/bookings", {
     tourId,
     tourDate,
@@ -8,6 +8,7 @@ export function createBooking({ tourId, tourDate, startTime, adults, children, b
     adults,
     children,
     babies,
+    ...(resellerId ? { resellerId } : {}),
   });
 }
 
