@@ -4,6 +4,7 @@
 // hacia la página principal, con los precios descontados del reseller.
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { FiTag } from "react-icons/fi";
 import { TOURS } from "../data/tours";
 import ReserveTourCard from "../components/checkout/ReserveTourCard";
 import TourOverviewCard from "../components/checkout/TourOverviewCard";
@@ -66,11 +67,22 @@ export default function ResellerPage() {
     <div>
       {/* Header mínimo, sin links a la página principal */}
       <header className="border-b border-gray-100 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <img src="/logo.webp" alt="Nature Tours" className="h-10 w-auto" />
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            Partner: {reseller.name}
-          </span>
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+              Official Partner
+            </p>
+            <h1 className="text-xl font-bold text-gray-900 md:text-2xl">
+              {reseller.name}
+            </h1>
+          </div>
+
+          {Number(reseller.discount) > 0 && (
+            <span className="flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700 ring-1 ring-amber-200">
+              <FiTag className="h-4 w-4" />
+              {reseller.discount}% OFF
+            </span>
+          )}
         </div>
       </header>
 

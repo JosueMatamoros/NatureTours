@@ -29,7 +29,44 @@ function guestsBreakdownText(receipt) {
   return parts.join(" · ");
 }
 
-function generateReceiptHTML(receipt) {
+/**
+ * Datos del reseller para el correo interno (empresa + reseller).
+ * La comisión se calcula sobre el precio ORIGINAL (sin descuento):
+ * el dueño siempre neta 70% del precio original en ventas de reseller.
+ */
+export async function getResellerInfoForPayment(paymentId) {
+  const q = await pool.query(
+    `
+    SELECT
+      r.name       AS reseller_name,
+      r.email      AS reseller_email,
+      r.commission AS commission,
+      round(t.price * b.adults + COALESCE(t.child_price, t.price) * b.children, 2) AS original_subtotal
+    FROM payments p
+    JOIN bookings b ON b.id = p.booking_id
+    JOIN tours t ON t.id = b.tour_id
+    JOIN resellers r ON r.id = p.reseller_id
+    WHERE p.id = $1
+    `,
+    [paymentId],
+  );
+
+  if (q.rowCount === 0) return null;
+
+  const r = q.rows[0];
+  const originalSubtotal = Number(r.original_subtotal);
+  const commission = Number(r.commission);
+
+  return {
+    name: r.reseller_name,
+    email: r.reseller_email,
+    commission,
+    originalSubtotal,
+    commissionAmount: Math.round(originalSubtotal * commission) / 100,
+  };
+}
+
+export function generateReceiptHTML(receipt, reseller = null) {
   const adults = Number(receipt.adults ?? 0);
   const children = Number(receipt.children ?? 0);
   const babies = Number(receipt.babies ?? 0);
@@ -85,6 +122,19 @@ function generateReceiptHTML(receipt) {
     ? `<p style="color:#92400e;font-size:13px;margin-top:10px;">The remaining balance of <strong>$${remaining.toFixed(2)}</strong> is due on the day of the tour.</p>`
     : '';
 
+  // Fila de la comisión del reseller (solo correo interno): monto en rojo.
+  const commissionRow = reseller
+    ? `
+    <tr>
+      <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:14px;">Reseller commission (${reseller.commission}% of $${reseller.originalSubtotal.toFixed(2)})</td>
+      <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;font-weight:600;color:#b91c1c;font-size:14px;text-align:right;">−$${reseller.commissionAmount.toFixed(2)}</td>
+    </tr>`
+    : '';
+
+  const commissionNote = reseller && receipt.mode === 'deposit'
+    ? `<p style="color:#b91c1c;font-size:13px;margin-top:6px;">The commission is calculated on the full original sale, not the deposit.</p>`
+    : '';
+
   return `
     <!DOCTYPE html>
     <html>
@@ -101,6 +151,12 @@ function generateReceiptHTML(receipt) {
             <div style="font-size:24px;font-weight:800;color:#047857;letter-spacing:0.2px;line-height:1.15;margin:0 0 6px 0;">Nature Tours</div>
             <div style="display:inline-block;background:linear-gradient(135deg,#d1fae5 0%,#ecfdf5 100%);color:#065f46;padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;letter-spacing:0.3px;box-shadow:0 2px 6px rgba(4,120,87,0.14);">✓ Payment Confirmed</div>
           </div>
+
+          ${reseller ? SECTION('Reseller', [
+            ROW('Name', reseller.name),
+            ROW('Commission', `${reseller.commission}%`),
+            ROW('Commission to pay', `$${reseller.commissionAmount.toFixed(2)}`),
+          ].join('')) : ''}
 
           <!-- Customer -->
           ${(receipt.customerName || receipt.customerPhone) ? SECTION('Customer', [
@@ -131,7 +187,9 @@ function generateReceiptHTML(receipt) {
                 ]),
             hasBreakdown ? ROW('Subtotal', `$${subtotal.toFixed(2)}`) : '',
             ROW('Amount Paid', `$${Number(receipt.amount).toFixed(2)}`, true),
-          ].join(''), remainingNote, true)}
+            commissionRow,
+            reseller ? ROW('After commission', `$${(Number(receipt.amount) - reseller.commissionAmount).toFixed(2)}`, true) : '',
+          ].join(''), remainingNote + commissionNote, true)}
 
           <!-- Reference IDs -->
           ${SECTION('Reference IDs', [
@@ -177,7 +235,21 @@ export async function sendReceiptEmail(req, res) {
       }
     }
 
+    // Si la venta fue de un reseller, el correo interno lleva su sección
+    // de comisión y también se le reenvía a él. El del cliente va limpio.
+    let reseller = null;
+    if (paymentId) {
+      try {
+        reseller = await getResellerInfoForPayment(paymentId);
+      } catch (e) {
+        console.error("getResellerInfoForPayment error:", e);
+      }
+    }
+
     const htmlContent = generateReceiptHTML(receipt);
+    const internalHtml = reseller
+      ? generateReceiptHTML(receipt, reseller)
+      : htmlContent;
 
     const fecha = new Date(receipt.fecha).toLocaleDateString("en-US", {
       year: "numeric",
@@ -191,9 +263,20 @@ export async function sendReceiptEmail(req, res) {
         from: `"Nature Tours System" <${process.env.EMAIL_USER}>`,
         to: "naturetourslafortuna@gmail.com",
         subject: `🎫 New Booking: ${receipt.tour} - ${fecha} - ${receipt.personas} people`,
-        html: htmlContent,
+        html: internalHtml,
       }),
     ];
+
+    if (reseller?.email) {
+      sends.push(
+        transporter.sendMail({
+          from: `"Nature Tours System" <${process.env.EMAIL_USER}>`,
+          to: reseller.email,
+          subject: `🎫 New Booking: ${receipt.tour} - ${fecha} - ${receipt.personas} people`,
+          html: internalHtml,
+        })
+      );
+    }
 
     if (receipt.customerEmail) {
       sends.push(

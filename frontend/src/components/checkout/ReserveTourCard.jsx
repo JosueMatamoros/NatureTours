@@ -390,7 +390,7 @@ export default function ReserveTourCard({ tour, reseller = null }) {
         <div className="text-right">
           <div className="flex items-baseline justify-end gap-1">
             {discountPct > 0 && (
-              <span className="text-sm text-gray-400 line-through">
+              <span className="text-sm text-gray-500 line-through decoration-red-500 decoration-2">
                 ${tour.price}
               </span>
             )}
