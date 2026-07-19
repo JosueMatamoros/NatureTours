@@ -133,9 +133,20 @@ export function generateReceiptHTML(receipt, reseller = null) {
 
   // Apartado (deposit): la comisión solo se paga si los clientes llegan y
   // pagan el saldo; si no se cobra la reserva, no hay comisión.
-  const commissionNote = reseller && receipt.mode === 'deposit'
-    ? `<p style="color:#b91c1c;font-size:13px;margin-top:6px;">⚠️ Commission payment is subject to the clients showing up and paying the remaining balance. Otherwise, this commission will not be paid, as the booking is not charged.</p>`
+  // Va en la sección Reseller, justo debajo de "Commission to pay".
+  const resellerDepositNote = reseller && receipt.mode === 'deposit'
+    ? `<p style="color:#b45309;font-size:13px;margin-top:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;">⚠️ This booking was made using the <strong>deposit system</strong>. The commission payment is subject to the clients showing up and paying the remaining balance — otherwise, the commission will not be paid, since the booking is not charged.</p>`
     : '';
+
+  // Ganancia total del dueño después de pagar al reseller:
+  // - full: lo pagado en PayPal (incluye fee) menos la comisión.
+  // - deposit: lo que se recauda en total (depósito + efectivo = subtotal)
+  //   menos la comisión.
+  const netAfterCommission = reseller
+    ? (receipt.mode === 'deposit'
+        ? subtotal - reseller.commissionAmount
+        : Number(receipt.amount) - reseller.commissionAmount)
+    : 0;
 
   return `
     <!DOCTYPE html>
@@ -158,7 +169,7 @@ export function generateReceiptHTML(receipt, reseller = null) {
             ROW('Name', reseller.name),
             ROW('Commission', `${reseller.commission}%`),
             ROW('Commission to pay', `$${reseller.commissionAmount.toFixed(2)}`),
-          ].join('')) : ''}
+          ].join(''), resellerDepositNote) : ''}
 
           <!-- Customer -->
           ${(receipt.customerName || receipt.customerPhone) ? SECTION('Customer', [
@@ -190,10 +201,8 @@ export function generateReceiptHTML(receipt, reseller = null) {
             hasBreakdown ? ROW('Subtotal', `$${subtotal.toFixed(2)}`) : '',
             ROW('Amount Paid', `$${Number(receipt.amount).toFixed(2)}`, true),
             commissionRow,
-            // Neto del dueño sobre la venta completa: subtotal (sin fee de
-            // PayPal, que se lo queda PayPal) menos la comisión del reseller.
-            reseller ? ROW('After commission', `$${(subtotal - reseller.commissionAmount).toFixed(2)}`, true) : '',
-          ].join(''), remainingNote + commissionNote, true)}
+            reseller ? ROW('After commission', `$${netAfterCommission.toFixed(2)}`, true) : '',
+          ].join(''), remainingNote, true)}
 
           <!-- Reference IDs -->
           ${SECTION('Reference IDs', [
