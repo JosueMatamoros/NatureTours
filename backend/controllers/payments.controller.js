@@ -71,12 +71,33 @@ export async function createPayment(req, res) {
       });
     }
 
+    // Snapshot de la comisión del reseller: % sobre el precio original
+    // (sin descuento). Queda congelada aunque la comisión cambie después.
+    let commissionAmount = null;
+    if (booking.reseller_id) {
+      const commissionQ = await client.query(
+        `
+        SELECT round(
+          round(t.price * b.adults + COALESCE(t.child_price, t.price) * b.children, 2)
+          * r.commission / 100, 2
+        ) AS commission_amount
+        FROM bookings b
+        JOIN tours t ON t.id = b.tour_id
+        JOIN resellers r ON r.id = b.reseller_id
+        WHERE b.id = $1
+        `,
+        [bookingId],
+      );
+      commissionAmount = commissionQ.rows[0]?.commission_amount ?? null;
+    }
+
     const paymentQ = await client.query(
       `
       INSERT INTO payments
-        (booking_id, customer_id, mode, amount, paypal_order_id, paypal_capture_id, status, reseller_id)
+        (booking_id, customer_id, mode, amount, paypal_order_id, paypal_capture_id, status,
+         reseller_id, commission_amount, commission_status)
       VALUES
-        ($1, $2, $3, $4, $5, $6, $7, $8)
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING id
       `,
       [
@@ -89,6 +110,8 @@ export async function createPayment(req, res) {
         status,
         // Se copia del booking: NULL = venta propia.
         booking.reseller_id || null,
+        commissionAmount,
+        booking.reseller_id ? "pending" : null,
       ],
     );
 

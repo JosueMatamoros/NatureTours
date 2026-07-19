@@ -135,7 +135,7 @@ export function generateReceiptHTML(receipt, reseller = null) {
   // pagan el saldo; si no se cobra la reserva, no hay comisión.
   // Va en la sección Reseller, justo debajo de "Commission to pay".
   const resellerDepositNote = reseller && receipt.mode === 'deposit'
-    ? `<p style="color:#b45309;font-size:13px;margin-top:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;">⚠️ This booking was made using the <strong>deposit system</strong>. The commission payment is subject to the clients showing up and paying the remaining balance — otherwise, the commission will not be paid, since the booking is not charged.</p>`
+    ? `<p style="color:#b45309;font-size:13px;margin-top:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;">This booking was made using the <strong>deposit system</strong>. The commission payment is subject to the clients showing up and paying the remaining balance — otherwise, the commission will not be paid, since the booking is not charged.</p>`
     : '';
 
   // Ganancia total del dueño después de pagar al reseller:

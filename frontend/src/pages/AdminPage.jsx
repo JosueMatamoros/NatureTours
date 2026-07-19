@@ -1,7 +1,7 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { FiCalendar, FiMapPin, FiSliders } from "react-icons/fi";
+import { FiCalendar, FiMapPin, FiSliders, FiUsers } from "react-icons/fi";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -66,6 +66,23 @@ export default function AdminPage() {
               <span className="mt-1 block text-2xl font-bold">Disponibilidad</span>
               <span className="mt-2 block text-sm text-sky-50/90">
                 Bloquear días o ajustar espacios por horario.
+              </span>
+            </span>
+          </button>
+          <button
+            className="group flex items-center gap-4 rounded-3xl border border-violet-300/20 bg-linear-to-br from-violet-500 to-purple-700 px-6 py-6 text-left text-white shadow-[0_18px_40px_rgba(139,92,246,0.25)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(139,92,246,0.35)] focus:outline-none focus:ring-4 focus:ring-violet-300/30"
+            onClick={() => navigate("/matamoros/resellers")}
+          >
+            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white/15 text-white transition-transform duration-300 group-hover:scale-105">
+              <FiUsers className="h-7 w-7" />
+            </span>
+            <span className="flex-1">
+              <span className="block text-sm uppercase tracking-[0.22em] text-violet-50/80">
+                Comisiones
+              </span>
+              <span className="mt-1 block text-2xl font-bold">Resellers</span>
+              <span className="mt-2 block text-sm text-violet-50/90">
+                Administrar resellers, comisiones y saldos pendientes.
               </span>
             </span>
           </button>

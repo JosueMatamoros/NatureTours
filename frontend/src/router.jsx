@@ -24,6 +24,7 @@ const CabalgatasPage = lazy(() => import("./pages/CabalgatasPage"));
 const SlotsPage = lazy(() => import("./pages/SlotsPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ResellerPage = lazy(() => import("./pages/ResellerPage"));
+const ResellersAdminPage = lazy(() => import("./pages/ResellersAdminPage"));
 
 function PageLoader() {
   return (
@@ -167,6 +168,14 @@ const router = createBrowserRouter([
             element: (
               <LazyPage>
                 <SlotsPage />
+              </LazyPage>
+            ),
+          },
+          {
+            path: "/matamoros/resellers",
+            element: (
+              <LazyPage>
+                <ResellersAdminPage />
               </LazyPage>
             ),
           },
