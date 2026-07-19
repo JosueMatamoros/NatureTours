@@ -11,6 +11,8 @@ import {
   FiChevronDown,
   FiUsers,
   FiX,
+  FiPhone,
+  FiMail,
 } from "react-icons/fi";
 import {
   getAllResellers,
@@ -255,11 +257,20 @@ function CommissionRow({ c, onUpdateStatus, updating }) {
             </span>
           </div>
 
-          <p className="mt-1 text-xs text-gray-500">
-            {c.customer?.phone ? `📞 ${c.customer.phone}` : ""}
-            {c.customer?.phone && c.customer?.email ? " · " : ""}
-            {c.customer?.email ? `✉️ ${c.customer.email}` : ""}
-            {!c.customer?.phone && !c.customer?.email ? "Sin datos de contacto" : ""}
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+            {c.customer?.phone && (
+              <span className="inline-flex items-center gap-1.5">
+                <FiPhone className="h-3.5 w-3.5 text-gray-400" />
+                {c.customer.phone}
+              </span>
+            )}
+            {c.customer?.email && (
+              <span className="inline-flex items-center gap-1.5">
+                <FiMail className="h-3.5 w-3.5 text-gray-400" />
+                {c.customer.email}
+              </span>
+            )}
+            {!c.customer?.phone && !c.customer?.email && "Sin datos de contacto"}
           </p>
 
           <p className="mt-2 text-xs text-gray-600">
