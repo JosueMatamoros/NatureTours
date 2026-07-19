@@ -13,6 +13,7 @@ import {
   FiX,
   FiPhone,
   FiMail,
+  FiSearch,
 } from "react-icons/fi";
 import {
   getAllResellers,
@@ -434,6 +435,7 @@ export default function ResellersAdminPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+  const [search, setSearch] = useState("");
 
   const showToast = useCallback((type, message) => {
     setToast({ type, message });
@@ -460,6 +462,21 @@ export default function ResellersAdminPage() {
     () => resellers.reduce((acc, r) => acc + (r.pendingTotal ?? 0), 0),
     [resellers],
   );
+
+  // Filtro por nombre, correo o teléfono (sin acentos, case-insensitive).
+  const normalize = (s) =>
+    String(s ?? "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+  const filteredResellers = useMemo(() => {
+    const q = normalize(search.trim());
+    if (!q) return resellers;
+    return resellers.filter((r) =>
+      [r.name, r.email, r.phone].some((f) => normalize(f).includes(q)),
+    );
+  }, [resellers, search]);
 
   async function copyLink(reseller) {
     const url = `${window.location.origin}/reseller/${reseller.id}`;
@@ -519,6 +536,25 @@ export default function ResellersAdminPage() {
           </button>
         </div>
 
+        {/* Buscador */}
+        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-violet-500/30">
+          <FiSearch className="h-4 w-4 shrink-0 text-gray-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre, correo o teléfono..."
+            className="w-full bg-transparent text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="text-xs font-semibold text-gray-400 hover:text-gray-600"
+            >
+              Limpiar
+            </button>
+          )}
+        </div>
+
         {/* Total pendiente global */}
         {totalPending > 0 && (
           <div className="mb-6 rounded-2xl border border-violet-200 bg-violet-50 px-5 py-4">
@@ -531,15 +567,17 @@ export default function ResellersAdminPage() {
 
         {loading ? (
           <p className="py-16 text-center text-sm text-gray-400">Cargando resellers...</p>
-        ) : resellers.length === 0 ? (
+        ) : filteredResellers.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center">
             <p className="text-sm text-gray-500">
-              Todavía no hay resellers. Creá el primero con el botón de arriba.
+              {search
+                ? `Sin resultados para "${search}".`
+                : "Todavía no hay resellers. Creá el primero con el botón de arriba."}
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {resellers.map((r) => {
+            {filteredResellers.map((r) => {
               const expanded = expandedId === r.id;
               return (
                 <div
