@@ -24,3 +24,6 @@ logs/
 *.log
 
 .vscode/
+
+# Marketing assets (generated, not uploaded)
+marketing/
