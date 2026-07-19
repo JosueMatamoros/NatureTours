@@ -188,7 +188,9 @@ export function generateReceiptHTML(receipt, reseller = null) {
             hasBreakdown ? ROW('Subtotal', `$${subtotal.toFixed(2)}`) : '',
             ROW('Amount Paid', `$${Number(receipt.amount).toFixed(2)}`, true),
             commissionRow,
-            reseller ? ROW('After commission', `$${(Number(receipt.amount) - reseller.commissionAmount).toFixed(2)}`, true) : '',
+            // Neto del dueño sobre la venta completa: subtotal (sin fee de
+            // PayPal, que se lo queda PayPal) menos la comisión del reseller.
+            reseller ? ROW('After commission (PayPal fee excluded)', `$${(subtotal - reseller.commissionAmount).toFixed(2)}`, true) : '',
           ].join(''), remainingNote + commissionNote, true)}
 
           <!-- Reference IDs -->
