@@ -19,6 +19,18 @@ const commissionStatusSchema = z.object({
   status: z.enum(["pending", "paid", "no_show"]),
 });
 
+// ?month=YYYY-MM — filtra ventas por mes (hora de Costa Rica). Sin month = todo.
+const monthQuerySchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
+});
+
+function parseMonth(req) {
+  const parsed = monthQuerySchema.safeParse(req.query);
+  return parsed.success ? parsed.data.month ?? null : null;
+}
+
+const MONTH_MATCH = `to_char(p.created_at AT TIME ZONE 'America/Costa_Rica', 'YYYY-MM')`;
+
 // GET /api/resellers/:id
 // Endpoint publico para la pagina /reseller/:id.
 // Solo expone lo necesario para renderizar precios: nombre y descuento.
@@ -58,9 +70,13 @@ export async function getResellerById(req, res) {
   }
 }
 
-// GET /api/resellers (admin)
-// Lista de resellers con su saldo pendiente de comisiones.
+// GET /api/resellers?month=YYYY-MM (admin)
+// Lista de resellers con sus saldos del mes indicado (o históricos sin month),
+// ordenados por pendiente desc, más estadísticas globales del mes:
+// ganado neto y total pagado a resellers.
 export async function getAllResellers(req, res) {
+  const month = parseMonth(req);
+
   try {
     const q = await pool.query(
       `
@@ -68,20 +84,62 @@ export async function getAllResellers(req, res) {
         r.id, r.name, r.email, r.phone, r.commission, r.active, r.created_at,
         COALESCE(SUM(p.commission_amount) FILTER (
           WHERE p.commission_status = 'pending' AND p.status = 'completed'
+            AND ($1::text IS NULL OR ${MONTH_MATCH} = $1)
         ), 0) AS pending_total,
+        COALESCE(SUM(p.commission_amount) FILTER (
+          WHERE p.commission_status = 'paid' AND p.status = 'completed'
+            AND ($1::text IS NULL OR ${MONTH_MATCH} = $1)
+        ), 0) AS paid_total,
         COUNT(p.id) FILTER (
           WHERE p.commission_status = 'pending' AND p.status = 'completed'
+            AND ($1::text IS NULL OR ${MONTH_MATCH} = $1)
         )::int AS pending_count,
-        COUNT(p.id) FILTER (WHERE p.status = 'completed')::int AS sales_count
+        COUNT(p.id) FILTER (
+          WHERE p.status = 'completed'
+            AND ($1::text IS NULL OR ${MONTH_MATCH} = $1)
+        )::int AS sales_count
       FROM resellers r
       LEFT JOIN payments p ON p.reseller_id = r.id
       GROUP BY r.id
-      ORDER BY r.created_at DESC
+      ORDER BY pending_total DESC, r.created_at DESC
       `,
+      [month],
     );
+
+    // Estadísticas del mes sobre ventas de resellers:
+    //   net_total: lo que queda para el negocio después de comisiones.
+    //     full     → monto pagado en línea - comisión
+    //     apartado → total de la reserva (adelanto + efectivo) - comisión
+    //     no_show  → se conserva el adelanto y no se paga comisión
+    //   paid_total: comisiones ya pagadas a resellers.
+    const statsQ = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(CASE
+          WHEN p.commission_status = 'no_show' THEN p.amount
+          WHEN p.mode = 'full' THEN p.amount - COALESCE(p.commission_amount, 0)
+          ELSE b.total - COALESCE(p.commission_amount, 0)
+        END), 0) AS net_total,
+        COALESCE(SUM(p.commission_amount) FILTER (
+          WHERE p.commission_status = 'paid'
+        ), 0) AS paid_total
+      FROM payments p
+      JOIN bookings b ON b.id = p.booking_id
+      WHERE p.reseller_id IS NOT NULL AND p.status = 'completed'
+        AND ($1::text IS NULL OR ${MONTH_MATCH} = $1)
+      `,
+      [month],
+    );
+
+    const stats = statsQ.rows[0] ?? {};
 
     return res.json({
       ok: true,
+      month,
+      stats: {
+        netTotal: Number(stats.net_total ?? 0),
+        paidTotal: Number(stats.paid_total ?? 0),
+      },
       resellers: q.rows.map((r) => ({
         id: r.id,
         name: r.name,
@@ -92,6 +150,7 @@ export async function getAllResellers(req, res) {
         active: r.active,
         createdAt: r.created_at,
         pendingTotal: Number(r.pending_total),
+        paidTotal: Number(r.paid_total),
         pendingCount: r.pending_count,
         salesCount: r.sales_count,
       })),
@@ -175,14 +234,17 @@ export async function updateReseller(req, res) {
   }
 }
 
-// GET /api/resellers/:id/commissions (admin)
+// GET /api/resellers/:id/commissions?month=YYYY-MM (admin)
 // Desglose de comisiones del reseller: una fila por venta, con los datos
-// de la reserva y del cliente para poder verificarla.
+// de la reserva y del cliente para poder verificarla. Las pendientes de
+// pagar salen primero. Con month solo se listan las ventas de ese mes.
 export async function getResellerCommissions(req, res) {
   const parsed = resellerIdSchema.safeParse(req.params);
   if (!parsed.success) {
     return res.status(400).json({ ok: false, message: "Id inválido" });
   }
+
+  const month = parseMonth(req);
 
   try {
     const q = await pool.query(
@@ -213,9 +275,10 @@ export async function getResellerCommissions(req, res) {
       JOIN tours t ON t.id = b.tour_id
       LEFT JOIN customers c ON c.id = p.customer_id
       WHERE p.reseller_id = $1 AND p.status = 'completed'
-      ORDER BY p.created_at DESC
+        AND ($2::text IS NULL OR ${MONTH_MATCH} = $2)
+      ORDER BY (p.commission_status = 'pending') DESC, p.created_at DESC
       `,
-      [parsed.data.id],
+      [parsed.data.id, month],
     );
 
     const commissions = q.rows.map((r) => ({

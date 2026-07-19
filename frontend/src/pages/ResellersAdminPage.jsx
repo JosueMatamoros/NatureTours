@@ -9,11 +9,15 @@ import {
   FiEdit2,
   FiLink,
   FiChevronDown,
+  FiChevronLeft,
+  FiChevronRight,
   FiUsers,
   FiX,
   FiPhone,
   FiMail,
   FiSearch,
+  FiTrendingUp,
+  FiDollarSign,
 } from "react-icons/fi";
 import {
   getAllResellers,
@@ -24,6 +28,27 @@ import {
 } from "../../services/resellers.api";
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
+const MONTHS_FULL = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Setiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+// Mes en formato "YYYY-MM" (el backend filtra en hora de Costa Rica).
+function currentMonthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function shiftMonthKey(key, delta) {
+  const [y, m] = key.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthKeyLabel(key) {
+  const [y, m] = key.split("-").map(Number);
+  return `${MONTHS_FULL[m - 1]} ${y}`;
+}
 
 function fmtMoney(n) {
   return `$${Number(n ?? 0).toFixed(2)}`;
@@ -339,7 +364,7 @@ function CommissionRow({ c, onUpdateStatus, updating }) {
 }
 
 // ─── Panel de saldos de un reseller ──────────────────────────────────────────
-function BalancesPanel({ reseller, showToast, onTotalsChange }) {
+function BalancesPanel({ reseller, month, showToast, onTotalsChange }) {
   const [commissions, setCommissions] = useState([]);
   const [totals, setTotals] = useState({ pending: 0, paid: 0 });
   const [loading, setLoading] = useState(true);
@@ -348,7 +373,7 @@ function BalancesPanel({ reseller, showToast, onTotalsChange }) {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getResellerCommissions(reseller.id);
+      const data = await getResellerCommissions(reseller.id, month);
       setCommissions(data?.commissions ?? []);
       setTotals(data?.totals ?? { pending: 0, paid: 0 });
     } catch (e) {
@@ -357,7 +382,7 @@ function BalancesPanel({ reseller, showToast, onTotalsChange }) {
     } finally {
       setLoading(false);
     }
-  }, [reseller.id, showToast]);
+  }, [reseller.id, month, showToast]);
 
   useEffect(() => {
     load();
@@ -392,7 +417,7 @@ function BalancesPanel({ reseller, showToast, onTotalsChange }) {
   if (commissions.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-gray-400">
-        Este reseller todavía no tiene ventas.
+        Este reseller no tiene ventas en {monthKeyLabel(month).toLowerCase()}.
       </p>
     );
   }
@@ -436,6 +461,8 @@ export default function ResellersAdminPage() {
   const [editing, setEditing] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [search, setSearch] = useState("");
+  const [month, setMonth] = useState(currentMonthKey);
+  const [stats, setStats] = useState({ netTotal: 0, paidTotal: 0 });
 
   const showToast = useCallback((type, message) => {
     setToast({ type, message });
@@ -444,15 +471,16 @@ export default function ResellersAdminPage() {
 
   const load = useCallback(async () => {
     try {
-      const data = await getAllResellers();
+      const data = await getAllResellers(month);
       setResellers(data?.resellers ?? []);
+      setStats(data?.stats ?? { netTotal: 0, paidTotal: 0 });
     } catch (e) {
       console.error("load resellers error:", e);
       showToast("error", "No se pudieron cargar los resellers");
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [month, showToast]);
 
   useEffect(() => {
     load();
@@ -536,30 +564,81 @@ export default function ResellersAdminPage() {
           </button>
         </div>
 
-        {/* Buscador */}
-        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-violet-500/30">
-          <FiSearch className="h-4 w-4 shrink-0 text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre, correo o teléfono..."
-            className="w-full bg-transparent text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none"
-          />
-          {search && (
+        {/* Buscador + mes */}
+        <div className="mb-4 flex flex-wrap items-stretch gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-violet-500/30">
+            <FiSearch className="h-4 w-4 shrink-0 text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nombre, correo o teléfono..."
+              className="w-full bg-transparent text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="text-xs font-semibold text-gray-400 hover:text-gray-600"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 rounded-2xl border border-gray-200 bg-white px-2 py-2 shadow-sm">
             <button
-              onClick={() => setSearch("")}
-              className="text-xs font-semibold text-gray-400 hover:text-gray-600"
+              onClick={() => setMonth((m) => shiftMonthKey(m, -1))}
+              title="Mes anterior"
+              className="grid h-8 w-8 place-items-center rounded-lg text-gray-500 hover:bg-gray-100"
             >
-              Limpiar
+              <FiChevronLeft className="h-4 w-4" />
             </button>
-          )}
+            <span className="w-36 text-center text-sm font-bold text-gray-800">
+              {monthKeyLabel(month)}
+            </span>
+            <button
+              onClick={() => setMonth((m) => shiftMonthKey(m, 1))}
+              disabled={month >= currentMonthKey()}
+              title="Mes siguiente"
+              className="grid h-8 w-8 place-items-center rounded-lg text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              <FiChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Total pendiente global */}
+        {/* Estadísticas del mes */}
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-600">
+              <FiTrendingUp className="h-3.5 w-3.5" />
+              Ganado neto · {monthKeyLabel(month)}
+            </p>
+            <p className="mt-1 text-2xl font-black text-emerald-700">
+              {fmtMoney(stats.netTotal)}
+            </p>
+            <p className="mt-0.5 text-[11px] text-emerald-600/80">
+              Ventas de resellers después de comisiones.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-600">
+              <FiDollarSign className="h-3.5 w-3.5" />
+              Pagado a resellers · {monthKeyLabel(month)}
+            </p>
+            <p className="mt-1 text-2xl font-black text-sky-700">
+              {fmtMoney(stats.paidTotal)}
+            </p>
+            <p className="mt-0.5 text-[11px] text-sky-600/80">
+              Comisiones ya entregadas este mes.
+            </p>
+          </div>
+        </div>
+
+        {/* Total pendiente global del mes */}
         {totalPending > 0 && (
           <div className="mb-6 rounded-2xl border border-violet-200 bg-violet-50 px-5 py-4">
             <p className="text-sm text-violet-700">
-              Total pendiente de pagar a resellers:{" "}
+              Pendiente de pagar a resellers en {monthKeyLabel(month).toLowerCase()}:{" "}
               <span className="text-lg font-black">{fmtMoney(totalPending)}</span>
             </p>
           </div>
@@ -662,6 +741,7 @@ export default function ResellersAdminPage() {
                     <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-4 rounded-b-2xl">
                       <BalancesPanel
                         reseller={r}
+                        month={month}
                         showToast={showToast}
                         onTotalsChange={load}
                       />

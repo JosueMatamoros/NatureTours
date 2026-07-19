@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import {
   createBrowserRouter,
   Outlet,
@@ -39,6 +39,12 @@ function LazyPage({ children }) {
 }
 
 function RootLayout() {
+  // Quita el velo de arranque (spa-boot) que index.html activa en rutas no
+  // prerenderizadas; a partir de aquí ya se ve la ruta correcta, no el home.
+  useEffect(() => {
+    document.documentElement.classList.remove("spa-boot");
+  }, []);
+
   return (
     <>
       <ScrollRestoration getKey={(location) => location.pathname} />

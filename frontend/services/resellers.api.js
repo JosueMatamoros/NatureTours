@@ -7,9 +7,9 @@ export function getResellerById(resellerId) {
   return api.get(`/api/resellers/${resellerId}`);
 }
 
-// Admin
-export function getAllResellers() {
-  return api.get("/api/resellers");
+// Admin — month opcional "YYYY-MM" para ver solo las ventas de ese mes
+export function getAllResellers(month) {
+  return api.get(`/api/resellers${month ? `?month=${month}` : ""}`);
 }
 
 export function createReseller({ name, email, phone, commission }) {
@@ -20,8 +20,10 @@ export function updateReseller(resellerId, fields) {
   return api.patch(`/api/resellers/${resellerId}`, fields);
 }
 
-export function getResellerCommissions(resellerId) {
-  return api.get(`/api/resellers/${resellerId}/commissions`);
+export function getResellerCommissions(resellerId, month) {
+  return api.get(
+    `/api/resellers/${resellerId}/commissions${month ? `?month=${month}` : ""}`,
+  );
 }
 
 export function updateCommissionStatus(paymentId, status) {

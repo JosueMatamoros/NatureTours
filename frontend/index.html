@@ -58,6 +58,33 @@
     <!-- Theme Color (mobile browser bar color) -->
     <meta name="theme-color" content="#059669" />
 
+    <!-- SPA boot: en rutas no prerenderizadas (ej. /reseller/:id) el servidor
+         responde con este HTML que trae el home prerenderizado. Este script
+         corre antes del primer paint y lo oculta tras un spinner, para que el
+         visitante nunca vea el home; React quita la clase al montar la ruta real. -->
+    <style>
+      html.spa-boot #root { display: none; }
+      html.spa-boot body::before {
+        content: ""; position: fixed; inset: 0; background: #fff; z-index: 9998;
+      }
+      html.spa-boot body::after {
+        content: ""; position: fixed; z-index: 9999; top: 50%; left: 50%;
+        width: 40px; height: 40px; margin: -20px 0 0 -20px;
+        border-radius: 9999px; border: 4px solid #a7f3d0; border-top-color: #059669;
+        animation: spa-boot-spin 0.8s linear infinite;
+      }
+      @keyframes spa-boot-spin { to { transform: rotate(360deg); } }
+    </style>
+    <script>
+      (function () {
+        var path = location.pathname.replace(/\/+$/, "") || "/";
+        var prerendered = ["/", "/tours", "/about", "/services", "/contact"];
+        if (prerendered.indexOf(path) === -1) {
+          document.documentElement.classList.add("spa-boot");
+        }
+      })();
+    </script>
+
     <!-- Structured Data - For rich Google search results -->
     <script type="application/ld+json">
     {
