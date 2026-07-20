@@ -402,7 +402,7 @@ export default function PaymentPage() {
                 }}
               />
 
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 mt-1 mx-8 mb-8 md:mb-0">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 mt-1 mx-8 mb-8 md:mb-2">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 grid h-8 w-8 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
                     <FiDollarSign className="h-4 w-4" />
