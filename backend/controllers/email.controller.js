@@ -225,85 +225,168 @@ export function generateReceiptHTML(receipt, reseller = null) {
 }
 
 /**
- * Envía el recibo por email a Nature Tours
+ * Arma el receipt desde la BD (mismo shape que getPaymentById) para poder
+ * enviar el correo sin depender de que el cliente llegue a la página de éxito.
+ */
+async function buildReceiptForPayment(paymentId) {
+  const q = await pool.query(
+    `
+    SELECT
+      p.id                AS reserva_id,
+      p.paypal_capture_id AS paypal_capture_id,
+      p.amount            AS amount,
+      p.mode              AS mode,
+      b.tour_date         AS fecha,
+      b.start_time        AS hora,
+      (b.adults + b.children + b.babies) AS personas,
+      b.adults            AS adults,
+      b.children          AS children,
+      b.babies            AS babies,
+      b.subtotal          AS subtotal,
+      t.name              AS tour,
+      round(t.price * (100 - COALESCE(GREATEST(30 - r.commission, 0), 0)) / 100, 2) AS price_per_person,
+      round(COALESCE(t.child_price, t.price) * (100 - COALESCE(GREATEST(30 - r.commission, 0), 0)) / 100, 2) AS child_price,
+      c.email             AS customer_email,
+      c.name              AS customer_name,
+      c.phone             AS customer_phone
+    FROM payments p
+    JOIN bookings b ON b.id = p.booking_id
+    JOIN tours t ON t.id = b.tour_id
+    LEFT JOIN customers c ON c.id = p.customer_id
+    LEFT JOIN resellers r ON r.id = p.reseller_id
+    WHERE p.id = $1
+    `,
+    [paymentId],
+  );
+
+  if (q.rowCount === 0) return null;
+  const r = q.rows[0];
+
+  return {
+    reservaId: r.reserva_id,
+    paypalCaptureId: r.paypal_capture_id,
+    amount: parseFloat(r.amount),
+    mode: r.mode,
+    tour: r.tour,
+    personas: r.personas,
+    adults: r.adults,
+    children: r.children,
+    babies: r.babies,
+    subtotal: parseFloat(r.subtotal),
+    fecha: r.fecha,
+    hora: r.hora,
+    pricePerPerson: parseFloat(r.price_per_person),
+    childPrice: parseFloat(r.child_price),
+    customerEmail: r.customer_email ?? null,
+    customerName: r.customer_name ?? null,
+    customerPhone: r.customer_phone ?? null,
+  };
+}
+
+async function sendReceiptMails(receipt, reseller) {
+  const htmlContent = generateReceiptHTML(receipt);
+  const internalHtml = reseller ? generateReceiptHTML(receipt, reseller) : htmlContent;
+
+  const fecha = new Date(receipt.fecha).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+
+  const sends = [
+    transporter.sendMail({
+      from: `"Nature Tours System" <${process.env.EMAIL_USER}>`,
+      to: "naturetourslafortuna@gmail.com",
+      subject: `🎫 New Booking: ${receipt.tour} - ${fecha} - ${receipt.personas} people`,
+      html: internalHtml,
+    }),
+  ];
+
+  if (reseller?.email) {
+    sends.push(
+      transporter.sendMail({
+        from: `"Nature Tours System" <${process.env.EMAIL_USER}>`,
+        to: reseller.email,
+        subject: `🎫 New Booking: ${receipt.tour} - ${fecha} - ${receipt.personas} people`,
+        html: internalHtml,
+      })
+    );
+  }
+
+  if (receipt.customerEmail) {
+    sends.push(
+      transporter.sendMail({
+        from: `"Nature Tours" <${process.env.EMAIL_USER}>`,
+        to: receipt.customerEmail,
+        subject: `Nature Tours: ${receipt.tour} - ${fecha}`,
+        html: htmlContent,
+      })
+    );
+  }
+
+  await Promise.all(sends);
+}
+
+/**
+ * Envía los correos de un payment (empresa + reseller + cliente) con claim
+ * atómico de email_sent. Si el envío falla, libera el claim para que el
+ * fallback de la página de éxito pueda reintentar.
+ * La llama el backend al registrar el pago y el handler HTTP como respaldo.
+ */
+export async function sendReceiptForPayment(paymentId, receiptFallback = null) {
+  const mark = await pool.query(
+    `UPDATE payments SET email_sent = TRUE
+     WHERE id = $1 AND email_sent = FALSE
+     RETURNING id`,
+    [paymentId],
+  );
+  if (mark.rowCount === 0) return { sent: false, reason: "already-sent" };
+
+  try {
+    const receipt = (await buildReceiptForPayment(paymentId)) ?? receiptFallback;
+    if (!receipt) throw new Error(`Payment ${paymentId} sin datos de receipt`);
+
+    // Si la venta fue de un reseller, el correo interno lleva su sección
+    // de comisión y también se le reenvía a él. El del cliente va limpio.
+    let reseller = null;
+    try {
+      reseller = await getResellerInfoForPayment(paymentId);
+    } catch (e) {
+      console.error("getResellerInfoForPayment error:", e);
+    }
+
+    await sendReceiptMails(receipt, reseller);
+    return { sent: true };
+  } catch (error) {
+    await pool
+      .query(`UPDATE payments SET email_sent = FALSE WHERE id = $1`, [paymentId])
+      .catch(() => {});
+    throw error;
+  }
+}
+
+/**
+ * POST /api/email/send-receipt — respaldo desde la página de éxito.
  */
 export async function sendReceiptEmail(req, res) {
   try {
     const { receipt, paymentId } = req.body;
 
-    if (!receipt) {
+    if (!receipt && !paymentId) {
       return res.status(400).json({ ok: false, message: "Receipt data is required" });
     }
 
-    // Idempotency: mark email_sent atomically; skip if already sent
     if (paymentId) {
-      const mark = await pool.query(
-        `UPDATE payments SET email_sent = TRUE
-         WHERE id = $1 AND email_sent = FALSE
-         RETURNING id`,
-        [paymentId],
-      );
-      if (mark.rowCount === 0) {
-        return res.json({ ok: true, message: "Email already sent" });
-      }
+      const result = await sendReceiptForPayment(paymentId, receipt ?? null);
+      return res.json({
+        ok: true,
+        message: result.sent ? "Email sent successfully" : "Email already sent",
+      });
     }
 
-    // Si la venta fue de un reseller, el correo interno lleva su sección
-    // de comisión y también se le reenvía a él. El del cliente va limpio.
-    let reseller = null;
-    if (paymentId) {
-      try {
-        reseller = await getResellerInfoForPayment(paymentId);
-      } catch (e) {
-        console.error("getResellerInfoForPayment error:", e);
-      }
-    }
-
-    const htmlContent = generateReceiptHTML(receipt);
-    const internalHtml = reseller
-      ? generateReceiptHTML(receipt, reseller)
-      : htmlContent;
-
-    const fecha = new Date(receipt.fecha).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC",
-    });
-
-    const sends = [
-      transporter.sendMail({
-        from: `"Nature Tours System" <${process.env.EMAIL_USER}>`,
-        to: "naturetourslafortuna@gmail.com",
-        subject: `🎫 New Booking: ${receipt.tour} - ${fecha} - ${receipt.personas} people`,
-        html: internalHtml,
-      }),
-    ];
-
-    if (reseller?.email) {
-      sends.push(
-        transporter.sendMail({
-          from: `"Nature Tours System" <${process.env.EMAIL_USER}>`,
-          to: reseller.email,
-          subject: `🎫 New Booking: ${receipt.tour} - ${fecha} - ${receipt.personas} people`,
-          html: internalHtml,
-        })
-      );
-    }
-
-    if (receipt.customerEmail) {
-      sends.push(
-        transporter.sendMail({
-          from: `"Nature Tours" <${process.env.EMAIL_USER}>`,
-          to: receipt.customerEmail,
-          subject: `Nature Tours: ${receipt.tour} - ${fecha}`,
-          html: htmlContent,
-        })
-      );
-    }
-
-    await Promise.all(sends);
-
+    // Sin paymentId (recibos viejos): envío directo sin idempotencia.
+    await sendReceiptMails(receipt, null);
     res.json({ ok: true, message: "Email sent successfully" });
   } catch (error) {
     console.error("Error sending email:", error);

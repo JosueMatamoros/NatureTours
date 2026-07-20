@@ -1,6 +1,7 @@
 // src/controllers/payments.controller.js
 import { pool } from "../db.js";
 import { createPaymentSchema } from "../schemas/payments.schema.js";
+import { sendReceiptForPayment } from "./email.controller.js";
 
 export async function createPayment(req, res) {
   const parsed = createPaymentSchema.safeParse(req.body);
@@ -129,9 +130,19 @@ export async function createPayment(req, res) {
 
     await client.query("COMMIT");
 
+    const paymentId = paymentQ.rows[0].id;
+
+    // Correos de confirmación desde el backend: se disparan aquí para no
+    // depender de que el cliente llegue a la página de éxito (si cierra la
+    // pestaña tras pagar, antes el correo nunca salía). La página de éxito
+    // queda como reintento; email_sent evita duplicados.
+    sendReceiptForPayment(paymentId).catch((e) => {
+      console.error(`sendReceiptForPayment(${paymentId}) error:`, e);
+    });
+
     return res.status(201).json({
       ok: true,
-      id: paymentQ.rows[0].id,
+      id: paymentId,
     });
   } catch (err) {
     try {
