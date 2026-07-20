@@ -100,10 +100,16 @@ function GuestCounterRow({
   );
 }
 
-// `reseller` (opcional): { id, name, discount } — aplica el descuento del
-// reseller a los precios y asocia el booking a su id.
+// `reseller` (opcional): { id, name, phone, discount } — aplica el descuento
+// del reseller a los precios y asocia el booking a su id. El botón de
+// WhatsApp escribe al teléfono del reseller (o al nuestro si no tiene).
 export default function ReserveTourCard({ tour, reseller = null }) {
-  const whatsappPhoneE164 = "50689893335";
+  const COMPANY_WHATSAPP = "50689893335";
+  const resellerDigits = String(reseller?.phone ?? "").replace(/\D/g, "");
+  const whatsappPhoneE164 =
+    resellerDigits.length === 8
+      ? `506${resellerDigits}` // número de CR sin código de país
+      : resellerDigits || COMPANY_WHATSAPP;
   const isTour2 = Number(tour?.id) === 2;
   const baseCapacity = isTour2 ? Number(tour?.capacity) || 16 : 12;
 
@@ -313,7 +319,7 @@ export default function ReserveTourCard({ tour, reseller = null }) {
     return `https://wa.me/${whatsappPhoneE164}?text=${encodeURIComponent(
       message
     )}`;
-  }, [selectedDate, tour]);
+  }, [selectedDate, tour, whatsappPhoneE164]);
 
   async function handleConfirm() {
     setError("");

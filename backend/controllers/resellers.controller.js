@@ -43,7 +43,7 @@ export async function getResellerById(req, res) {
   try {
     const q = await pool.query(
       `
-      SELECT id, name, GREATEST(30 - commission, 0) AS discount
+      SELECT id, name, phone, GREATEST(30 - commission, 0) AS discount
       FROM resellers
       WHERE id = $1 AND active = true
       `,
@@ -61,6 +61,7 @@ export async function getResellerById(req, res) {
       reseller: {
         id: r.id,
         name: r.name,
+        phone: r.phone, // WhatsApp del reseller para el botón de tour custom
         discount: Number(r.discount), // % de descuento al cliente (30 - commission)
       },
     });
