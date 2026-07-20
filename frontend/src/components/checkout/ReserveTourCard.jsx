@@ -373,7 +373,11 @@ export default function ReserveTourCard({ tour, reseller = null }) {
         throw new Error("Respuesta sin booking id");
       }
 
-      navigate(`/payment/${newBookingId}`);
+      // El botón de salir en PaymentPage regresa aquí (carrito), no al home.
+      const backTo = reseller?.id
+        ? `/reseller/${reseller.id}`
+        : `/checkout?tourType=${tourId}`;
+      navigate(`/payment/${newBookingId}`, { state: { backTo } });
     } catch (e) {
       console.error("Booking error:", e);
       console.error("status:", e?.response?.status);

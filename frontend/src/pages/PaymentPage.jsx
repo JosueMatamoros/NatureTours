@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiLock, FiDollarSign } from "react-icons/fi";
 import { TbLogout2 } from "react-icons/tb";
 
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useConfirmExit } from "../hooks/useConfirmExit";
 
 import CancellationTermsModal from "../components/ui/CancellationTermsModal";
@@ -24,6 +24,10 @@ const HOLD_WINDOW_MS = 20 * 60 * 1000;
 export default function PaymentPage() {
   const { bookingId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // A dónde volver al salir: el carrito de donde vino (normal o de reseller).
+  // Sin ese estado (ej. entrada directa al link), se cae al listado de tours.
+  const backTo = location.state?.backTo ?? "/tours";
 
   const [booking, setBooking] = useState(null);
   const [loadingBooking, setLoadingBooking] = useState(true);
@@ -307,7 +311,7 @@ export default function PaymentPage() {
               return;
             }
 
-            navigate("/", { replace: true });
+            navigate(backTo, { replace: true });
           }
         }}
       />
