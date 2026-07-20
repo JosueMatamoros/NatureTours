@@ -8,8 +8,10 @@ import { FiTag } from "react-icons/fi";
 import { TOURS } from "../data/tours";
 import ReserveTourCard from "../components/checkout/ReserveTourCard";
 import TourOverviewCard from "../components/checkout/TourOverviewCard";
+import WhatsAppButton from "../components/ui/WhatsAppButton";
 import NotFound from "./NotFound";
 import { getResellerById } from "../../services/resellers.api";
+import { toWhatsAppE164 } from "../utils/phone";
 
 const RESELLER_TOUR_ID = 2; // Horseback Riding
 
@@ -90,6 +92,11 @@ export default function ResellerPage() {
         <TourOverviewCard tour={tour} />
         <ReserveTourCard tour={tour} reseller={reseller} />
       </div>
+
+      <WhatsAppButton
+        phone={toWhatsAppE164(reseller.phone)}
+        message={`Hi ${reseller.name}, I'm interested in more information about the horseback riding tour.`}
+      />
     </div>
   );
 }

@@ -21,7 +21,7 @@ export default function ContactInfoPanel({
 
   return (
     <aside className="h-full space-y-4">
-      <WhatsAppButton />
+      <WhatsAppButton phone={whatsappE164} message={whatsappMessage} />
       <div className="rounded-2xl border border-emerald-50 bg-emerald-50   p-6 shadow-lg">
         <div className="text-xs tracking-widest uppercase ">
           Direct line

@@ -1,8 +1,10 @@
-export default function WhatsAppButton() {
-  const phoneNumber = "50661824352";
-  const message = "Hello, I would like more information about the tour.";
+import { COMPANY_WHATSAPP_E164 } from "../../utils/phone";
 
-  const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
+export default function WhatsAppButton({
+  phone = COMPANY_WHATSAPP_E164,
+  message = "Hello, I would like more information about the tour.",
+}) {
+  const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(
     message
   )}`;
 

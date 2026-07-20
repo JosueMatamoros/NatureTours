@@ -4,6 +4,7 @@ import { TOURS } from "../data/tours";
 import ReserveTourCard from "../components/checkout/ReserveTourCard";
 import TourOverviewCard from "../components/checkout/TourOverviewCard";
 import Navbar from "../components/home/Navbar";
+import WhatsAppButton from "../components/ui/WhatsAppButton";
 import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
 
 const ENABLED_TOURS = [1, 2];
@@ -32,6 +33,8 @@ export default function Checkout() {
         <TourOverviewCard tour={tour} />
         <ReserveTourCard tour={tour} />
       </div>
+
+      <WhatsAppButton message="Hello, I would like more information about the horseback riding tour." />
     </div>
   );
 }

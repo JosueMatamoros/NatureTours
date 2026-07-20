@@ -4,6 +4,7 @@ import CalendarPicker from "./CalendarPicker";
 import { useNavigate } from "react-router-dom";
 import { createBooking } from "../../../services/bookings.api";
 import { getAvailabilityBlocked } from "../../../services/availability.api";
+import { toWhatsAppE164 } from "../../utils/phone";
 
 // Tour 1: slots fijos PM
 const fixedSlotsTour1 = [
@@ -104,12 +105,7 @@ function GuestCounterRow({
 // del reseller a los precios y asocia el booking a su id. El botón de
 // WhatsApp escribe al teléfono del reseller (o al nuestro si no tiene).
 export default function ReserveTourCard({ tour, reseller = null }) {
-  const COMPANY_WHATSAPP = "50661824352";
-  const resellerDigits = String(reseller?.phone ?? "").replace(/\D/g, "");
-  const whatsappPhoneE164 =
-    resellerDigits.length === 8
-      ? `506${resellerDigits}` // número de CR sin código de país
-      : resellerDigits || COMPANY_WHATSAPP;
+  const whatsappPhoneE164 = toWhatsAppE164(reseller?.phone);
   const isTour2 = Number(tour?.id) === 2;
   const baseCapacity = isTour2 ? Number(tour?.capacity) || 16 : 12;
 
