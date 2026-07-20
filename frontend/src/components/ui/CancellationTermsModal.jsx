@@ -58,14 +58,14 @@ export default function CancellationTermsModal({ open, onClose }) {
         {/* Body */}
         <div className="px-6 py-6">
           <div className="space-y-4">
-            {/* >72h */}
+            {/* >48h */}
             <div className="flex gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
               <div className="mt-0.5 grid h-10 w-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
                 <FiClock className="h-5 w-5" />
               </div>
               <div className="flex-1">
                 <div className="text-base font-semibold text-emerald-900">
-                  More than 72 hours before
+                  More than 48 hours before
                 </div>
                 <div className="mt-1 text-sm text-emerald-800">
                   You will receive a <span className="font-semibold">100% refund</span> of your purchase.
@@ -73,14 +73,14 @@ export default function CancellationTermsModal({ open, onClose }) {
               </div>
             </div>
 
-            {/* 24-72h */}
+            {/* 24-48h */}
             <div className="flex gap-4 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4">
               <div className="mt-0.5 grid h-10 w-10 place-items-center rounded-xl bg-orange-100 text-orange-700">
                 <FiAlertTriangle className="h-5 w-5" />
               </div>
               <div className="flex-1">
                 <div className="text-base font-semibold text-orange-900">
-                  Between 24 and 72 hours before
+                  Between 24 and 48 hours before
                 </div>
                 <div className="mt-1 text-sm text-orange-800">
                   You will receive a <span className="font-semibold">50% refund</span> of your purchase.
