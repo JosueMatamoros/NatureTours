@@ -5,11 +5,12 @@ import WhatsAppButton from "../ui/WhatsAppButton";
 export default function ContactInfoPanel({
   phoneDisplay = "+506 8989 3335",
   phoneE164 = "50689893335",
+  whatsappE164 = "50661824352", // WhatsApp de la empresa (distinto al de llamadas)
   whatsappMessage = "Hello, I would like more information about the tour.",
   servicesHref = "/services",
   policiesHref = "/policies", // optional, in case you use it later
 }) {
-  const whatsappUrl = `https://wa.me/${phoneE164}?text=${encodeURIComponent(
+  const whatsappUrl = `https://wa.me/${whatsappE164}?text=${encodeURIComponent(
     whatsappMessage
   )}`;
 

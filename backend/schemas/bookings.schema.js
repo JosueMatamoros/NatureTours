@@ -18,6 +18,10 @@ export const createBookingSchema = z
     resellerId: z.string().uuid().nullable().optional(),
     ...ageBreakdown,
   })
+  .refine((d) => d.adults + d.children >= 2, {
+    message: "El tour requiere un mínimo de 2 personas",
+    path: ["adults"],
+  })
   .refine((d) => d.adults + d.children <= 25, {
     message: "Demasiadas personas para una sola reserva",
   })

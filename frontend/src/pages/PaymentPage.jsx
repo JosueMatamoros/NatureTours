@@ -10,7 +10,6 @@ import CancellationTermsModal from "../components/ui/CancellationTermsModal";
 import ContactForm from "../components/payment/ContactForm";
 import OrderSummaryBox from "../components/payment/OrderSummaryBox";
 import DepositToggleCard from "../components/payment/DepositToggleCard";
-import SinpeInfoCard from "../components/payment/SinpeInfoCard";
 import PaymentPanel from "../components/payment/PaymentPanel";
 import HoldSpotCountdown from "../components/payment/HoldSpotCountdown";
 import Collapse from "../components/ui/Collapse";
@@ -526,13 +525,6 @@ export default function PaymentPage() {
                 setUseDeposit={setUseDeposit}
                 depositAmount={depositAmount}
                 fmt={fmt}
-              />
-
-              <SinpeInfoCard
-                fmt={fmt}
-                depositAmount={depositAmount}
-                subtotal={subtotal}
-                descriptionText={descriptionText}
               />
 
               <p className="mt-6 text-center text-xs text-gray-400">

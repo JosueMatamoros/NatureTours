@@ -104,7 +104,7 @@ function GuestCounterRow({
 // del reseller a los precios y asocia el booking a su id. El botón de
 // WhatsApp escribe al teléfono del reseller (o al nuestro si no tiene).
 export default function ReserveTourCard({ tour, reseller = null }) {
-  const COMPANY_WHATSAPP = "50689893335";
+  const COMPANY_WHATSAPP = "50661824352";
   const resellerDigits = String(reseller?.phone ?? "").replace(/\D/g, "");
   const whatsappPhoneE164 =
     resellerDigits.length === 8
@@ -115,7 +115,8 @@ export default function ReserveTourCard({ tour, reseller = null }) {
 
   const [slot, setSlot] = useState(null);
   // Desglose por edad: adultos (13+), niños (4–12) y bebés (<4, gratis).
-  const [adults, setAdults] = useState(1);
+  // El tour requiere mínimo 2 personas (adultos + niños), por eso arranca en 2.
+  const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [babies, setBabies] = useState(0);
   const [selectedDate, setSelectedDate] = useState(undefined);
@@ -278,6 +279,7 @@ export default function ReserveTourCard({ tour, reseller = null }) {
       slot &&
       !isSelectedBlocked &&
       !isSelectedWithinLeadTime &&
+      seats >= 2 &&
       seats <= maxGuestsSelectable
   );
 
@@ -557,7 +559,7 @@ export default function ReserveTourCard({ tour, reseller = null }) {
               value={adults}
               onDecrease={() => setAdults((a) => Math.max(1, a - 1))}
               onIncrease={() => setAdults((a) => a + 1)}
-              decreaseDisabled={adults <= 1 || loading}
+              decreaseDisabled={adults <= 1 || seats <= 2 || loading}
               increaseDisabled={
                 seats >= maxGuestsSelectable || loading || maxGuestsSelectable <= 0
               }
@@ -569,7 +571,7 @@ export default function ReserveTourCard({ tour, reseller = null }) {
               value={children}
               onDecrease={() => setChildren((c) => Math.max(0, c - 1))}
               onIncrease={() => setChildren((c) => c + 1)}
-              decreaseDisabled={children <= 0 || loading}
+              decreaseDisabled={children <= 0 || seats <= 2 || loading}
               increaseDisabled={
                 seats >= maxGuestsSelectable || loading || maxGuestsSelectable <= 0
               }
