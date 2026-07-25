@@ -5,7 +5,7 @@ import { HiOutlineLocationMarker } from "react-icons/hi";
 
 const LINKS = [
   { label: "Home",     to: "/" },
-  { label: "Tours",    to: "/tours" },
+  { label: "Tours",    to: "/SelecTour" },
   { label: "About Us", to: "/about" },
   { label: "Services", to: "/services" },
   { label: "Contact",  to: "/contact" },

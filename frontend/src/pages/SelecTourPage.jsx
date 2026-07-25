@@ -1,12 +1,16 @@
 import { HiOutlineClock } from "react-icons/hi2";
-import { useNavigate } from "react-router-dom";
+import { FiArrowRight } from "react-icons/fi";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/home/Navbar";
 import Footer from "../components/home/Footer";
+import PartnerToursSection from "../components/tour/PartnerToursSection";
 
 const TOURS = [
   {
     id: 2,
     title: "Horseback Riding Tour",
+    // En móvil el título se parte aquí para que no quede "Tour" solo.
+    titleParts: ["Horseback", "Riding Tour"],
     description:
       "Enjoy a memorable horseback riding experience along scenic forest trails and crystal-clear rivers. Ride through lush tropical landscapes, spot local wildlife, and take in the natural beauty that makes Costa Rica truly unforgettable.",
     image: "/tours/familyHorsebackRiding.webp",
@@ -15,6 +19,7 @@ const TOURS = [
     objectPosition: "object-[center_65%]",
     available: true,
     cta: "Select date",
+    infoHref: "/tours", // página con el detalle completo del tour
   },
   {
     id: 1,
@@ -60,7 +65,7 @@ export default function SelecTour() {
             return (
               <article
                 key={tour.id}
-                className="overflow-hidden rounded-3xl bg-white shadow-[0_20px_50px_rgba(0,0,0,0.12)] ring-1 ring-black/5 transition-transform duration-300 hover:scale-[1.02]"
+                className="group relative overflow-hidden rounded-3xl bg-white shadow-[0_20px_50px_rgba(0,0,0,0.12)] ring-1 ring-black/5 transition-transform duration-300 hover:scale-[1.02]"
               >
                 {/* IMAGE */}
                 <div className="relative h-[320px]">
@@ -103,12 +108,32 @@ export default function SelecTour() {
                 {/* DESCRIPTION */}
                 <div className="px-6 pt-5 text-slate-600">
                   <p className="text-sm leading-6">{tour.description}</p>
+
+                  {/* Único enlace de la tarjeta que va al detalle del tour;
+                      z-20 para quedar sobre el overlay de reserva. */}
+                  {tour.infoHref && (
+                    <Link
+                      to={tour.infoHref}
+                      className="relative z-20 mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 transition hover:decoration-emerald-600"
+                    >
+                      See tour details
+                      <FiArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </Link>
+                  )}
                 </div>
 
                 {/* FOOTER */}
-                <div className="flex items-center justify-between gap-4 px-6 pb-6 pt-5">
+                <div className="flex items-center justify-between gap-4 px-6 pb-6 pt-3">
                   <h3 className="text-2xl font-semibold tracking-tight text-slate-900">
-                    {tour.title}
+                    {tour.titleParts ? (
+                      <>
+                        {tour.titleParts[0]}
+                        <br className="sm:hidden" />{" "}
+                        {tour.titleParts[1]}
+                      </>
+                    ) : (
+                      tour.title
+                    )}
                   </h3>
 
                   <button
@@ -118,7 +143,7 @@ export default function SelecTour() {
                       navigate(`/checkout?tourType=${tour.id}`);
                     }}
                     className={[
-                      "rounded-full px-6 py-2 text-sm font-semibold transition",
+                      "relative z-20 shrink-0 rounded-full px-6 py-2 text-sm font-semibold transition",
                       isDisabled
                         ? "cursor-not-allowed bg-slate-200 text-slate-500"
                         : "bg-emerald-700 text-white hover:bg-emerald-800",
@@ -127,11 +152,25 @@ export default function SelecTour() {
                     {tour.cta}
                   </button>
                 </div>
+
+                {/* Enlace que cubre la tarjeta: tocarla lleva al booking del
+                    tour. Queda bajo el botón y "See tour details"
+                    (z-10 vs z-20), que son los únicos que van a otra parte. */}
+                {!isDisabled && (
+                  <Link
+                    to={`/checkout?tourType=${tour.id}`}
+                    className="absolute inset-0 z-10"
+                    aria-label={`Book the ${tour.title}`}
+                  />
+                )}
               </article>
             );
           })}
         </section>
       </main>
+
+      <PartnerToursSection />
+
       <Footer />
     </div>
   );

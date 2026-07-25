@@ -5,6 +5,7 @@ import Navbar from "../components/home/Navbar";
 import Footer from "../components/home/Footer";
 import TourImagesBento from "../components/tour/TourImagesBento";
 import WhatToBring from "../components/tour/WhatToBring";
+import StickyBookingBar from "../components/tour/StickyBookingBar";
 import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
 
 export default function ToursPage() {
@@ -27,6 +28,8 @@ export default function ToursPage() {
       <LocalFlavors />
       <WhatToBring />
       <Footer />
+
+      <StickyBookingBar tourId={2} />
     </div>
   );
 }

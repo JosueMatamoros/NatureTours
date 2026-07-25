@@ -429,7 +429,7 @@ export default function PaymentPage() {
 
             {/* Deposit 20% */}
             <Collapse show={useDeposit}>
-              <div className="px-8 ">
+              <div className="px-8 pb-8 md:pb-2">
                 <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
                   <div className="px-6 pt-6 pb-2">
                     <h3 className="text-lg font-semibold text-gray-900">
@@ -445,7 +445,7 @@ export default function PaymentPage() {
                     </p>
                   </div>
 
-                  <div className="px-6 pt-6">
+                  <div className="px-6 pt-6 pb-6">
                     <PaymentPanel
                       mode="deposit"
                       mustBlockPay={!isFormValid}

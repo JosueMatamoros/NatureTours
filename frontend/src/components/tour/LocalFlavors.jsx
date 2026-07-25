@@ -45,7 +45,7 @@ export default function LocalFlavors() {
                   Beverages
                 </h3>
                 <p className="mt-1 text-gray-600">
-                  Water, milkshakes, coconut water, or traditional Costa Rican coffee.
+                  Homemade natural fruit drinks, sugarcane juice, or coconut water.
                 </p>
               </div>
             </div>

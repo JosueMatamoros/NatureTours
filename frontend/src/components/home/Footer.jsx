@@ -5,7 +5,7 @@ import FAQModal from "../ui/FAQModal";
 
 const LINKS = [
   { label: "Home", to: "/" },
-  { label: "Tours", to: "/tours" },
+  { label: "Tours", to: "/SelecTour" },
   { label: "About Us", to: "/about" },
   { label: "Contact", to: "/contact" },
   { label: "Services", to: "/services" },

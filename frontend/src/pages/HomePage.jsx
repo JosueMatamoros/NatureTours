@@ -20,7 +20,7 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-dvh w-screen "
+      className="min-h-dvh w-full overflow-x-hidden"
     >
       <Navbar variant="overlay" />
       <HeroSection />
