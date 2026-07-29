@@ -12,6 +12,7 @@ const resellerBodySchema = z.object({
   // Configuración de pago: solo informativa, todo opcional.
   bacAccount: z.string().trim().max(40).nullable().optional().or(z.literal("")),
   iban: z.string().trim().max(40).nullable().optional().or(z.literal("")),
+  accountCurrency: z.enum(["USD", "CRC"]).nullable().optional().or(z.literal("")),
   paymentFrequency: z
     .enum(["daily", "weekly", "biweekly", "monthly"])
     .nullable()
@@ -91,7 +92,7 @@ export async function getAllResellers(req, res) {
       `
       SELECT
         r.id, r.name, r.email, r.phone, r.commission, r.active, r.created_at,
-        r.bac_account, r.iban, r.payment_frequency,
+        r.bac_account, r.iban, r.account_currency, r.payment_frequency,
         COALESCE(SUM(p.commission_amount) FILTER (
           WHERE p.commission_status = 'pending' AND p.status = 'completed'
             AND ($1::text IS NULL OR ${MONTH_MATCH} = $1)
@@ -161,6 +162,7 @@ export async function getAllResellers(req, res) {
         createdAt: r.created_at,
         bacAccount: r.bac_account,
         iban: r.iban,
+        accountCurrency: r.account_currency,
         paymentFrequency: r.payment_frequency,
         pendingTotal: Number(r.pending_total),
         paidTotal: Number(r.paid_total),
@@ -181,14 +183,22 @@ export async function createReseller(req, res) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
 
-  const { name, email, phone, commission, bacAccount, iban, paymentFrequency } =
-    parsed.data;
+  const {
+    name,
+    email,
+    phone,
+    commission,
+    bacAccount,
+    iban,
+    accountCurrency,
+    paymentFrequency,
+  } = parsed.data;
 
   try {
     const q = await pool.query(
       `
-      INSERT INTO resellers (name, email, phone, commission, bac_account, iban, payment_frequency)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO resellers (name, email, phone, commission, bac_account, iban, account_currency, payment_frequency)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING id
       `,
       [
@@ -198,6 +208,7 @@ export async function createReseller(req, res) {
         commission,
         bacAccount || null,
         iban || null,
+        accountCurrency || null,
         paymentFrequency || null,
       ],
     );
@@ -229,6 +240,7 @@ export async function updateReseller(req, res) {
     active,
     bacAccount,
     iban,
+    accountCurrency,
     paymentFrequency,
   } = parsed.data;
 
@@ -243,7 +255,8 @@ export async function updateReseller(req, res) {
           active            = COALESCE($6, active),
           bac_account       = COALESCE($7, bac_account),
           iban              = COALESCE($8, iban),
-          payment_frequency = COALESCE($9, payment_frequency)
+          account_currency  = COALESCE($9, account_currency),
+          payment_frequency = COALESCE($10, payment_frequency)
       WHERE id = $1
       RETURNING id
       `,
@@ -256,6 +269,7 @@ export async function updateReseller(req, res) {
         active ?? null,
         bacAccount || null,
         iban || null,
+        accountCurrency || null,
         paymentFrequency || null,
       ],
     );

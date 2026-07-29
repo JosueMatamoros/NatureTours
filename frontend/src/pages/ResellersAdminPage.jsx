@@ -92,6 +92,11 @@ function PaymentAccountInfo({ reseller: r }) {
           <span className="font-mono text-xs font-bold text-violet-700">
             {number}
           </span>
+          {r.accountCurrency && (
+            <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">
+              {r.accountCurrency}
+            </span>
+          )}
           <button
             type="button"
             onClick={handleCopy}
@@ -180,6 +185,7 @@ function ResellerModal({ open, initial, onClose, onSaved, showToast }) {
   const [active, setActive] = useState(true);
   const [bacAccount, setBacAccount] = useState("");
   const [iban, setIban] = useState("");
+  const [accountCurrency, setAccountCurrency] = useState("");
   const [paymentFrequency, setPaymentFrequency] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -192,6 +198,7 @@ function ResellerModal({ open, initial, onClose, onSaved, showToast }) {
     setActive(initial?.active ?? true);
     setBacAccount(initial?.bacAccount ?? "");
     setIban(initial?.iban ?? "");
+    setAccountCurrency(initial?.accountCurrency ?? "");
     setPaymentFrequency(initial?.paymentFrequency ?? "");
   }, [open, initial]);
 
@@ -212,6 +219,7 @@ function ResellerModal({ open, initial, onClose, onSaved, showToast }) {
         commission: Number(commission),
         bacAccount: bacAccount.trim() || null,
         iban: iban.trim() || null,
+        accountCurrency: accountCurrency || null,
         paymentFrequency: paymentFrequency || null,
       };
 
@@ -341,6 +349,21 @@ function ResellerModal({ open, initial, onClose, onSaved, showToast }) {
                   className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30"
                   placeholder="CR00 0000 0000 0000 0000 00"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-600">
+                  Tipo de cuenta
+                </label>
+                <select
+                  value={accountCurrency}
+                  onChange={(e) => setAccountCurrency(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                >
+                  <option value="">Sin definir</option>
+                  <option value="USD">Dólares (USD)</option>
+                  <option value="CRC">Colones (CRC)</option>
+                </select>
               </div>
 
               <div>

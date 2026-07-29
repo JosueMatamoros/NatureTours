@@ -19,6 +19,7 @@ export function createReseller({
   commission,
   bacAccount,
   iban,
+  accountCurrency,
   paymentFrequency,
 }) {
   return api.post("/api/resellers", {
@@ -28,6 +29,7 @@ export function createReseller({
     commission,
     bacAccount,
     iban,
+    accountCurrency,
     paymentFrequency,
   });
 }
