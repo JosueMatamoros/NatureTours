@@ -18,6 +18,8 @@ import {
   FiSearch,
   FiTrendingUp,
   FiDollarSign,
+  FiCopy,
+  FiCheck,
 } from "react-icons/fi";
 import {
   getAllResellers,
@@ -61,13 +63,56 @@ const PAYMENT_FREQUENCY_LABEL = {
   monthly: "Pago mensual",
 };
 
-// Línea informativa de configuración de pago: null si no hay nada cargado.
-function paymentConfigLine(r) {
-  const parts = [];
-  if (r.bacAccount) parts.push(`BAC ${r.bacAccount}`);
-  else if (r.iban) parts.push(`IBAN ${r.iban}`);
-  if (r.paymentFrequency) parts.push(PAYMENT_FREQUENCY_LABEL[r.paymentFrequency]);
-  return parts.length ? parts.join(" · ") : null;
+// Cuenta (BAC o IBAN) resaltada, con botón para copiarla, más la frecuencia
+// de pago si está definida. null si el reseller no tiene nada cargado.
+function PaymentAccountInfo({ reseller: r }) {
+  const label = r.bacAccount ? "BAC" : r.iban ? "IBAN" : null;
+  const number = r.bacAccount || r.iban || null;
+  const [copied, setCopied] = useState(false);
+
+  if (!number && !r.paymentFrequency) return null;
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(number);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Sin permiso de portapapeles: no interrumpe el flujo, solo no copia.
+    }
+  }
+
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+      {number && (
+        <span className="inline-flex items-center gap-1.5 rounded-lg bg-violet-50 px-2 py-1 ring-1 ring-violet-100">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-400">
+            {label}
+          </span>
+          <span className="font-mono text-xs font-bold text-violet-700">
+            {number}
+          </span>
+          <button
+            type="button"
+            onClick={handleCopy}
+            title="Copiar número de cuenta"
+            className="text-violet-400 hover:text-violet-600"
+          >
+            {copied ? (
+              <FiCheck className="h-3.5 w-3.5 text-emerald-600" />
+            ) : (
+              <FiCopy className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </span>
+      )}
+      {r.paymentFrequency && (
+        <span className="text-xs text-gray-400">
+          {PAYMENT_FREQUENCY_LABEL[r.paymentFrequency]}
+        </span>
+      )}
+    </div>
+  );
 }
 
 function fmtDate(raw) {
@@ -764,11 +809,7 @@ export default function ResellersAdminPage() {
                         {" · "}
                         {r.salesCount} venta{r.salesCount === 1 ? "" : "s"}
                       </p>
-                      {paymentConfigLine(r) && (
-                        <p className="mt-0.5 text-xs text-gray-400">
-                          {paymentConfigLine(r)}
-                        </p>
-                      )}
+                      <PaymentAccountInfo reseller={r} />
                     </div>
 
                     <div className="flex items-center gap-2">
