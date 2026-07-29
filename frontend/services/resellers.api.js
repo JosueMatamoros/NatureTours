@@ -12,8 +12,24 @@ export function getAllResellers(month) {
   return api.get(`/api/resellers${month ? `?month=${month}` : ""}`);
 }
 
-export function createReseller({ name, email, phone, commission }) {
-  return api.post("/api/resellers", { name, email, phone, commission });
+export function createReseller({
+  name,
+  email,
+  phone,
+  commission,
+  bacAccount,
+  iban,
+  paymentFrequency,
+}) {
+  return api.post("/api/resellers", {
+    name,
+    email,
+    phone,
+    commission,
+    bacAccount,
+    iban,
+    paymentFrequency,
+  });
 }
 
 export function updateReseller(resellerId, fields) {

@@ -54,6 +54,22 @@ function fmtMoney(n) {
   return `$${Number(n ?? 0).toFixed(2)}`;
 }
 
+const PAYMENT_FREQUENCY_LABEL = {
+  daily: "Pago diario",
+  weekly: "Pago semanal",
+  biweekly: "Pago quincenal",
+  monthly: "Pago mensual",
+};
+
+// Línea informativa de configuración de pago: null si no hay nada cargado.
+function paymentConfigLine(r) {
+  const parts = [];
+  if (r.bacAccount) parts.push(`BAC ${r.bacAccount}`);
+  else if (r.iban) parts.push(`IBAN ${r.iban}`);
+  if (r.paymentFrequency) parts.push(PAYMENT_FREQUENCY_LABEL[r.paymentFrequency]);
+  return parts.length ? parts.join(" · ") : null;
+}
+
 function fmtDate(raw) {
   if (!raw) return "—";
   const d = new Date(raw);
@@ -117,6 +133,9 @@ function ResellerModal({ open, initial, onClose, onSaved, showToast }) {
   const [phone, setPhone] = useState("");
   const [commission, setCommission] = useState(20);
   const [active, setActive] = useState(true);
+  const [bacAccount, setBacAccount] = useState("");
+  const [iban, setIban] = useState("");
+  const [paymentFrequency, setPaymentFrequency] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -126,6 +145,9 @@ function ResellerModal({ open, initial, onClose, onSaved, showToast }) {
     setPhone(initial?.phone ?? "");
     setCommission(initial?.commission ?? 20);
     setActive(initial?.active ?? true);
+    setBacAccount(initial?.bacAccount ?? "");
+    setIban(initial?.iban ?? "");
+    setPaymentFrequency(initial?.paymentFrequency ?? "");
   }, [open, initial]);
 
   if (!open) return null;
@@ -143,6 +165,9 @@ function ResellerModal({ open, initial, onClose, onSaved, showToast }) {
         email: email.trim() || null,
         phone: phone.trim() || null,
         commission: Number(commission),
+        bacAccount: bacAccount.trim() || null,
+        iban: iban.trim() || null,
+        paymentFrequency: paymentFrequency || null,
       };
 
       if (isEdit) {
@@ -164,7 +189,7 @@ function ResellerModal({ open, initial, onClose, onSaved, showToast }) {
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold text-gray-900">
             {isEdit ? "Editar reseller" : "Nuevo reseller"}
@@ -239,6 +264,58 @@ function ResellerModal({ open, initial, onClose, onSaved, showToast }) {
               Activo (su página funciona)
             </label>
           )}
+
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-sm font-semibold text-gray-700">
+              Configuración de pago
+            </p>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Solo informativo, todo es opcional.
+            </p>
+
+            <div className="mt-3 space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-600">
+                  Cuenta BAC
+                </label>
+                <input
+                  value={bacAccount}
+                  onChange={(e) => setBacAccount(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                  placeholder="Número de cuenta BAC"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-600">
+                  IBAN (si no tiene cuenta BAC)
+                </label>
+                <input
+                  value={iban}
+                  onChange={(e) => setIban(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                  placeholder="CR00 0000 0000 0000 0000 00"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-600">
+                  Frecuencia de pago preferida
+                </label>
+                <select
+                  value={paymentFrequency}
+                  onChange={(e) => setPaymentFrequency(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                >
+                  <option value="">Sin definir</option>
+                  <option value="daily">Diaria</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="biweekly">Quincenal</option>
+                  <option value="monthly">Mensual</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-2">
@@ -687,6 +764,11 @@ export default function ResellersAdminPage() {
                         {" · "}
                         {r.salesCount} venta{r.salesCount === 1 ? "" : "s"}
                       </p>
+                      {paymentConfigLine(r) && (
+                        <p className="mt-0.5 text-xs text-gray-400">
+                          {paymentConfigLine(r)}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">

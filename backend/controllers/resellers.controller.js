@@ -9,6 +9,14 @@ const resellerBodySchema = z.object({
   email: z.string().trim().email().nullable().optional().or(z.literal("")),
   phone: z.string().trim().max(30).nullable().optional().or(z.literal("")),
   commission: z.number().int().min(0).max(30),
+  // Configuración de pago: solo informativa, todo opcional.
+  bacAccount: z.string().trim().max(40).nullable().optional().or(z.literal("")),
+  iban: z.string().trim().max(40).nullable().optional().or(z.literal("")),
+  paymentFrequency: z
+    .enum(["daily", "weekly", "biweekly", "monthly"])
+    .nullable()
+    .optional()
+    .or(z.literal("")),
 });
 
 const updateResellerSchema = resellerBodySchema.partial().extend({
@@ -83,6 +91,7 @@ export async function getAllResellers(req, res) {
       `
       SELECT
         r.id, r.name, r.email, r.phone, r.commission, r.active, r.created_at,
+        r.bac_account, r.iban, r.payment_frequency,
         COALESCE(SUM(p.commission_amount) FILTER (
           WHERE p.commission_status = 'pending' AND p.status = 'completed'
             AND ($1::text IS NULL OR ${MONTH_MATCH} = $1)
@@ -150,6 +159,9 @@ export async function getAllResellers(req, res) {
         discount: Math.max(30 - Number(r.commission), 0),
         active: r.active,
         createdAt: r.created_at,
+        bacAccount: r.bac_account,
+        iban: r.iban,
+        paymentFrequency: r.payment_frequency,
         pendingTotal: Number(r.pending_total),
         paidTotal: Number(r.paid_total),
         pendingCount: r.pending_count,
@@ -169,16 +181,25 @@ export async function createReseller(req, res) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
 
-  const { name, email, phone, commission } = parsed.data;
+  const { name, email, phone, commission, bacAccount, iban, paymentFrequency } =
+    parsed.data;
 
   try {
     const q = await pool.query(
       `
-      INSERT INTO resellers (name, email, phone, commission)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO resellers (name, email, phone, commission, bac_account, iban, payment_frequency)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
       `,
-      [name, email || null, phone || null, commission],
+      [
+        name,
+        email || null,
+        phone || null,
+        commission,
+        bacAccount || null,
+        iban || null,
+        paymentFrequency || null,
+      ],
     );
 
     return res.status(201).json({ ok: true, id: q.rows[0].id });
@@ -200,17 +221,29 @@ export async function updateReseller(req, res) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
 
-  const { name, email, phone, commission, active } = parsed.data;
+  const {
+    name,
+    email,
+    phone,
+    commission,
+    active,
+    bacAccount,
+    iban,
+    paymentFrequency,
+  } = parsed.data;
 
   try {
     const q = await pool.query(
       `
       UPDATE resellers
-      SET name       = COALESCE($2, name),
-          email      = COALESCE($3, email),
-          phone      = COALESCE($4, phone),
-          commission = COALESCE($5, commission),
-          active     = COALESCE($6, active)
+      SET name              = COALESCE($2, name),
+          email             = COALESCE($3, email),
+          phone             = COALESCE($4, phone),
+          commission        = COALESCE($5, commission),
+          active            = COALESCE($6, active),
+          bac_account       = COALESCE($7, bac_account),
+          iban              = COALESCE($8, iban),
+          payment_frequency = COALESCE($9, payment_frequency)
       WHERE id = $1
       RETURNING id
       `,
@@ -221,6 +254,9 @@ export async function updateReseller(req, res) {
         phone || null,
         commission ?? null,
         active ?? null,
+        bacAccount || null,
+        iban || null,
+        paymentFrequency || null,
       ],
     );
 
