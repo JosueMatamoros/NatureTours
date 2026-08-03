@@ -260,6 +260,7 @@ export async function getAllPayments(req, res) {
       b.adults             AS adults,
       b.children           AS children,
       b.babies             AS babies,
+      b.subtotal           AS subtotal,
 
       c.id                 AS customer_id,
       c.name               AS customer_name,
@@ -299,6 +300,12 @@ export async function getAllPayments(req, res) {
           adults: r.adults,
           children: r.children,
           babies: r.babies,
+          subtotal: Number(r.subtotal),
+          // Saldo que falta pagar el día del tour (solo aplica a apartados).
+          balanceDue:
+            r.mode === "deposit"
+              ? Math.max(Number(r.subtotal) - Number(r.amount), 0)
+              : 0,
         },
 
         customer: r.customer_id
