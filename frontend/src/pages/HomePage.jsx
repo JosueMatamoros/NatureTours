@@ -13,6 +13,7 @@ import TourImagesBento from "../components/tour/TourImagesBento";
 import HorsesSection from "../sections/HorsesSection";
 import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
 import InstagramSection from "../sections/InstagramSection";
+import RatingsSection from "../sections/RatingsSection";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ export default function Home() {
       <HeroSection />
       <ToursSection />
        <InstagramSection />
+      <RatingsSection />
       <TourImagesBento
         images={[
           "/tours/bento/image1.webp",
