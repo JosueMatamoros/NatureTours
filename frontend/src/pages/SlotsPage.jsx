@@ -1,5 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getAvailabilityBlocked } from "../../services/availability.api";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  FiArrowLeft,
+  FiCalendar,
+  FiUsers,
+  FiClock,
+  FiChevronDown,
+  FiChevronLeft,
+  FiChevronRight,
+  FiLock,
+  FiUnlock,
+  FiSliders,
+} from "react-icons/fi";
+import CalendarPicker from "../components/checkout/CalendarPicker";
 import { getDayBlocks, blockDay, unblockDay } from "../../services/availability.blocks.api";
 import { getSlotOverrides, upsertSlotOverride, deleteSlotOverride } from "../../services/slot-overrides.api";
 import { getPayments } from "../../services/payments.api";
@@ -7,11 +20,11 @@ import { getPayments } from "../../services/payments.api";
 const TOUR_ID = 2;
 const TOUR2_CAPACITY = 16;
 const SLOTS = ["08:00", "12:00", "15:00"];
-const DAYS_AHEAD = 6;
 const TOUR_NAME = "La Fortuna: Horseback Riding Tour with River Crossing";
+const TOUR_IMG = "/tours/familyHorsebackRiding.webp";
 
-const WEEKDAYS_SHORT = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const WEEKDAYS_FULL = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const WEEKDAYS_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
 
 function todayYmd() {
@@ -19,20 +32,22 @@ function todayYmd() {
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
 }
 
-function addDays(ymd, n) {
-  const d = new Date(`${ymd}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
-function shortDate(ymd) {
-  const d = new Date(`${ymd}T00:00:00`);
-  return `${WEEKDAYS_SHORT[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+function shiftYmd(ymd, days) {
+  const d = new Date(`${ymd}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function fullDate(ymd) {
   const d = new Date(`${ymd}T00:00:00`);
   return `${WEEKDAYS_FULL[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
+// "Vie, 11 Set 2026"
+function navLabel(ymd) {
+  const d = new Date(`${ymd}T00:00:00`);
+  const mon = MONTHS[d.getMonth()];
+  return `${WEEKDAYS_SHORT[d.getDay()]}, ${d.getDate()} ${mon.charAt(0).toUpperCase()}${mon.slice(1)} ${d.getFullYear()}`;
 }
 
 function parseFecha(raw) {
@@ -48,57 +63,41 @@ function Toast({ toast, onClose }) {
     ? "border-emerald-200 bg-emerald-50 text-emerald-800"
     : "border-red-200 bg-red-50 text-red-800";
   return (
-    <div className="fixed top-4 right-4 z-50">
-      <div className={`w-80 border rounded-xl shadow p-4 ${style}`}>
+    <div className="fixed top-4 right-4 z-50" role="status" aria-live="polite">
+      <div className={`w-80 border rounded-xl shadow-lg p-4 ${style}`}>
         <div className="flex items-start gap-3">
           <p className="flex-1 text-sm font-medium">{toast.message}</p>
-          <button onClick={onClose} className="opacity-60 hover:opacity-100 text-xs">✕</button>
+          <button onClick={onClose} className="opacity-60 hover:opacity-100 text-xs cursor-pointer">✕</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Toggle ───────────────────────────────────────────────────────────────────
-function Toggle({ checked, onChange, disabled }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
-        checked ? "bg-blue-500" : "bg-gray-300"
-      }`}
-    >
-      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-        checked ? "translate-x-6" : "translate-x-1"
-      }`} />
-    </button>
-  );
-}
-
 // ─── Stepper input (+/-) ──────────────────────────────────────────────────────
-function StepperInput({ value, onChange, min = 0, max = TOUR2_CAPACITY }) {
+function StepperInput({ value, onChange, min = 0, max = TOUR2_CAPACITY, disabled }) {
+  const base =
+    "grid h-9 w-9 place-items-center text-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer";
   return (
-    <div className="flex items-center gap-0 rounded-lg border border-gray-200 overflow-hidden">
+    <div className={`inline-flex items-center rounded-lg border border-slate-200 overflow-hidden ${disabled ? "opacity-60" : ""}`}>
       <button
         type="button"
+        aria-label="Quitar un cupo"
         onClick={() => onChange(Math.max(min, value - 1))}
-        disabled={value <= min}
-        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        disabled={disabled || value <= min}
+        className={base}
       >
         −
       </button>
-      <span className="w-8 text-center text-sm font-semibold text-gray-800 select-none">
+      <span className="w-10 text-center text-sm font-semibold text-slate-900 tabular-nums select-none">
         {value}
       </span>
       <button
         type="button"
+        aria-label="Agregar un cupo"
         onClick={() => onChange(Math.min(max, value + 1))}
-        disabled={value >= max}
-        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        disabled={disabled || value >= max}
+        className={base}
       >
         +
       </button>
@@ -106,67 +105,11 @@ function StepperInput({ value, onChange, min = 0, max = TOUR2_CAPACITY }) {
   );
 }
 
-// ─── Phantom popover ──────────────────────────────────────────────────────────
-function PhantomPopover({ phantom, maxPhantom, onSave, onReset, onClose, saving }) {
-  const [val, setVal] = useState(phantom ?? 0);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
-
-  const hasChanged = val !== (phantom ?? 0);
-
-  return (
-    <div
-      ref={ref}
-      className="absolute left-0 z-20 mt-2 w-56 sm:w-60 rounded-xl border border-gray-200 bg-white shadow-lg p-4"
-    >
-      <p className="text-xs font-medium text-gray-500 mb-3">Espacios bloqueados (fantasma)</p>
-
-      <div className="flex items-center gap-3">
-        <StepperInput value={val} onChange={setVal} min={0} max={maxPhantom} />
-        <span className="text-xs text-gray-400">/ {maxPhantom}</span>
-      </div>
-
-      <div className="flex items-center gap-2 mt-3">
-        {hasChanged && (
-          <button
-            onClick={() => onSave(val)}
-            disabled={saving}
-            className="px-3 py-1.5 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 font-medium"
-          >
-            {saving ? "Guardando..." : "Guardar"}
-          </button>
-        )}
-        {(phantom ?? 0) > 0 && (
-          <button
-            onClick={onReset}
-            disabled={saving}
-            className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
-          >
-            Quitar
-          </button>
-        )}
-        <button onClick={onClose} className="ml-auto text-xs text-gray-400 hover:text-gray-600">
-          Cerrar
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ─── Slot row ─────────────────────────────────────────────────────────────────
 function SlotRow({
-  date, slot, isDayBlocked, phantom, slotRemaining, reservations,
-  onBlockSlot, onUnblockSlot, onSavePhantom, onResetPhantom,
-  slotLoading, phantomLoading,
+  slot, isDayBlocked, phantom, reservations,
+  onSetCapacity, onBlock, onUnblock, loading, last,
 }) {
-  const [showPhantom, setShowPhantom] = useState(false);
   const [showReservas, setShowReservas] = useState(false);
 
   const slotReservations = useMemo(
@@ -174,131 +117,129 @@ function SlotRow({
     [reservations, slot]
   );
 
-  // seats = espacios ocupados (adultos + niños); los bebés van con un adulto y no cuentan
+  // Asientos ocupados por reservas reales (adultos + niños; los bebés no cuentan)
   const guestsTaken = useMemo(
     () =>
       slotReservations.reduce(
-        (sum, p) =>
-          sum + (Number(p.booking?.seats ?? p.booking?.personas) || 0),
+        (sum, p) => sum + (Number(p.booking?.seats ?? p.booking?.personas) || 0),
         0
       ),
     [slotReservations]
   );
 
-  // Spots still available for customers (what's left after real bookings)
-  const freeSpots = Math.max(0, TOUR2_CAPACITY - guestsTaken);
-  // Phantom blocks ALL remaining free spots
-  const isPhantomBlocked = phantom >= freeSpots && freeSpots > 0 || phantom >= TOUR2_CAPACITY;
-  // Effective capacity shown = real capacity - phantom
-  const effectiveCapacity = Math.max(0, TOUR2_CAPACITY - phantom);
-  const isApiBlocked = isDayBlocked || (slotRemaining !== null && slotRemaining <= 0);
-  const isBlocked = isPhantomBlocked || isApiBlocked;
-  const canBook = !isBlocked;
-
-  function handleToggle(checked) {
-    if (checked) onBlockSlot(freeSpots); // phantom = remaining free spots
-    else onUnblockSlot();
-  }
+  // Capacidad efectiva = base − cupos retirados (phantom). No es una reserva:
+  // solo baja cuántos cupos se ofrecen al público.
+  const capacity = Math.max(0, TOUR2_CAPACITY - phantom);
+  const effectiveCapacity = Math.max(capacity, guestsTaken);
+  const available = Math.max(0, effectiveCapacity - guestsTaken);
+  const slotBlocked = !isDayBlocked && available <= 0;
+  const canBook = !isDayBlocked && available > 0;
 
   return (
-    <div className="flex border-b last:border-b-0">
-      {/* Time column */}
-      <div className="w-20 sm:w-24 shrink-0 flex flex-col justify-center py-4 pl-3 sm:pl-4 pr-2 text-gray-500">
-        <span className="text-xs hidden sm:block">{shortDate(date)}</span>
-        <span className="text-sm font-bold text-gray-800 mt-0.5">{slot}</span>
+    <div className={`px-5 py-5 ${last ? "" : "border-b border-slate-100"}`}>
+      {/* Fila título */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">
+            <FiClock className="h-4 w-4" />
+          </span>
+          <span className="text-lg font-bold text-slate-900 tabular-nums">{slot}</span>
+        </div>
+        <span
+          className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ${
+            isDayBlocked
+              ? "bg-slate-50 text-slate-500 ring-slate-200"
+              : canBook
+                ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                : "bg-red-50 text-red-600 ring-red-200"
+          }`}
+        >
+          {isDayBlocked ? "Día bloqueado" : canBook ? "Disponible" : "No disponible"}
+        </span>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 py-4 pr-3 sm:pr-4 min-w-0">
-        {/* Badge — top on mobile, inline on sm+ */}
-        <div className="flex items-start justify-between gap-2 mb-2 sm:mb-0">
-          <p className="text-sm font-semibold text-gray-900 truncate flex-1">{TOUR_NAME}</p>
-          <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
-            canBook ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
-          }`}>
-            {canBook ? "Disponible" : "No disponible"}
-          </span>
-        </div>
-
-        {/* Bloquear toggle — blocks this slot via phantom */}
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-sm text-gray-700">Bloquear</span>
-          <Toggle
-            checked={isPhantomBlocked || isDayBlocked}
-            onChange={handleToggle}
-            disabled={slotLoading || isDayBlocked}
+      {/* Controles */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-slate-600">Cupos disponibles</span>
+          <StepperInput
+            value={effectiveCapacity}
+            onChange={onSetCapacity}
+            min={guestsTaken}
+            max={TOUR2_CAPACITY}
+            disabled={isDayBlocked || loading}
           />
         </div>
 
-        {/* Disponibilidad */}
-        <div className="flex items-center gap-1 mt-1.5 text-sm text-gray-700 flex-wrap">
-          <span>Disponibilidad</span>
-          <span className="font-medium">
-            {guestsTaken} / {effectiveCapacity} Participantes
-          </span>
-          <div className="relative">
-            <button
-              onClick={() => setShowPhantom((v) => !v)}
-              className="ml-1 text-blue-600 text-xs hover:underline"
-            >
-              actualizar
-            </button>
-            {showPhantom && (
-              <PhantomPopover
-                phantom={phantom}
-                maxPhantom={freeSpots}
-                onSave={(n) => { onSavePhantom(n); setShowPhantom(false); }}
-                onReset={() => { onResetPhantom(); setShowPhantom(false); }}
-                onClose={() => setShowPhantom(false)}
-                saving={phantomLoading}
-              />
-            )}
-          </div>
+        <div className="flex items-center gap-4 text-sm text-slate-500">
+          <span><span className="font-semibold text-slate-900 tabular-nums">{guestsTaken}</span> reservados</span>
+          <span><span className="font-semibold text-slate-900 tabular-nums">{available}</span> libres</span>
+          <span className="text-slate-300">·</span>
+          <span className="tabular-nums">máx {TOUR2_CAPACITY}</span>
         </div>
 
-        {/* Hora límite */}
-        <p className="mt-1 text-sm text-gray-500">
-          Hora límite <span className="font-medium text-gray-700">2 horas</span>
-        </p>
+        <div className="ml-auto">
+          {slotBlocked ? (
+            <button
+              type="button"
+              onClick={onUnblock}
+              disabled={isDayBlocked || loading}
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 px-3.5 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 transition-colors cursor-pointer"
+            >
+              <FiUnlock className="h-3.5 w-3.5" /> Desbloquear horario
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onBlock}
+              disabled={isDayBlocked || loading}
+              className="inline-flex items-center gap-1.5 rounded-full border border-red-200 px-3.5 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors cursor-pointer"
+            >
+              <FiLock className="h-3.5 w-3.5" /> Bloquear horario
+            </button>
+          )}
+        </div>
+      </div>
 
-        {/* Reservas */}
-        {slotReservations.length > 0 && (
+      {/* Reservas */}
+      {slotReservations.length > 0 && (
+        <div className="mt-4">
           <button
             onClick={() => setShowReservas((v) => !v)}
-            className="mt-2 text-sm text-blue-600 hover:underline flex items-center gap-1"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
           >
-            <span>{showReservas ? "▲" : "▼"}</span>
-            Mostrar {slotReservations.length} reserva{slotReservations.length !== 1 ? "s" : ""}
+            <FiChevronDown className={`h-4 w-4 transition-transform ${showReservas ? "rotate-180" : ""}`} />
+            {showReservas ? "Ocultar" : "Mostrar"} {slotReservations.length} reserva{slotReservations.length !== 1 ? "s" : ""}
           </button>
-        )}
 
-        {showReservas && (
-          <div className="mt-2 space-y-1">
-            {slotReservations.map((p) => (
-              <div key={p.id} className="text-xs bg-gray-50 rounded-lg px-3 py-2 border border-gray-100 flex flex-wrap items-center gap-2">
-                <span className="font-medium text-gray-800">{p.customer?.name || "–"}</span>
-                {p.customer?.phone && <span className="text-gray-500">{p.customer.phone}</span>}
-                <span className="ml-auto text-emerald-700 font-semibold">
-                  {p.booking?.personas ?? "?"} pers.
-                  {Number(p.booking?.children) > 0 || Number(p.booking?.babies) > 0
-                    ? ` (${p.booking.adults} adultos · ${p.booking.children} niños · ${p.booking.babies} bebés)`
-                    : ""}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+          {showReservas && (
+            <div className="mt-3 space-y-2">
+              {slotReservations.map((p) => (
+                <div key={p.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 text-sm">
+                  <span className="font-semibold text-slate-800">{p.customer?.name || "–"}</span>
+                  {p.customer?.phone && <span className="text-slate-500">{p.customer.phone}</span>}
+                  <span className="ml-auto font-semibold text-emerald-700 tabular-nums">
+                    {p.booking?.personas ?? "?"} pers.
+                    {Number(p.booking?.children) > 0 || Number(p.booking?.babies) > 0
+                      ? ` (${p.booking.adults}A · ${p.booking.children}N · ${p.booking.babies}B)`
+                      : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function SlotsPage() {
-  const from = useMemo(() => todayYmd(), []);
-  const to = useMemo(() => addDays(from, DAYS_AHEAD), [from]);
+  const navigate = useNavigate();
+  const [selectedDay, setSelectedDay] = useState(() => todayYmd());
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
-  const [availData, setAvailData] = useState(null);
   const [dayBlocksData, setDayBlocksData] = useState([]);
   const [overrides, setOverrides] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -312,22 +253,20 @@ export default function SlotsPage() {
     showToast._t = window.setTimeout(() => setToast(null), 3000);
   }
 
-  const fetchAll = useCallback(async () => {
+  const fetchDay = useCallback(async (day) => {
     setLoading(true);
     try {
-      const [avail, blocks, pays] = await Promise.all([
-        getAvailabilityBlocked({ tourId: TOUR_ID, from, to }),
-        getDayBlocks({ tourId: TOUR_ID, from, to }),
+      const [blocks, pays] = await Promise.all([
+        getDayBlocks({ tourId: TOUR_ID, from: day, to: day }),
         getPayments(),
       ]);
-      setAvailData(avail);
       setDayBlocksData(blocks?.blocks || []);
       setPayments(pays?.payments || []);
 
       try {
-        const ovr = await getSlotOverrides({ tourId: TOUR_ID, from, to });
+        const ovr = await getSlotOverrides({ tourId: TOUR_ID, from: day, to: day });
         setOverrides(ovr?.overrides || []);
-      } catch (_) {
+      } catch {
         setOverrides([]);
       }
     } catch (e) {
@@ -335,54 +274,50 @@ export default function SlotsPage() {
     } finally {
       setLoading(false);
     }
-  }, [from, to]);
+  }, []);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { fetchDay(selectedDay); }, [fetchDay, selectedDay]);
 
-  const blockedDaySet = useMemo(
-    () => new Set(dayBlocksData.map((b) => b.day)),
-    [dayBlocksData]
+  const isDayBlocked = useMemo(
+    () => dayBlocksData.some((b) => b.day === selectedDay),
+    [dayBlocksData, selectedDay]
   );
 
   const overrideMap = useMemo(() => {
     const m = new Map();
     for (const o of overrides) {
-      m.set(`${o.tour_date}|${o.start_time}`, Number(o.capacity_override));
+      if (o.tour_date === selectedDay) m.set(o.start_time, Number(o.capacity_override));
     }
     return m;
-  }, [overrides]);
+  }, [overrides, selectedDay]);
 
-  const availMap = useMemo(() => {
-    const m = new Map();
-    for (const day of availData?.days || []) m.set(day.date, day);
-    return m;
-  }, [availData]);
+  const dayPayments = useMemo(
+    () => payments.filter((p) => parseFecha(p?.booking?.fecha) === selectedDay),
+    [payments, selectedDay]
+  );
 
-  const paymentsByDate = useMemo(() => {
-    const m = new Map();
-    for (const p of payments) {
-      const fecha = parseFecha(p?.booking?.fecha);
-      if (fecha.length < 10) continue;
-      if (!m.has(fecha)) m.set(fecha, []);
-      m.get(fecha).push(p);
-    }
-    return m;
-  }, [payments]);
+  const totalParticipants = useMemo(
+    () =>
+      dayPayments.reduce(
+        (sum, p) => sum + (Number(p.booking?.seats ?? p.booking?.personas) || 0),
+        0
+      ),
+    [dayPayments]
+  );
 
-  const dates = useMemo(() => {
-    const list = [];
-    for (let i = 0; i <= DAYS_AHEAD; i++) list.push(addDays(from, i));
-    return list;
-  }, [from]);
-
-  async function handleToggleDayBlock(date, block) {
-    const key = `dayblock-${date}`;
+  async function handleToggleDayBlock(block) {
+    const key = "dayblock";
     setActionLoading((p) => ({ ...p, [key]: true }));
     try {
-      if (block) await blockDay({ tourId: TOUR_ID, day: date });
-      else await unblockDay({ tourId: TOUR_ID, day: date });
+      if (block) await blockDay({ tourId: TOUR_ID, day: selectedDay });
+      else await unblockDay({ tourId: TOUR_ID, day: selectedDay });
+      // Solo actualizamos el estado del día en memoria; no recargamos la página.
+      setDayBlocksData((prev) =>
+        block
+          ? [...prev.filter((b) => b.day !== selectedDay), { day: selectedDay }]
+          : prev.filter((b) => b.day !== selectedDay)
+      );
       showToast("success", block ? "Día bloqueado" : "Día desbloqueado");
-      await fetchAll();
     } catch (e) {
       showToast("error", e.message);
     } finally {
@@ -390,22 +325,31 @@ export default function SlotsPage() {
     }
   }
 
-  async function handleBlockSlot(date, slot, freeSpots) {
-    // Phantom = remaining free spots (locks out new bookings without touching existing ones)
-    await handleSavePhantom(date, slot, freeSpots);
+  // Refleja el cambio de un solo horario en memoria, sin volver a pedir todo.
+  function applyOverrideLocal(slot, phantom) {
+    setOverrides((prev) => {
+      const rest = prev.filter(
+        (o) => !(o.tour_date === selectedDay && o.start_time === slot)
+      );
+      if (phantom === 0) return rest;
+      return [...rest, { tour_date: selectedDay, start_time: slot, capacity_override: phantom }];
+    });
   }
 
-  async function handleUnblockSlot(date, slot) {
-    await handleResetPhantom(date, slot);
-  }
-
-  async function handleSavePhantom(date, slot, n) {
-    const key = `phantom-${date}|${slot}`;
+  // Fija la capacidad efectiva del horario. Guarda phantom = base − capacidad.
+  async function handleSetCapacity(slot, capacity) {
+    const phantom = Math.max(0, TOUR2_CAPACITY - capacity);
+    const key = `slot-${slot}`;
     setActionLoading((p) => ({ ...p, [key]: true }));
     try {
-      await upsertSlotOverride({ tourId: TOUR_ID, tourDate: date, startTime: slot, capacityOverride: n });
-      showToast("success", n >= TOUR2_CAPACITY ? `Slot ${slot} bloqueado` : `Actualizado: ${slot}`);
-      await fetchAll();
+      if (phantom === 0) {
+        await deleteSlotOverride({ tourId: TOUR_ID, tourDate: selectedDay, startTime: slot }).catch(() => {});
+        showToast("success", `Horario ${slot}: cupo completo (${TOUR2_CAPACITY})`);
+      } else {
+        await upsertSlotOverride({ tourId: TOUR_ID, tourDate: selectedDay, startTime: slot, capacityOverride: phantom });
+        showToast("success", `Horario ${slot}: ${capacity} cupos`);
+      }
+      applyOverrideLocal(slot, phantom);
     } catch (e) {
       showToast("error", e.message);
     } finally {
@@ -413,91 +357,213 @@ export default function SlotsPage() {
     }
   }
 
-  async function handleResetPhantom(date, slot) {
-    const key = `phantom-${date}|${slot}`;
-    setActionLoading((p) => ({ ...p, [key]: true }));
-    try {
-      await deleteSlotOverride({ tourId: TOUR_ID, tourDate: date, startTime: slot });
-      showToast("success", "Bloqueo eliminado");
-      await fetchAll();
-    } catch (e) {
-      showToast("error", e.message);
-    } finally {
-      setActionLoading((p) => ({ ...p, [key]: false }));
-    }
+  async function handleBlockSlot(slot) {
+    await handleSetCapacity(slot, 0);
   }
+
+  async function handleUnblockSlot(slot) {
+    await handleSetCapacity(slot, TOUR2_CAPACITY);
+  }
+
+  const today = todayYmd();
+  const tomorrow = shiftYmd(today, 1);
+  const isToday = selectedDay === today;
+  const isTomorrow = selectedDay === tomorrow;
 
   return (
-    <div className="max-w-4xl mx-auto px-3 py-4 sm:px-6 sm:py-6">
+    <div className="min-h-screen bg-slate-50">
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Disponibilidad por slot</h1>
-        <p className="text-sm text-gray-400 mt-1">
-          Próximos 7 días · Tour 2 · {TOUR2_CAPACITY} participantes por horario
-        </p>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center items-center h-32 text-gray-400">Cargando...</div>
-      ) : (
-        <div className="space-y-6">
-          {dates.map((date) => {
-            const isDayBlocked = blockedDaySet.has(date);
-            const dayData = availMap.get(date);
-            const datePayments = paymentsByDate.get(date) || [];
-
-            return (
-              <div key={date} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                {/* Date header */}
-                <div className={`px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 border-b ${
-                  isDayBlocked ? "bg-red-50 border-red-100" : "bg-gray-50 border-gray-100"
-                }`}>
-                  <span className={`text-sm font-semibold capitalize ${isDayBlocked ? "text-red-700" : "text-gray-700"}`}>
-                    {fullDate(date)}
-                  </span>
-                  <button
-                    onClick={() => handleToggleDayBlock(date, !isDayBlocked)}
-                    disabled={!!actionLoading[`dayblock-${date}`]}
-                    className={`shrink-0 text-xs font-medium px-3 py-1 rounded-full transition disabled:opacity-50 ${
-                      isDayBlocked
-                        ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                        : "bg-red-100 text-red-600 hover:bg-red-200"
-                    }`}
-                  >
-                    {isDayBlocked ? "Desbloquear día" : "Bloquear día"}
-                  </button>
-                </div>
-
-                {/* Slots */}
-                {SLOTS.map((slot) => {
-                  const overrideKey = `${date}|${slot}`;
-                  const phantom = overrideMap.get(overrideKey) ?? 0;
-                  const slotRemaining = dayData?.slotRemaining?.[slot] ?? null;
-
-                  return (
-                    <SlotRow
-                      key={slot}
-                      date={date}
-                      slot={slot}
-                      isDayBlocked={isDayBlocked}
-                      phantom={phantom}
-                      slotRemaining={slotRemaining}
-                      reservations={datePayments}
-                      slotLoading={!!actionLoading[`phantom-${overrideKey}`]}
-                      phantomLoading={!!actionLoading[`phantom-${overrideKey}`]}
-                      onBlockSlot={(free) => handleBlockSlot(date, slot, free)}
-                      onUnblockSlot={() => handleUnblockSlot(date, slot)}
-                      onSavePhantom={(n) => handleSavePhantom(date, slot, n)}
-                      onResetPhantom={() => handleResetPhantom(date, slot)}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+        {/* Header */}
+        <div className="mb-6 flex items-center gap-3">
+          <button
+            onClick={() => navigate("/matamoros")}
+            aria-label="Volver al panel"
+            className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            <FiArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="flex-1">
+            <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900">
+              <FiSliders className="h-6 w-6 text-blue-600" />
+              Disponibilidad
+            </h1>
+            <p className="text-sm text-slate-500">
+              Elegí un día y ajustá cupos, horarios y bloqueos.
+            </p>
+          </div>
         </div>
-      )}
+
+        {/* Barra de navegación de fecha */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="relative flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCalendarOpen((o) => !o)}
+              aria-label="Elegir fecha"
+              className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl shadow-sm transition cursor-pointer ${
+                calendarOpen
+                  ? "bg-emerald-600 text-white"
+                  : "bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              <FiCalendar className="h-4 w-4" />
+            </button>
+
+            <div className="flex items-center gap-0.5 rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
+              <button
+                type="button"
+                onClick={() => setSelectedDay((d) => shiftYmd(d, -1))}
+                aria-label="Día anterior"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"
+              >
+                <FiChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDay((d) => shiftYmd(d, 1))}
+                aria-label="Día siguiente"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"
+              >
+                <FiChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            <span className="whitespace-nowrap text-base font-bold text-slate-800">
+              {navLabel(selectedDay)}
+            </span>
+
+            {calendarOpen && (
+              <>
+                <button
+                  type="button"
+                  aria-hidden
+                  tabIndex={-1}
+                  onClick={() => setCalendarOpen(false)}
+                  className="fixed inset-0 z-20 cursor-default"
+                />
+                <div className="absolute left-0 top-full z-30 mt-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                  <CalendarPicker
+                    selected={selectedDay}
+                    onSelect={(ymd) => {
+                      if (ymd) {
+                        setSelectedDay(ymd);
+                        setCalendarOpen(false);
+                      }
+                    }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Accesos rápidos */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedDay(today)}
+              className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition cursor-pointer ${
+                isToday
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              Hoy
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDay(tomorrow)}
+              className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition cursor-pointer ${
+                isTomorrow
+                  ? "bg-orange-500 text-white shadow-sm"
+                  : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              Mañana
+            </button>
+          </div>
+        </div>
+
+        {/* Tarjeta del día */}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          {/* Encabezado tipo supplier */}
+          <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-3.5 min-w-0">
+              <img
+                src={TOUR_IMG}
+                alt="Horseback Riding Tour"
+                loading="lazy"
+                className="h-14 w-14 shrink-0 rounded-xl object-cover ring-1 ring-slate-200"
+              />
+              <div className="min-w-0">
+                <h2 className="text-base font-bold leading-snug text-slate-900">{TOUR_NAME}</h2>
+                <p className="mt-0.5 text-sm text-slate-400 capitalize">{fullDate(selectedDay)}</p>
+                <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm font-medium text-slate-700">
+                  <span className="inline-flex items-center gap-2">
+                    <FiUsers className="h-4 w-4 text-slate-400" />
+                    {totalParticipants} participante{totalParticipants === 1 ? "" : "s"}
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <FiClock className="h-4 w-4 text-slate-400" />
+                    {SLOTS.length} horarios
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <FiCalendar className="h-4 w-4 text-slate-400" />
+                    {TOUR2_CAPACITY} cupos/horario
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleToggleDayBlock(!isDayBlocked)}
+              disabled={!!actionLoading["dayblock"]}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer ${
+                isDayBlocked
+                  ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  : "border-red-200 text-red-600 hover:bg-red-50"
+              }`}
+            >
+              {isDayBlocked ? <><FiUnlock className="h-4 w-4" /> Desbloquear día</> : <><FiLock className="h-4 w-4" /> Bloquear día</>}
+            </button>
+          </div>
+
+          {/* Aviso de día bloqueado */}
+          {isDayBlocked && !loading && (
+            <div className="flex items-center gap-2 border-b border-red-100 bg-red-50 px-5 py-3 text-sm font-medium text-red-700">
+              <FiLock className="h-4 w-4" />
+              Este día está bloqueado. Ningún horario acepta reservas nuevas.
+            </div>
+          )}
+
+          {/* Horarios */}
+          {loading ? (
+            <div className="p-5 space-y-4">
+              {SLOTS.map((s) => (
+                <div key={s} className="h-24 animate-pulse rounded-xl bg-slate-100" />
+              ))}
+            </div>
+          ) : (
+            <div>
+              {SLOTS.map((slot, i) => (
+                <SlotRow
+                  key={slot}
+                  slot={slot}
+                  last={i === SLOTS.length - 1}
+                  isDayBlocked={isDayBlocked}
+                  phantom={overrideMap.get(slot) ?? 0}
+                  reservations={dayPayments}
+                  loading={!!actionLoading[`slot-${slot}`]}
+                  onSetCapacity={(cap) => handleSetCapacity(slot, cap)}
+                  onBlock={() => handleBlockSlot(slot)}
+                  onUnblock={() => handleUnblockSlot(slot)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

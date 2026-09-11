@@ -261,6 +261,7 @@ export async function getAllPayments(req, res) {
       b.children           AS children,
       b.babies             AS babies,
       b.subtotal           AS subtotal,
+      b.arrived            AS arrived,
 
       c.id                 AS customer_id,
       c.name               AS customer_name,
@@ -301,6 +302,7 @@ export async function getAllPayments(req, res) {
           children: r.children,
           babies: r.babies,
           subtotal: Number(r.subtotal),
+          arrived: Boolean(r.arrived),
           // Saldo que falta pagar el día del tour (solo aplica a apartados).
           balanceDue:
             r.mode === "deposit"

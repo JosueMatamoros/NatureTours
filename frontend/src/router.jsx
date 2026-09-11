@@ -20,9 +20,11 @@ const ServicesPage = lazy(() => import("./pages/ServicesPage"));
 const ToursPage = lazy(() => import("./pages/ToursPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ReservacionesPage = lazy(() => import("./pages/ReservacionesPage"));
-const CabalgatasPage = lazy(() => import("./pages/CabalgatasPage"));
+const AsistenciaPage = lazy(() => import("./pages/AsistenciaPage"));
+const GuiasPage = lazy(() => import("./pages/GuiasPage"));
 const SlotsPage = lazy(() => import("./pages/SlotsPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
+const GuiaPortalPage = lazy(() => import("./pages/GuiaPortalPage"));
 const ResellerPage = lazy(() => import("./pages/ResellerPage"));
 const ResellersAdminPage = lazy(() => import("./pages/ResellersAdminPage"));
 
@@ -143,6 +145,15 @@ const router = createBrowserRouter([
       },
 
       {
+        path: "/asistencia",
+        element: (
+          <LazyPage>
+            <GuiaPortalPage />
+          </LazyPage>
+        ),
+      },
+
+      {
         element: <AdminGuard />,
         children: [
           {
@@ -162,10 +173,18 @@ const router = createBrowserRouter([
             ),
           },
           {
-            path: "/matamoros/cabalgatas",
+            path: "/matamoros/asistencia",
             element: (
               <LazyPage>
-                <CabalgatasPage />
+                <AsistenciaPage />
+              </LazyPage>
+            ),
+          },
+          {
+            path: "/matamoros/guias",
+            element: (
+              <LazyPage>
+                <GuiasPage />
               </LazyPage>
             ),
           },

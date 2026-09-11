@@ -194,6 +194,11 @@ function ClientRow({ p }) {
           >
             {isDeposit ? "Pago parcial" : "Pago completo"}
           </span>
+          {p.booking?.arrived && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+              <FiCheck className="h-3 w-3" /> Llegó
+            </span>
+          )}
         </div>
         <p className="mt-1 text-xs text-gray-500">
           {p.booking.adults} adulto{p.booking.adults === 1 ? "" : "s"}
@@ -534,7 +539,7 @@ export default function ReservacionesPage() {
         </button>
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-black text-gray-900">
-            <FiUsers className="h-6 w-6 text-emerald-600" />
+            <FiCalendar className="h-6 w-6 text-emerald-600" />
             Reservaciones
           </h1>
           <p className="text-sm text-gray-500">Pagos agrupados por horario del tour.</p>
