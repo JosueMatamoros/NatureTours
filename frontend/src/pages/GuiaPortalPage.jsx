@@ -14,6 +14,8 @@ import {
   FiCheck,
   FiSettings,
   FiArrowRight,
+  FiEye,
+  FiEyeOff,
 } from "react-icons/fi";
 import CalendarPicker from "../components/checkout/CalendarPicker";
 import {
@@ -49,19 +51,30 @@ function formatClock(hhmm) {
   return `${h12}:${hhmm.slice(3)} ${suffix}`;
 }
 
+// Cédula: solo dígitos (máx 9), mostrada agrupada 1-4-4 → "2 0862 0302".
+function formatCedula(digits) {
+  const d = digits.slice(0, 9);
+  return [d.slice(0, 1), d.slice(1, 5), d.slice(5, 9)].filter(Boolean).join(" ");
+}
+
 // ─── Login ──────────────────────────────────────────────────────────────────
 function GuideLogin({ onLoggedIn }) {
   const [cedula, setCedula] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    if (cedula.length !== 9) {
+      setError("La cédula debe tener 9 dígitos.");
+      return;
+    }
     setSubmitting(true);
     try {
-      const r = await guideLogin(cedula.trim(), password);
+      const r = await guideLogin(cedula, password); // cedula = solo dígitos
       onLoggedIn(r.guide);
     } catch (err) {
       setError(err?.message || "No se pudo iniciar sesión");
@@ -86,15 +99,15 @@ function GuideLogin({ onLoggedIn }) {
             Cédula
           </label>
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-slate-200 px-3 focus-within:border-emerald-400">
-            <FiUser className="h-4 w-4 text-slate-400" />
+            <FiUser className="h-4 w-4 shrink-0 text-slate-400" />
             <input
               inputMode="numeric"
-              value={cedula}
-              onChange={(e) => setCedula(e.target.value)}
+              value={formatCedula(cedula)}
+              onChange={(e) => setCedula(e.target.value.replace(/\D/g, "").slice(0, 9))}
               required
               autoComplete="username"
-              placeholder="1 1864 0777"
-              className="w-full bg-transparent py-2.5 text-sm outline-none"
+              placeholder="0 0000 0000"
+              className="w-full bg-transparent py-2.5 text-base tracking-wider outline-none"
             />
           </div>
 
@@ -102,16 +115,24 @@ function GuideLogin({ onLoggedIn }) {
             Contraseña
           </label>
           <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 focus-within:border-emerald-400">
-            <FiLock className="h-4 w-4 text-slate-400" />
+            <FiLock className="h-4 w-4 shrink-0 text-slate-400" />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
               placeholder="••••••••"
-              className="w-full bg-transparent py-2.5 text-sm outline-none"
+              className="w-full bg-transparent py-2.5 text-base outline-none"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+            >
+              {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
+            </button>
           </div>
 
           {error && (
