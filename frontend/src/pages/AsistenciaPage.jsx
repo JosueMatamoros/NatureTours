@@ -7,7 +7,6 @@ import {
   FiChevronRight,
   FiClock,
   FiCopy,
-  FiPlus,
   FiUserCheck,
   FiUsers,
   FiX,
@@ -19,7 +18,6 @@ import CalendarPicker from "../components/checkout/CalendarPicker";
 import {
   getAttendance,
   setArrived as apiSetArrived,
-  createManualBooking,
 } from "../../services/attendance.api";
 import {
   getGuides,
@@ -293,182 +291,6 @@ function SlotGuideMulti({ guides, value, onToggle, saving }) {
   );
 }
 
-// ─── Modal de alta manual ────────────────────────────────────────────────────
-const EMPTY_FORM = {
-  tourId: 2,
-  startTime: "08:00",
-  name: "",
-  phone: "",
-  adults: 2,
-  children: 0,
-  babies: 0,
-  paid: 0,
-};
-
-function ManualModal({ open, date, onClose, onCreated }) {
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (open) {
-      setForm(EMPTY_FORM);
-      setError(null);
-    }
-  }, [open]);
-
-  if (!open) return null;
-
-  const tour = TOURS.find((t) => t.id === Number(form.tourId)) || TOURS[0];
-
-  function set(field, value) {
-    setForm((f) => ({ ...f, [field]: value }));
-  }
-
-  function pickTour(id) {
-    const t = TOURS.find((x) => x.id === Number(id)) || TOURS[0];
-    setForm((f) => ({ ...f, tourId: t.id, startTime: t.slots[0] }));
-  }
-
-  async function submit(e) {
-    e.preventDefault();
-    setError(null);
-    setSaving(true);
-    try {
-      await createManualBooking({
-        tourId: Number(form.tourId),
-        tourDate: date,
-        startTime: form.startTime,
-        name: form.name.trim(),
-        phone: form.phone.trim() || null,
-        adults: Number(form.adults),
-        children: Number(form.children),
-        babies: Number(form.babies),
-        paid: Number(form.paid) || 0,
-      });
-      onCreated();
-      onClose();
-    } catch (err) {
-      setError(err.message || "No se pudo crear la reserva");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const NumberField = ({ label, field, min = 0 }) => (
-    <label className="flex-1">
-      <span className="mb-1 block text-xs font-semibold text-gray-500">{label}</span>
-      <input
-        type="number"
-        min={min}
-        value={form[field]}
-        onChange={(e) => set(field, e.target.value)}
-        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-      />
-    </label>
-  );
-
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-4" onClick={onClose}>
-      <form
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={submit}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-black text-gray-900">Reserva manual</h3>
-          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl text-gray-400 hover:bg-gray-100">
-            <FiX className="h-5 w-5" />
-          </button>
-        </div>
-
-        <p className="mb-4 text-xs text-gray-500">Para {formatCompactDate(date)}</p>
-
-        <div className="space-y-4">
-          <div className="flex gap-3">
-            <label className="flex-1">
-              <span className="mb-1 block text-xs font-semibold text-gray-500">Tour</span>
-              <select
-                value={form.tourId}
-                onChange={(e) => pickTour(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-              >
-                {TOURS.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="flex-1">
-              <span className="mb-1 block text-xs font-semibold text-gray-500">Horario</span>
-              <select
-                value={form.startTime}
-                onChange={(e) => set("startTime", e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-              >
-                {tour.slots.map((s) => (
-                  <option key={s} value={s}>{formatClockTime(s)}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-gray-500">Nombre del cliente</span>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder="Ej. Familia Pérez"
-              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-gray-500">Teléfono (opcional)</span>
-            <input
-              type="tel"
-              value={form.phone}
-              onChange={(e) => set("phone", e.target.value)}
-              placeholder="8888-8888"
-              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-            />
-          </label>
-
-          <div className="flex gap-3">
-            <NumberField label="Adultos" field="adults" min={1} />
-            <NumberField label="Niños" field="children" />
-            <NumberField label="Bebés" field="babies" />
-          </div>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-gray-500">
-              Ya pagó (USD) — deja 0 si debe todo
-            </span>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={form.paid}
-              onChange={(e) => set("paid", e.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-            />
-          </label>
-        </div>
-
-        {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">{error}</p>}
-
-        <div className="mt-6 flex gap-3">
-          <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">
-            Cancelar
-          </button>
-          <button type="submit" disabled={saving} className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
-            {saving ? "Guardando..." : "Crear reserva"}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
 
 // ─── Página ──────────────────────────────────────────────────────────────────
 export default function AsistenciaPage() {
@@ -483,7 +305,6 @@ export default function AsistenciaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
-  const [manualOpen, setManualOpen] = useState(false);
 
   // Guías (lista) y asignaciones del día, keyed por `${tourId}|${startTime}`.
   const [guides, setGuides] = useState([]);
@@ -599,12 +420,6 @@ export default function AsistenciaPage() {
           </h1>
           <p className="text-sm text-gray-500">Marcá quién va llegando. Los que deben dinero salen resaltados.</p>
         </div>
-        <button
-          onClick={() => setManualOpen(true)}
-          className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700"
-        >
-          <FiPlus className="h-4 w-4" /> <span className="hidden sm:inline">Reserva manual</span>
-        </button>
       </div>
 
       {/* Navegador de fecha */}
@@ -740,7 +555,6 @@ export default function AsistenciaPage() {
         </div>
       )}
 
-      <ManualModal open={manualOpen} date={date} onClose={() => setManualOpen(false)} onCreated={load} />
     </div>
   );
 }
