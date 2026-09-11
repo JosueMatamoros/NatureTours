@@ -2,14 +2,27 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 if (!API_URL) throw new Error("VITE_API_URL no está definido");
 
+// Además de la cookie (que Safari/iOS bloquea entre dominios), mandamos el token
+// admin por header si está guardado. El cliente normal no lo tiene → sin efecto.
+function adminAuthHeader() {
+  try {
+    const t = localStorage.getItem("nt_admin_token");
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 async function request(path, options = {}) {
+  const { headers: optHeaders, ...rest } = options;
   const res = await fetch(`${API_URL}${path}`, {
     credentials: "include",
+    ...rest,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...adminAuthHeader(),
+      ...(optHeaders || {}),
     },
-    ...options,
   });
 
   let data;

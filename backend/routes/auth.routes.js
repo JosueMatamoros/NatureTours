@@ -35,7 +35,9 @@ router.post("/login", loginLimiter, (req, res) => {
       path: "/",
     });
 
-    return res.json({ ok: true });
+    // Además de la cookie, devolvemos el token para guardarlo en localStorage
+    // y mandarlo por header (Safari/iOS bloquea cookies entre dominios).
+    return res.json({ ok: true, token });
   }
 
   return res.status(401).json({ message: "Credenciales inválidas" });

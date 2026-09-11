@@ -20,7 +20,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await api.post("/api/auth/login", { username, password });
+      const r = await api.post("/api/auth/login", { username, password });
+      if (r?.token) localStorage.setItem("nt_admin_token", r.token);
       navigate(from, { replace: true });
     } catch (e) {
       setErr(e.message || "Login inválido");

@@ -89,9 +89,10 @@ export async function guideLogin(req, res) {
     res.cookie("guide_token", token, sessionCookieOptions());
 
     // Si el guía es admin, el mismo login le abre el panel: emitimos también el
-    // token de admin que consume el AdminGuard (misma cookie que /api/auth).
+    // token de admin que consume el AdminGuard (cookie + body para localStorage).
+    let adminToken;
     if (isAdmin) {
-      const adminToken = jwt.sign(
+      adminToken = jwt.sign(
         { username: guide.name, role: "admin", guideId: guide.id },
         process.env.JWT_SECRET,
         { expiresIn: "12h" },
@@ -99,7 +100,14 @@ export async function guideLogin(req, res) {
       res.cookie("admin_token", adminToken, sessionCookieOptions());
     }
 
-    return res.json({ ok: true, guide: { id: guide.id, name: guide.name, isAdmin } });
+    // token/adminToken también en el body: en iPhone la cookie cross-site se
+    // bloquea, así que el front los guarda en localStorage y los manda por header.
+    return res.json({
+      ok: true,
+      token,
+      adminToken: adminToken ?? null,
+      guide: { id: guide.id, name: guide.name, isAdmin },
+    });
   } catch (err) {
     console.error("guideLogin error:", err);
     return res.status(500).json({ ok: false, message: "Error al iniciar sesión" });
