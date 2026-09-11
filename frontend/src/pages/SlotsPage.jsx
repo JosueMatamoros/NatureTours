@@ -145,17 +145,40 @@ function SlotRow({
           </span>
           <span className="text-lg font-bold text-slate-900 tabular-nums">{slot}</span>
         </div>
-        <span
-          className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ${
-            isDayBlocked
-              ? "bg-slate-50 text-slate-500 ring-slate-200"
-              : canBook
-                ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                : "bg-red-50 text-red-600 ring-red-200"
-          }`}
-        >
-          {isDayBlocked ? "Día bloqueado" : canBook ? "Disponible" : "No disponible"}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          {!isDayBlocked && (
+            slotBlocked ? (
+              <button
+                type="button"
+                onClick={onUnblock}
+                disabled={loading}
+                className="inline-flex items-center gap-1 rounded-full border border-emerald-300 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                <FiUnlock className="h-3.5 w-3.5" /> Desbloquear
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onBlock}
+                disabled={loading}
+                className="inline-flex items-center gap-1 rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                <FiLock className="h-3.5 w-3.5" /> Bloquear
+              </button>
+            )
+          )}
+          <span
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ${
+              isDayBlocked
+                ? "bg-slate-50 text-slate-500 ring-slate-200"
+                : canBook
+                  ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                  : "bg-red-50 text-red-600 ring-red-200"
+            }`}
+          >
+            {isDayBlocked ? "Día bloqueado" : canBook ? "Disponible" : "No disponible"}
+          </span>
+        </div>
       </div>
 
       {/* Controles */}
@@ -176,28 +199,6 @@ function SlotRow({
           <span><span className="font-semibold text-slate-900 tabular-nums">{available}</span> libres</span>
           <span className="text-slate-300">·</span>
           <span className="tabular-nums">máx {TOUR2_CAPACITY}</span>
-        </div>
-
-        <div className="ml-auto">
-          {slotBlocked ? (
-            <button
-              type="button"
-              onClick={onUnblock}
-              disabled={isDayBlocked || loading}
-              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 px-3.5 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 transition-colors cursor-pointer"
-            >
-              <FiUnlock className="h-3.5 w-3.5" /> Desbloquear horario
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onBlock}
-              disabled={isDayBlocked || loading}
-              className="inline-flex items-center gap-1.5 rounded-full border border-red-200 px-3.5 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors cursor-pointer"
-            >
-              <FiLock className="h-3.5 w-3.5" /> Bloquear horario
-            </button>
-          )}
         </div>
       </div>
 
@@ -365,11 +366,6 @@ export default function SlotsPage() {
     await handleSetCapacity(slot, TOUR2_CAPACITY);
   }
 
-  const today = todayYmd();
-  const tomorrow = shiftYmd(today, 1);
-  const isToday = selectedDay === today;
-  const isTomorrow = selectedDay === tomorrow;
-
   return (
     <div className="min-h-screen bg-slate-50">
       <Toast toast={toast} onClose={() => setToast(null)} />
@@ -459,31 +455,6 @@ export default function SlotsPage() {
             )}
           </div>
 
-          {/* Accesos rápidos */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedDay(today)}
-              className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition cursor-pointer ${
-                isToday
-                  ? "bg-emerald-600 text-white shadow-sm"
-                  : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              Hoy
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedDay(tomorrow)}
-              className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition cursor-pointer ${
-                isTomorrow
-                  ? "bg-orange-500 text-white shadow-sm"
-                  : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              Mañana
-            </button>
-          </div>
         </div>
 
         {/* Tarjeta del día */}

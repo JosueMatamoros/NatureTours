@@ -71,7 +71,7 @@ export async function guideLogin(req, res) {
   const { cedula, password } = parsed.data;
   try {
     const q = await pool.query(
-      `SELECT id, name, cedula, password_hash, active, is_admin
+      `SELECT id, name, cedula, password_hash, active, is_admin, is_supervisor
        FROM guides WHERE cedula = $1`,
       [cedula],
     );
@@ -81,8 +81,9 @@ export async function guideLogin(req, res) {
     }
 
     const isAdmin = Boolean(guide.is_admin);
+    const isSupervisor = Boolean(guide.is_supervisor);
     const token = jwt.sign(
-      { guideId: guide.id, role: "guide", name: guide.name, isAdmin },
+      { guideId: guide.id, role: "guide", name: guide.name, isAdmin, isSupervisor },
       process.env.JWT_SECRET,
       { expiresIn: "12h" },
     );
@@ -106,7 +107,7 @@ export async function guideLogin(req, res) {
       ok: true,
       token,
       adminToken: adminToken ?? null,
-      guide: { id: guide.id, name: guide.name, isAdmin },
+      guide: { id: guide.id, name: guide.name, isAdmin, isSupervisor },
     });
   } catch (err) {
     console.error("guideLogin error:", err);
@@ -127,7 +128,12 @@ export async function guideLogout(req, res) {
 export async function guideMe(req, res) {
   return res.json({
     ok: true,
-    guide: { id: req.guide.guideId, name: req.guide.name, isAdmin: Boolean(req.guide.isAdmin) },
+    guide: {
+      id: req.guide.guideId,
+      name: req.guide.name,
+      isAdmin: Boolean(req.guide.isAdmin),
+      isSupervisor: Boolean(req.guide.isSupervisor),
+    },
   });
 }
 
@@ -143,6 +149,52 @@ export async function guideMyDay(req, res) {
   const date = parsed.data.date;
 
   try {
+    // Supervisor: ve TODOS los horarios/tours del día (no solo los asignados),
+    // para ayudar a pasar lista en cualquier grupo.
+    if (req.guide.isSupervisor) {
+      const q = await pool.query(
+        `SELECT
+           b.id, b.tour_id, t.name AS tour_name,
+           to_char(b.start_time,'HH24:MI') AS start_time,
+           b.adults, b.children, b.babies, b.guests,
+           b.subtotal, b.deposit_amount, b.source,
+           b.arrived, b.manual_name, b.manual_phone, b.manual_paid,
+           pay.mode AS pay_mode, pay.amount AS pay_amount,
+           c.name AS customer_name, c.phone AS customer_phone
+         FROM bookings b
+         JOIN tours t ON t.id = b.tour_id
+         LEFT JOIN LATERAL (
+           SELECT p.mode, p.amount, p.customer_id
+           FROM payments p
+           WHERE p.booking_id = b.id AND p.status = 'completed'
+           ORDER BY p.created_at DESC LIMIT 1
+         ) pay ON true
+         LEFT JOIN customers c ON c.id = pay.customer_id
+         WHERE b.tour_date = $1::date
+           AND (b.source <> 'web' OR pay.mode IS NOT NULL)
+         ORDER BY b.start_time, t.name, b.created_at`,
+        [date],
+      );
+      const bySlotSup = new Map();
+      for (const row of q.rows) {
+        const key = `${row.tour_id}|${row.start_time}`;
+        if (!bySlotSup.has(key)) {
+          bySlotSup.set(key, {
+            tourId: row.tour_id,
+            tourName: row.tour_name,
+            startTime: row.start_time,
+            reservations: [],
+          });
+        }
+        bySlotSup.get(key).reservations.push(mapReservation(row));
+      }
+      const supSlots = [...bySlotSup.values()].map((s) => ({
+        ...s,
+        totalGuests: s.reservations.reduce((sum, r) => sum + r.guests, 0),
+      }));
+      return res.json({ ok: true, date, slots: supSlots, supervisor: true });
+    }
+
     const slotsQ = await pool.query(
       `SELECT sg.tour_id,
               t.name AS tour_name,
@@ -220,23 +272,29 @@ export async function guideSetArrived(req, res) {
   }
   const { bookingId } = req.params;
   const guideId = req.guide.guideId;
+  const isSupervisor = Boolean(req.guide.isSupervisor);
 
   try {
+    // El supervisor puede marcar cualquier reserva; el guía solo las de sus
+    // horarios asignados.
     const q = await pool.query(
       `UPDATE bookings b
        SET arrived = $2,
            arrived_at = CASE WHEN $2 THEN now() ELSE NULL END,
            updated_at = now()
        WHERE b.id = $1
-         AND EXISTS (
-           SELECT 1 FROM slot_guides sg
-           WHERE sg.guide_id = $3
-             AND sg.tour_id = b.tour_id
-             AND sg.tour_date = b.tour_date
-             AND sg.start_time = b.start_time
+         AND (
+           $4 = true
+           OR EXISTS (
+             SELECT 1 FROM slot_guides sg
+             WHERE sg.guide_id = $3
+               AND sg.tour_id = b.tour_id
+               AND sg.tour_date = b.tour_date
+               AND sg.start_time = b.start_time
+           )
          )
        RETURNING b.id, b.arrived`,
-      [bookingId, parsed.data.arrived, guideId],
+      [bookingId, parsed.data.arrived, guideId, isSupervisor],
     );
     if (q.rowCount === 0) {
       return res.status(403).json({ ok: false, message: "Reserva no asignada a este guía" });
@@ -253,14 +311,27 @@ export async function guideSetArrived(req, res) {
 export async function guideMyDays(req, res) {
   const guideId = req.guide.guideId;
   try {
-    const q = await pool.query(
-      `SELECT to_char(tour_date,'YYYY-MM-DD') AS date, COUNT(*)::int AS slots
-       FROM slot_guides
-       WHERE guide_id = $1
-       GROUP BY tour_date
-       ORDER BY tour_date`,
-      [guideId],
-    );
+    // Supervisor: días con reservas de cualquier tour. Guía: sus días asignados.
+    const q = req.guide.isSupervisor
+      ? await pool.query(
+          `SELECT to_char(b.tour_date,'YYYY-MM-DD') AS date, COUNT(*)::int AS slots
+           FROM bookings b
+           LEFT JOIN LATERAL (
+             SELECT p.mode FROM payments p
+             WHERE p.booking_id = b.id AND p.status = 'completed' LIMIT 1
+           ) pay ON true
+           WHERE (b.source <> 'web' OR pay.mode IS NOT NULL)
+           GROUP BY b.tour_date
+           ORDER BY b.tour_date`,
+        )
+      : await pool.query(
+          `SELECT to_char(tour_date,'YYYY-MM-DD') AS date, COUNT(*)::int AS slots
+           FROM slot_guides
+           WHERE guide_id = $1
+           GROUP BY tour_date
+           ORDER BY tour_date`,
+          [guideId],
+        );
     return res.json({ ok: true, days: q.rows });
   } catch (err) {
     console.error("guideMyDays error:", err);

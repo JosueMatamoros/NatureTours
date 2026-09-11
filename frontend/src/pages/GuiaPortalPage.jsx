@@ -13,7 +13,6 @@ import {
   FiAlertCircle,
   FiCheck,
   FiSettings,
-  FiArrowRight,
   FiEye,
   FiEyeOff,
 } from "react-icons/fi";
@@ -288,34 +287,31 @@ function GuideDay({ guide, onLogout }) {
             <div className="min-w-0">
               <p className="text-xs font-medium text-slate-500">Hola,</p>
               <p className="truncate text-lg font-black leading-tight text-slate-900">{guide.name}</p>
+              {guide.isSupervisor && (
+                <span className="mt-0.5 inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700">
+                  Supervisor · todos los tours
+                </span>
+              )}
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
-          >
-            <FiLogOut className="h-4 w-4" /> Salir
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {guide.isAdmin && (
+              <button
+                onClick={() => navigate("/matamoros")}
+                title="Ir al panel admin"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 cursor-pointer"
+              >
+                <FiSettings className="h-4 w-4" /> <span className="hidden sm:inline">Admin</span>
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+            >
+              <FiLogOut className="h-4 w-4" /> <span className="hidden sm:inline">Salir</span>
+            </button>
+          </div>
         </div>
-
-        {/* Acceso al panel admin (solo si el guía es administrador) */}
-        {guide.isAdmin && (
-          <button
-            onClick={() => navigate("/matamoros")}
-            className="mb-5 flex w-full items-center justify-between gap-3 rounded-2xl bg-slate-900 px-4 py-3.5 text-white shadow-sm transition hover:bg-slate-800 cursor-pointer"
-          >
-            <span className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
-                <FiSettings className="h-5 w-5" />
-              </span>
-              <span className="text-left">
-                <span className="block text-sm font-bold leading-tight">Ir al panel admin</span>
-                <span className="block text-xs text-slate-300">Tenés acceso de administrador</span>
-              </span>
-            </span>
-            <FiArrowRight className="h-5 w-5 shrink-0 text-slate-300" />
-          </button>
-        )}
 
         {/* Navegador de fecha */}
         <div className="relative mb-3 flex items-center justify-between gap-2">
