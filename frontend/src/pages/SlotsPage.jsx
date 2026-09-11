@@ -13,6 +13,7 @@ import {
   FiSliders,
 } from "react-icons/fi";
 import CalendarPicker from "../components/checkout/CalendarPicker";
+import SourceChip from "../components/SourceChip";
 import { getDayBlocks, blockDay, unblockDay } from "../../services/availability.blocks.api";
 import { getSlotOverrides, upsertSlotOverride, deleteSlotOverride } from "../../services/slot-overrides.api";
 import { getPayments } from "../../services/payments.api";
@@ -218,6 +219,7 @@ function SlotRow({
               {slotReservations.map((p) => (
                 <div key={p.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 text-sm">
                   <span className="font-semibold text-slate-800">{p.customer?.name || "–"}</span>
+                  <SourceChip source={p.booking?.source} />
                   {p.customer?.phone && <span className="text-slate-500">{p.customer.phone}</span>}
                   <span className="ml-auto font-semibold text-emerald-700 tabular-nums">
                     {p.booking?.personas ?? "?"} pers.

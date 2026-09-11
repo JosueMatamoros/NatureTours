@@ -13,6 +13,7 @@ import {
   FiClock,
 } from "react-icons/fi";
 import CalendarPicker from "../components/checkout/CalendarPicker";
+import SourceChip from "../components/SourceChip";
 import {
   listReservations,
   createReservation,
@@ -53,12 +54,6 @@ function paxLine(r) {
   return parts.join(" · ") || "—";
 }
 
-const SOURCE_BADGE = {
-  gyg: { label: "GetYourGuide", cls: "bg-orange-100 text-orange-700" },
-  viator: { label: "Viator", cls: "bg-teal-100 text-teal-700" },
-  web: { label: "Web", cls: "bg-emerald-100 text-emerald-700" },
-  manual: { label: "Manual", cls: "bg-slate-100 text-slate-600" },
-};
 
 // ─── Toast ──────────────────────────────────────────────────────────────────
 function Toast({ toast, onClose }) {
@@ -296,11 +291,7 @@ function ReservationCard({ r, date, onEdit, onMove, onCancel, busy }) {
             <p className={`font-bold ${r.cancelled ? "text-slate-500 line-through" : "text-slate-900"}`}>
               {r.customer?.name || "Sin nombre"}
             </p>
-            {SOURCE_BADGE[r.source] && (
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${SOURCE_BADGE[r.source].cls}`}>
-                {SOURCE_BADGE[r.source].label}
-              </span>
-            )}
+            <SourceChip source={r.source} />
           </div>
           <p className="text-sm text-slate-500">{paxLine(r)}</p>
           {r.customer?.phone && (

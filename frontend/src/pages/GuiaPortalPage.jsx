@@ -17,6 +17,7 @@ import {
   FiEyeOff,
 } from "react-icons/fi";
 import CalendarPicker from "../components/checkout/CalendarPicker";
+import SourceChip from "../components/SourceChip";
 import {
   guideLogin,
   guideLogout,
@@ -170,6 +171,7 @@ function ReservationRow({ r, onToggle, busy }) {
           <p className={`truncate font-semibold ${r.arrived ? "text-slate-500 line-through" : "text-slate-900"}`}>
             {r.customer?.name || "Sin nombre"}
           </p>
+          <SourceChip source={r.source} />
           {r.owes ? (
             <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 ring-1 ring-red-200 tabular-nums">
               Debe ${r.balanceDue}

@@ -15,6 +15,7 @@ import {
   FiCalendar,
 } from "react-icons/fi";
 import CalendarPicker from "../components/checkout/CalendarPicker";
+import SourceChip from "../components/SourceChip";
 import {
   getAttendance,
   setArrived as apiSetArrived,
@@ -163,11 +164,7 @@ function ReservationRow({ r, onToggleArrived, busy }) {
           <p className={`font-bold ${r.arrived ? "text-emerald-800" : "text-gray-900"}`}>
             {r.customer?.name || <span className="text-gray-400">Sin nombre</span>}
           </p>
-          {r.source === "manual" && (
-            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
-              Manual
-            </span>
-          )}
+          <SourceChip source={r.source} />
           <span
             className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
               r.paymentType === "full"
