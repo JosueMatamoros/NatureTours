@@ -256,7 +256,7 @@ export async function guideMyDays(req, res) {
     const q = await pool.query(
       `SELECT to_char(tour_date,'YYYY-MM-DD') AS date, COUNT(*)::int AS slots
        FROM slot_guides
-       WHERE guide_id = $1 AND tour_date >= current_date
+       WHERE guide_id = $1
        GROUP BY tour_date
        ORDER BY tour_date`,
       [guideId],

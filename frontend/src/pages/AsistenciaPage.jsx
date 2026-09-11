@@ -644,6 +644,7 @@ export default function AsistenciaPage() {
               <div className="absolute left-0 top-full z-30 mt-2 rounded-2xl border border-gray-200 bg-white p-2 shadow-xl">
                 <CalendarPicker
                   selected={date}
+                  bare
                   onSelect={(ymd) => {
                     if (ymd) {
                       setDate(ymd);

@@ -29,14 +29,21 @@ export default function CalendarPicker({
   onSelect,
   onMonthChange,
   disabledDaysSet, // Set("YYYY-MM-DD") con días full
+  markedDaysSet, // Set("YYYY-MM-DD") a resaltar en verde (días con tour)
+  bare = false, // sin el recuadro/borde propio (cuando ya va dentro de un popover)
+  allowPast = false, // permitir seleccionar días pasados
 }) {
   const selectedDate =
     typeof selected === "string"
       ? fromYMDLocal(selected)
       : normalizeToNoon(selected);
 
+  const wrapper = bare
+    ? "max-w-xs mx-auto"
+    : "rounded-xl border p-3 border-gray-400 max-w-xs mx-auto";
+
   return (
-    <div className="rounded-xl border p-3 border-gray-400 max-w-xs mx-auto">
+    <div className={wrapper}>
       <DayPicker
         mode="single"
         selected={selectedDate}
@@ -47,15 +54,18 @@ export default function CalendarPicker({
         onMonthChange={(m) => {
           onMonthChange?.(normalizeToNoon(m));
         }}
+        modifiers={{
+          marked: (d) => markedDaysSet?.has(toYMDLocal(d)) ?? false,
+        }}
         disabled={(d) => {
-          // bloquear fechas pasadas
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          const dd = new Date(d);
-          dd.setHours(0, 0, 0, 0);
-          if (dd < today) return true;
-
+          // bloquear fechas pasadas (salvo que allowPast lo permita)
+          if (!allowPast) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dd = new Date(d);
+            dd.setHours(0, 0, 0, 0);
+            if (dd < today) return true;
+          }
           // bloquear días full (si vienen del backend)
           const ymd = toYMDLocal(d);
           return disabledDaysSet?.has(ymd) ?? false;
@@ -64,6 +74,7 @@ export default function CalendarPicker({
         modifiersClassNames={{
           selected: "bg-emerald-600 text-white rounded-lg",
           today: "bg-amber-500 text-white font-semibold rounded-lg ",
+          marked: "bg-emerald-100 text-emerald-800 font-semibold rounded-lg",
         }}
         components={{
           Chevron: ({ orientation }) =>

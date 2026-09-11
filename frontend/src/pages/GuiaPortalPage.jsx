@@ -26,7 +26,6 @@ import {
 } from "../../services/guide.api";
 
 const WEEKDAYS_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const WEEKDAYS_FULL = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
 
 function todayYmd() {
@@ -42,10 +41,6 @@ function navLabel(ymd) {
   const d = new Date(`${ymd}T00:00:00`);
   const mon = MONTHS[d.getMonth()];
   return `${WEEKDAYS_SHORT[d.getDay()]}, ${d.getDate()} ${mon.charAt(0).toUpperCase()}${mon.slice(1)} ${d.getFullYear()}`;
-}
-function fullDate(ymd) {
-  const d = new Date(`${ymd}T00:00:00`);
-  return `${WEEKDAYS_FULL[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
 }
 function formatClock(hhmm) {
   const [h] = hhmm.split(":").map(Number);
@@ -224,6 +219,7 @@ function GuideDay({ guide, onLogout }) {
 
   const slots = dayData?.slots || [];
   const totalGuests = slots.reduce((s, sl) => s + (sl.totalGuests || 0), 0);
+  const markedSet = new Set(myDays.map((d) => d.date));
 
   async function handleLogout() {
     try { await guideLogout(); } catch { /* noop */ }
@@ -355,6 +351,9 @@ function GuideDay({ guide, onLogout }) {
                 <CalendarPicker
                   selected={date}
                   onSelect={(ymd) => { if (ymd) { setDate(ymd); setCalendarOpen(false); } }}
+                  markedDaysSet={markedSet}
+                  bare
+                  allowPast
                 />
               </div>
             </>
@@ -365,30 +364,16 @@ function GuideDay({ guide, onLogout }) {
         <div className="mb-4 flex items-center justify-between">
           <p className="text-base font-bold capitalize text-slate-800">{navLabel(date)}</p>
           {!loading && slots.length > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500">
-              <FiUsers className="h-4 w-4" /> {totalGuests} en total
+            <span className="inline-flex items-center gap-3 text-sm font-semibold text-slate-500">
+              <span className="inline-flex items-center gap-1.5">
+                <FiClock className="h-4 w-4" /> {slots.length} tour{slots.length === 1 ? "" : "s"}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <FiUsers className="h-4 w-4" /> {totalGuests} persona{totalGuests === 1 ? "" : "s"}
+              </span>
             </span>
           )}
         </div>
-
-        {/* Días asignados (chips) */}
-        {myDays.length > 0 && (
-          <div className="mb-5 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-            {myDays.map((d) => (
-              <button
-                key={d.date}
-                onClick={() => setDate(d.date)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
-                  date === d.date
-                    ? "border-emerald-600 bg-emerald-600 text-white"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                {fullDate(d.date)} · {d.slots} horario{d.slots === 1 ? "" : "s"}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* Contenido del día */}
         {loading ? (
