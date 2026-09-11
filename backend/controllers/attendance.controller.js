@@ -106,6 +106,7 @@ export async function getAttendance(req, res) {
       ) pay ON true
       LEFT JOIN customers c ON c.id = pay.customer_id
       WHERE b.tour_date = $1::date
+        AND b.status <> 'cancelled'
         AND (b.source <> 'web' OR pay.mode IS NOT NULL)
       ORDER BY b.start_time, b.created_at
       `,

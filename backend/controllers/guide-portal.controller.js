@@ -171,6 +171,7 @@ export async function guideMyDay(req, res) {
          ) pay ON true
          LEFT JOIN customers c ON c.id = pay.customer_id
          WHERE b.tour_date = $1::date
+           AND b.status <> 'cancelled'
            AND (b.source <> 'web' OR pay.mode IS NOT NULL)
          ORDER BY b.start_time, t.name, b.created_at`,
         [date],
@@ -229,6 +230,7 @@ export async function guideMyDay(req, res) {
        ) pay ON true
        LEFT JOIN customers c ON c.id = pay.customer_id
        WHERE b.tour_date = $2::date
+         AND b.status <> 'cancelled'
          AND (b.source <> 'web' OR pay.mode IS NOT NULL)
        ORDER BY b.start_time, b.created_at`,
       [guideId, date],
@@ -320,7 +322,8 @@ export async function guideMyDays(req, res) {
              SELECT p.mode FROM payments p
              WHERE p.booking_id = b.id AND p.status = 'completed' LIMIT 1
            ) pay ON true
-           WHERE (b.source <> 'web' OR pay.mode IS NOT NULL)
+           WHERE b.status <> 'cancelled'
+             AND (b.source <> 'web' OR pay.mode IS NOT NULL)
            GROUP BY b.tour_date
            ORDER BY b.tour_date`,
         )

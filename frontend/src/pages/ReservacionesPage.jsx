@@ -1,679 +1,501 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { DayPicker } from "react-day-picker";
-import "react-day-picker/dist/style.css";
 import {
   FiArrowLeft,
   FiCalendar,
   FiChevronLeft,
   FiChevronRight,
-  FiClock,
-  FiCopy,
-  FiCheck,
+  FiPlus,
+  FiEdit2,
+  FiRepeat,
   FiX,
-  FiUsers,
+  FiCheck,
+  FiClock,
 } from "react-icons/fi";
-import { getPayments } from "../../services/payments.api";
+import CalendarPicker from "../components/checkout/CalendarPicker";
+import {
+  listReservations,
+  createReservation,
+  editReservation,
+  cancelReservation,
+  moveReservation,
+} from "../../services/reservations.api";
 
-const BUSINESS_TIME_ZONE = "America/Costa_Rica";
-// Duración fija del único tour reservable hoy (Horseback Riding, 2 horas).
-// Si algún día se venden tours de otra duración, esto necesita venir del backend.
-const TOUR_DURATION_MINUTES = 120;
+const TOUR = { id: 2, name: "Horseback Riding", capacity: 16 };
+const SLOTS = ["08:00", "12:00", "15:00"];
 
-// Verde de marca para el calendario (react-day-picker lee estas variables).
-const CALENDAR_THEME_VARS = {
-  "--rdp-accent-color": "#059669", // emerald-600
-  "--rdp-accent-background-color": "#d1fae5", // emerald-100
-};
+const WEEKDAYS_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
 
-const MONTH_NAMES_ES = [
-  "ene", "feb", "mar", "abr", "may", "jun",
-  "jul", "ago", "set", "oct", "nov", "dic",
-];
-const MONTH_NAMES_FULL_ES = [
-  "enero", "febrero", "marzo", "abril", "mayo", "junio",
-  "julio", "agosto", "setiembre", "octubre", "noviembre", "diciembre",
-];
-const WEEKDAY_NAMES_ES = [
-  "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
-];
-const WEEKDAY_SHORT_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-
-// ─── Fechas (todas en YYYY-MM-DD, calculadas en hora de Costa Rica) ──────────
-function getTodayYmdInTimeZone(timeZone = BUSINESS_TIME_ZONE) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-
-  const value = (type) => parts.find((part) => part.type === type)?.value ?? "00";
-  return `${value("year")}-${value("month")}-${value("day")}`;
+function todayYmd() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
 }
-
 function shiftYmd(ymd, days) {
-  if (!ymd || typeof ymd !== "string" || ymd.length < 10) return "";
-  const base = new Date(`${ymd.slice(0, 10)}T12:00:00Z`);
-  if (Number.isNaN(base.getTime())) return "";
-  base.setUTCDate(base.getUTCDate() + days);
-  return base.toISOString().slice(0, 10);
+  const d = new Date(`${ymd}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function navLabel(ymd) {
+  const d = new Date(`${ymd}T00:00:00`);
+  const mon = MONTHS[d.getMonth()];
+  return `${WEEKDAYS_SHORT[d.getDay()]}, ${d.getDate()} ${mon.charAt(0).toUpperCase()}${mon.slice(1)} ${d.getFullYear()}`;
+}
+function shortDate(ymd) {
+  const d = new Date(`${ymd}T00:00:00`);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+function paxLine(r) {
+  const parts = [];
+  if (r.adults) parts.push(`${r.adults} adulto${r.adults === 1 ? "" : "s"}`);
+  if (r.children) parts.push(`${r.children} niño${r.children === 1 ? "" : "s"}`);
+  if (r.babies) parts.push(`${r.babies} bebé${r.babies === 1 ? "" : "s"}`);
+  return parts.join(" · ") || "—";
 }
 
-function ymdParts(ymd) {
-  const [y, m, d] = String(ymd).split("-").map(Number);
-  return { y, m, d };
-}
-
-function weekdayOf(ymd) {
-  const { y, m, d } = ymdParts(ymd);
-  return new Date(y, m - 1, d, 12, 0, 0).getDay();
-}
-
-function fromYMDLocal(ymd) {
-  if (!ymd) return undefined;
-  const { y, m, d } = ymdParts(ymd);
-  if (!y || !m || !d) return undefined;
-  return new Date(y, m - 1, d, 12, 0, 0, 0);
-}
-
-function toYMDLocal(date) {
-  if (!date) return undefined;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function getBookingDateYmd(p) {
-  return String(p?.booking?.fecha ?? "").slice(0, 10);
-}
-
-// "HH:MM:SS" -> "HH:MM"
-function startTimeKey(p) {
-  return String(p?.booking?.hora ?? "00:00").slice(0, 5);
-}
-
-// "Domingo, 2 de agosto" · antepone Hoy/Mañana cuando aplica
-function formatDayHeader(ymd, todayYmd, tomorrowYmd) {
-  const { y, m, d } = ymdParts(ymd);
-  const weekday = WEEKDAY_NAMES_ES[weekdayOf(ymd)];
-  const base = `${weekday}, ${d} de ${MONTH_NAMES_FULL_ES[m - 1]} ${y}`;
-  if (ymd === todayYmd) return `Hoy · ${base}`;
-  if (ymd === tomorrowYmd) return `Mañana · ${base}`;
-  return base;
-}
-
-// "Dom, 2 Ago 2026" — formato compacto usado en el navegador del encabezado
-function formatCompactDate(ymd) {
-  if (!ymd) return "";
-  const { y, m, d } = ymdParts(ymd);
-  const month = MONTH_NAMES_ES[m - 1];
-  return `${WEEKDAY_SHORT_ES[weekdayOf(ymd)]}, ${d} ${month.charAt(0).toUpperCase()}${month.slice(1)} ${y}`;
-}
-
-// "HH:MM" -> "8 am" / "12 md" / "3:30 pm"
-function formatClockTime(hhmm, { noon = "12 md" } = {}) {
-  const [hStr, mStr] = hhmm.split(":");
-  const h = Number(hStr);
-  const m = Number(mStr);
-  if (h === 12 && m === 0) return noon;
-  const period = h < 12 ? "am" : "pm";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, "0")} ${period}`;
-}
-
-function addMinutesToHHMM(hhmm, minutes) {
-  const [h, m] = hhmm.split(":").map(Number);
-  const total = h * 60 + m + minutes;
-  const hh = Math.floor((total % (24 * 60)) / 60);
-  const mm = total % 60;
-  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-}
-
-function formatSlotRange(startHHMM) {
-  const endHHMM = addMinutesToHHMM(startHHMM, TOUR_DURATION_MINUTES);
-  return `${formatClockTime(startHHMM)} – ${formatClockTime(endHHMM)}`;
-}
-
-// ─── Copiar al portapapeles ───────────────────────────────────────────────────
-function CopyButton({ text, label = "Copiar" }) {
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy(e) {
-    e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(text);
-      if (navigator.vibrate) navigator.vibrate(30);
-      setCopied(true);
-      window.clearTimeout(handleCopy._t);
-      handleCopy._t = window.setTimeout(() => setCopied(false), 1000);
-    } catch (e2) {
-      console.error("Clipboard error:", e2);
-    }
-  }
-
+// ─── Toast ──────────────────────────────────────────────────────────────────
+function Toast({ toast, onClose }) {
+  if (!toast) return null;
+  const style = toast.type === "success"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+    : "border-red-200 bg-red-50 text-red-800";
   return (
-    <span className="inline-flex items-center gap-1">
-      <span
-        className="cursor-pointer select-all rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700"
-        title={text}
-        onClick={handleCopy}
-      >
-        {text}
-      </span>
-      <button
-        className={`transition ${copied ? "text-emerald-600" : "text-gray-400 hover:text-emerald-600"}`}
-        title={label}
-        onClick={handleCopy}
-        aria-label={label}
-        type="button"
-      >
-        {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
-      </button>
-    </span>
-  );
-}
-
-// ─── Fila de un cliente dentro de la vista de un horario ─────────────────────
-function ClientRow({ p }) {
-  const isDeposit = p.mode === "deposit";
-  const balanceDue = Number(p.booking?.balanceDue ?? 0);
-
-  return (
-    <tr className="border-b border-gray-100 align-top last:border-0">
-      <td className="py-4 pr-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="font-semibold text-gray-900">
-            {p.customer?.name || <span className="text-gray-400">Sin nombre</span>}
-          </p>
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-              isDeposit ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
-            }`}
-          >
-            {isDeposit ? "Pago parcial" : "Pago completo"}
-          </span>
-          {p.booking?.arrived && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white">
-              <FiCheck className="h-3 w-3" /> Llegó
-            </span>
-          )}
-        </div>
-        <p className="mt-1 text-xs text-gray-500">
-          {p.booking.adults} adulto{p.booking.adults === 1 ? "" : "s"}
-          {Number(p.booking.children) > 0 ? ` · ${p.booking.children} niño${p.booking.children === 1 ? "" : "s"}` : ""}
-          {Number(p.booking.babies) > 0 ? ` · ${p.booking.babies} bebé${p.booking.babies === 1 ? "" : "s"}` : ""}
-        </p>
-      </td>
-
-      <td className="py-4 pr-4">
-        {p.customer?.phone ? (
-          <CopyButton text={p.customer.phone} label="Copiar teléfono" />
-        ) : (
-          <span className="text-xs text-gray-400">Sin teléfono</span>
-        )}
-      </td>
-
-      <td className="py-4 pr-4 text-right">
-        <p className="font-bold text-emerald-700">USD {p.amount.toFixed(2)}</p>
-      </td>
-
-      <td className="py-4 text-right">
-        {isDeposit ? (
-          <p className="font-bold text-amber-700">USD {balanceDue.toFixed(2)}</p>
-        ) : (
-          <p className="text-gray-300">—</p>
-        )}
-      </td>
-    </tr>
-  );
-}
-
-// ─── Carta de un horario ──────────────────────────────────────────────────────
-function SlotCard({ startTime, bookings, onOpen }) {
-  const adults = bookings.reduce((sum, p) => sum + Number(p.booking.adults || 0), 0);
-  const children = bookings.reduce((sum, p) => sum + Number(p.booking.children || 0), 0);
-  const babies = bookings.reduce((sum, p) => sum + Number(p.booking.babies || 0), 0);
-  const groups = bookings.length;
-
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="group overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/70 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-100"
-    >
-      <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-lime-400 to-amber-400" />
-      <div className="p-5">
-        <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white shadow-sm transition group-hover:bg-emerald-700">
-            <FiClock className="h-5 w-5" />
-          </div>
-          <p className="text-xl font-black leading-tight text-emerald-700">
-            {formatSlotRange(startTime)}
-          </p>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-            {adults} adulto{adults === 1 ? "" : "s"}
-          </span>
-          {children > 0 && (
-            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
-              {children} niño{children === 1 ? "" : "s"}
-            </span>
-          )}
-          {babies > 0 && (
-            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">
-              {babies} bebé{babies === 1 ? "" : "s"}
-            </span>
-          )}
-          <span className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700">
-            {groups} grupo{groups === 1 ? "" : "s"}
-          </span>
+    <div className="fixed top-4 right-4 z-50" role="status" aria-live="polite">
+      <div className={`w-80 max-w-[calc(100vw-2rem)] border rounded-xl shadow-lg p-4 ${style}`}>
+        <div className="flex items-start gap-3">
+          <p className="flex-1 text-sm font-medium">{toast.message}</p>
+          <button onClick={onClose} className="opacity-60 hover:opacity-100 text-xs cursor-pointer">✕</button>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
-// ─── Vista completa de un horario (todos sus clientes) ───────────────────────
-function SlotDetailModal({ open, ymd, startTime, bookings, todayYmd, tomorrowYmd, onClose }) {
-  if (!open) return null;
-
+// ─── Stepper ──────────────────────────────────────────────────────────────────
+function Stepper({ label, value, onChange, min = 0, max = 25 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-4"
-      onClick={onClose}
-    >
+    <div className="flex items-center justify-between">
+      <span className="text-sm font-medium text-slate-600">{label}</span>
+      <div className="inline-flex items-center rounded-lg border border-slate-200 overflow-hidden">
+        <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}
+          className="grid h-9 w-9 place-items-center text-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30 cursor-pointer">−</button>
+        <span className="w-9 text-center text-sm font-semibold tabular-nums">{value}</span>
+        <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}
+          className="grid h-9 w-9 place-items-center text-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30 cursor-pointer">+</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Modal shell ──────────────────────────────────────────────────────────────
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
-        className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-xl"
+        className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 sm:px-8">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-              {formatDayHeader(ymd, todayYmd, tomorrowYmd)}
-            </p>
-            <h3 className="text-xl font-black text-gray-900">
-              {formatSlotRange(startTime)}
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-gray-400 hover:bg-gray-100"
-          >
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-black text-slate-900">{title}</h3>
+          <button onClick={onClose} aria-label="Cerrar" className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer">
             <FiX className="h-5 w-5" />
           </button>
         </div>
-
-        <div className="overflow-x-auto px-6 py-2 sm:px-8">
-          <table className="w-full min-w-[560px] border-collapse">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
-                <th className="pb-2 pr-4 font-semibold">Cliente</th>
-                <th className="pb-2 pr-4 font-semibold">Teléfono</th>
-                <th className="pb-2 pr-4 text-right font-semibold">Pagado</th>
-                <th className="pb-2 text-right font-semibold">Debe</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map((p) => (
-                <ClientRow key={p.id} p={p} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {children}
       </div>
     </div>
   );
 }
 
-// ─── Popover del calendario (fecha exacta o rango) ───────────────────────────
-function CalendarPopover({ mode, onModeChange, singleValue, rangeValue, onPickSingle, onPickRange, onClose }) {
+const inputCls = "w-full rounded-xl border border-slate-200 px-3 py-2.5 text-base outline-none focus:border-emerald-400";
+
+// ─── Modal crear ──────────────────────────────────────────────────────────────
+function CreateModal({ date, slot, onClose, onDone, showToast }) {
+  const [form, setForm] = useState({
+    startTime: slot || "08:00", name: "", phone: "", adults: 2, children: 0, babies: 0, paid: 0,
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!form.name.trim()) return showToast("error", "Poné un nombre");
+    setSaving(true);
+    try {
+      await createReservation({
+        tourId: TOUR.id, tourDate: date, startTime: form.startTime,
+        name: form.name.trim(), phone: form.phone.trim(),
+        adults: form.adults, children: form.children, babies: form.babies,
+        paid: Number(form.paid) || 0,
+      });
+      showToast("success", "Reserva creada");
+      onDone();
+    } catch (err) {
+      showToast("error", err.message);
+    } finally { setSaving(false); }
+  }
+
   return (
-    <div
-      className="absolute left-0 top-full z-30 mt-2 w-[min(92vw,340px)] rounded-2xl border border-gray-200 bg-white p-3 shadow-xl"
-      style={CALENDAR_THEME_VARS}
-    >
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
-          <button
-            type="button"
-            onClick={() => onModeChange("single")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-              mode === "single" ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500"
-            }`}
-          >
-            Fecha exacta
-          </button>
-          <button
-            type="button"
-            onClick={() => onModeChange("range")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-              mode === "range" ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500"
-            }`}
-          >
-            Rango
-          </button>
+    <Modal title="Nueva reserva" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-3">
+        <p className="text-sm text-slate-500">{TOUR.name} · {shortDate(date)}</p>
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Horario</label>
+          <select value={form.startTime} onChange={(e) => set("startTime", e.target.value)} className={inputCls}>
+            {SLOTS.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="grid h-7 w-7 place-items-center rounded-lg text-gray-400 hover:bg-gray-100"
-        >
-          <FiX className="h-4 w-4" />
+        <input className={inputCls} placeholder="Nombre del cliente" value={form.name} onChange={(e) => set("name", e.target.value)} />
+        <input className={inputCls} placeholder="Teléfono (opcional)" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+        <div className="space-y-2 rounded-xl bg-slate-50 p-3">
+          <Stepper label="Adultos" value={form.adults} onChange={(v) => set("adults", v)} min={1} />
+          <Stepper label="Niños" value={form.children} onChange={(v) => set("children", v)} />
+          <Stepper label="Bebés" value={form.babies} onChange={(v) => set("babies", v)} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Pagado (USD)</label>
+          <input type="number" inputMode="decimal" className={inputCls} value={form.paid} onChange={(e) => set("paid", e.target.value)} />
+        </div>
+        <button type="submit" disabled={saving} className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60 cursor-pointer">
+          {saving ? "Guardando…" : "Crear reserva"}
         </button>
+      </form>
+    </Modal>
+  );
+}
+
+// ─── Modal editar ─────────────────────────────────────────────────────────────
+function EditModal({ r, onClose, onDone, showToast }) {
+  const [form, setForm] = useState({
+    name: r.customer?.name || "", phone: r.customer?.phone || "",
+    adults: r.adults, children: r.children, babies: r.babies,
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function submit(e) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await editReservation(r.id, {
+        adults: form.adults, children: form.children, babies: form.babies,
+        phone: form.phone.trim(), name: form.name.trim(),
+      });
+      showToast("success", "Reserva actualizada");
+      onDone();
+    } catch (err) {
+      showToast("error", err.message);
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <Modal title="Editar reserva" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-3">
+        <input className={inputCls} placeholder="Nombre" value={form.name} onChange={(e) => set("name", e.target.value)} />
+        <input className={inputCls} placeholder="Teléfono" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+        <div className="space-y-2 rounded-xl bg-slate-50 p-3">
+          <Stepper label="Adultos" value={form.adults} onChange={(v) => set("adults", v)} min={1} />
+          <Stepper label="Niños" value={form.children} onChange={(v) => set("children", v)} />
+          <Stepper label="Bebés" value={form.babies} onChange={(v) => set("babies", v)} />
+        </div>
+        <button type="submit" disabled={saving} className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60 cursor-pointer">
+          {saving ? "Guardando…" : "Guardar cambios"}
+        </button>
+      </form>
+    </Modal>
+  );
+}
+
+// ─── Modal mover ──────────────────────────────────────────────────────────────
+function MoveModal({ r, onClose, onDone, showToast }) {
+  const [dstDate, setDstDate] = useState(r.tourDate);
+  const [dstSlot, setDstSlot] = useState(r.startTime);
+  const [calOpen, setCalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    if (dstDate === r.tourDate && dstSlot === r.startTime) return showToast("error", "Elegí un destino distinto");
+    setSaving(true);
+    try {
+      await moveReservation(r.id, dstDate, dstSlot);
+      showToast("success", "Reserva movida");
+      onDone();
+    } catch (err) {
+      showToast("error", err.message);
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <Modal title="Mover reserva" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-3">
+        <p className="text-sm text-slate-500">
+          {r.customer?.name || "Reserva"} · actualmente {r.startTime}, {shortDate(r.tourDate)}
+        </p>
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Nuevo día</label>
+          <button type="button" onClick={() => setCalOpen((o) => !o)} className={`${inputCls} flex items-center justify-between text-left cursor-pointer`}>
+            <span>{navLabel(dstDate)}</span>
+            <FiCalendar className="h-4 w-4 text-slate-400" />
+          </button>
+          {calOpen && (
+            <div className="mt-2 rounded-xl border border-slate-200 p-2">
+              <CalendarPicker selected={dstDate} bare onSelect={(ymd) => { if (ymd) { setDstDate(ymd); setCalOpen(false); } }} />
+            </div>
+          )}
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Nuevo horario</label>
+          <select value={dstSlot} onChange={(e) => setDstSlot(e.target.value)} className={inputCls}>
+            {SLOTS.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <button type="submit" disabled={saving} className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 cursor-pointer">
+          {saving ? "Moviendo…" : "Mover reserva"}
+        </button>
+      </form>
+    </Modal>
+  );
+}
+
+// ─── Card de reserva ──────────────────────────────────────────────────────────
+function ReservationCard({ r, date, onEdit, onMove, onCancel, busy }) {
+  // Fantasma: la reserva se movió DESDE este horario a otro.
+  if (r.ghost) {
+    const to = r.movedTo;
+    const where = to.date === date ? `${to.time}` : `${to.time}, ${shortDate(to.date)}`;
+    return (
+      <div className="rounded-xl border border-dashed border-blue-200 bg-blue-50/50 p-3">
+        <div className="flex items-center gap-2">
+          <FiRepeat className="h-4 w-4 shrink-0 text-blue-500" />
+          <p className="text-sm text-slate-600">
+            <span className="font-semibold text-slate-800">{r.customer?.name || "Reserva"}</span> se movió a{" "}
+            <span className="font-semibold text-blue-700">{where}</span>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const movedFromTxt = r.movedFrom
+    ? (r.movedFrom.date === date ? r.movedFrom.time : `${r.movedFrom.time}, ${shortDate(r.movedFrom.date)}`)
+    : null;
+
+  return (
+    <div className={`rounded-xl border p-3 ${r.cancelled ? "border-slate-200 bg-slate-50 opacity-75" : "border-slate-200 bg-white"}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className={`font-bold ${r.cancelled ? "text-slate-500 line-through" : "text-slate-900"}`}>
+            {r.customer?.name || "Sin nombre"}
+          </p>
+          <p className="text-sm text-slate-500">{paxLine(r)}</p>
+          {r.customer?.phone && (
+            <a href={`tel:${r.customer.phone}`} className="text-sm font-medium text-blue-600">{r.customer.phone}</a>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {r.cancelled ? (
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-600">Cancelada</span>
+          ) : r.owes ? (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700 tabular-nums">Debe ${r.balanceDue}</span>
+          ) : (
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">Pagado</span>
+          )}
+          {r.arrived && !r.cancelled && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white"><FiCheck className="h-3 w-3" />Llegó</span>
+          )}
+          {movedFromTxt && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700"><FiRepeat className="h-3 w-3" />desde {movedFromTxt}</span>
+          )}
+        </div>
       </div>
 
-      {mode === "single" ? (
-        <DayPicker
-          mode="single"
-          style={CALENDAR_THEME_VARS}
-          selected={fromYMDLocal(singleValue)}
-          onSelect={(d) => d && onPickSingle(toYMDLocal(d))}
-        />
-      ) : (
-        <DayPicker
-          mode="range"
-          style={CALENDAR_THEME_VARS}
-          selected={{
-            from: fromYMDLocal(rangeValue.from),
-            to: fromYMDLocal(rangeValue.to),
-          }}
-          onSelect={(r) =>
-            onPickRange({
-              from: r?.from ? toYMDLocal(r.from) : undefined,
-              to: r?.to ? toYMDLocal(r.to) : undefined,
-            })
-          }
-        />
+      {!r.cancelled && (
+        <div className="mt-3 flex gap-2">
+          <button onClick={() => onEdit(r)} disabled={busy}
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 cursor-pointer">
+            <FiEdit2 className="h-3.5 w-3.5" /> Editar
+          </button>
+          <button onClick={() => onMove(r)} disabled={busy}
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-blue-200 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50 cursor-pointer">
+            <FiRepeat className="h-3.5 w-3.5" /> Mover
+          </button>
+          <button onClick={() => onCancel(r)} disabled={busy}
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-200 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 cursor-pointer">
+            <FiX className="h-3.5 w-3.5" /> Cancelar
+          </button>
+        </div>
       )}
     </div>
   );
 }
 
+// ─── Página ───────────────────────────────────────────────────────────────────
 export default function ReservacionesPage() {
   const navigate = useNavigate();
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const todayYmd = useMemo(() => getTodayYmdInTimeZone(), []);
-  const tomorrowYmd = useMemo(() => shiftYmd(todayYmd, 1), [todayYmd]);
-
-  // viewMode: "day" (una fecha exacta) | "range" (rango) | "all" (todas las futuras)
-  const [viewMode, setViewMode] = useState("day");
-  const [activeDate, setActiveDate] = useState(todayYmd);
-  const [range, setRange] = useState({ from: undefined, to: undefined });
-
+  const [date, setDate] = useState(() => todayYmd());
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [pickerMode, setPickerMode] = useState("single");
-  const [selectedSlot, setSelectedSlot] = useState(null); // { ymd, startTime, bookings }
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+  const [modal, setModal] = useState(null); // {type:'create'|'edit'|'move', slot?, r?}
 
-  useEffect(() => {
-    getPayments()
-      .then((res) => {
-        setPayments(res.payments || []);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Error al cargar los pagos");
-        setLoading(false);
-      });
+  function showToast(type, message) {
+    setToast({ type, message });
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToast(null), 3000);
+  }
+
+  const load = useCallback(async (d) => {
+    setLoading(true);
+    try {
+      const res = await listReservations(d);
+      setEntries(res.entries || []);
+    } catch (e) {
+      showToast("error", "Error cargando reservas: " + e.message);
+      setEntries([]);
+    } finally { setLoading(false); }
   }, []);
 
-  function goToday() {
-    setViewMode("day");
-    setActiveDate(todayYmd);
-  }
-  function goTomorrow() {
-    setViewMode("day");
-    setActiveDate(tomorrowYmd);
-  }
-  function goAll() {
-    setViewMode("all");
-  }
-  function shiftActiveDate(days) {
-    setViewMode("day");
-    setActiveDate((d) => shiftYmd(d || todayYmd, days));
-  }
-  function pickSingleDate(ymd) {
-    setActiveDate(ymd);
-    setViewMode("day");
-    setCalendarOpen(false);
-  }
-  function pickRange(r) {
-    setRange(r);
-    if (r.from && r.to) {
-      setViewMode("range");
-      setCalendarOpen(false);
+  useEffect(() => { load(date); }, [load, date]);
+
+  const bySlot = useMemo(() => {
+    const m = new Map(SLOTS.map((s) => [s, []]));
+    for (const e of entries) {
+      if (!m.has(e.displaySlot)) m.set(e.displaySlot, []);
+      m.get(e.displaySlot).push(e);
     }
+    return m;
+  }, [entries]);
+
+  const activeCount = entries.filter((e) => !e.ghost && !e.cancelled).length;
+  const totalGuests = entries
+    .filter((e) => !e.ghost && !e.cancelled)
+    .reduce((s, e) => s + e.guests, 0);
+
+  async function handleCancel(r) {
+    if (!window.confirm(`¿Cancelar la reserva de ${r.customer?.name || "este cliente"}? Queda marcada como cancelada (no se borra) y libera el cupo.`)) return;
+    setBusyId(r.id);
+    try {
+      await cancelReservation(r.id);
+      showToast("success", "Reserva cancelada");
+      await load(date);
+    } catch (e) {
+      showToast("error", e.message);
+    } finally { setBusyId(null); }
   }
 
-  const visiblePayments = useMemo(() => {
-    return payments.filter((p) => {
-      const ymd = getBookingDateYmd(p);
-      if (!ymd) return false;
-
-      if (viewMode === "day") return ymd === activeDate;
-      if (viewMode === "range") {
-        if (!range.from) return false;
-        const to = range.to || range.from;
-        return ymd >= range.from && ymd <= to;
-      }
-      return ymd >= todayYmd; // "all"
-    });
-  }, [payments, viewMode, activeDate, range, todayYmd]);
-
-  const counts = useMemo(() => {
-    let todayCount = 0;
-    let tomorrowCount = 0;
-    let futureCount = 0;
-    for (const p of payments) {
-      const ymd = getBookingDateYmd(p);
-      if (!ymd || ymd < todayYmd) continue;
-      futureCount += 1;
-      if (ymd === todayYmd) todayCount += 1;
-      if (ymd === tomorrowYmd) tomorrowCount += 1;
-    }
-    return { todayCount, tomorrowCount, futureCount };
-  }, [payments, todayYmd, tomorrowYmd]);
-
-  // Agrupa: fecha -> horario (HH:MM) -> pagos, ambos niveles ordenados.
-  const groupedByDay = useMemo(() => {
-    const byDay = new Map();
-    for (const p of visiblePayments) {
-      const ymd = getBookingDateYmd(p);
-      if (!byDay.has(ymd)) byDay.set(ymd, new Map());
-      const bySlot = byDay.get(ymd);
-      const slot = startTimeKey(p);
-      if (!bySlot.has(slot)) bySlot.set(slot, []);
-      bySlot.get(slot).push(p);
-    }
-
-    return [...byDay.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([ymd, bySlot]) => ({
-        ymd,
-        slots: [...bySlot.entries()]
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([startTime, bookings]) => ({
-            startTime,
-            bookings: bookings
-              .slice()
-              .sort((a, b) => (a.customer?.name || "").localeCompare(b.customer?.name || "")),
-          })),
-      }));
-  }, [visiblePayments]);
-
-  const navLabel =
-    viewMode === "day"
-      ? formatCompactDate(activeDate)
-      : viewMode === "range"
-      ? range.from
-        ? `${formatCompactDate(range.from)} — ${formatCompactDate(range.to || range.from)}`
-        : "Elegir rango"
-      : "Todas las próximas";
-
-  if (loading)
-    return (
-      <div className="flex h-40 items-center justify-center text-lg">
-        Cargando pagos...
-      </div>
-    );
-
-  if (error)
-    return (
-      <div className="mt-8 text-center font-semibold text-red-600">{error}</div>
-    );
+  function afterModal() {
+    setModal(null);
+    load(date);
+  }
 
   return (
-    <div className="mx-auto w-full max-w-6xl p-4 sm:p-6">
-      <div className="mb-6 flex items-center gap-3">
-        <button
-          onClick={() => navigate("/matamoros")}
-          className="grid h-10 w-10 place-items-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-100"
-        >
-          <FiArrowLeft className="h-5 w-5" />
-        </button>
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-black text-gray-900">
-            <FiCalendar className="h-6 w-6 text-emerald-600" />
-            Reservaciones
-          </h1>
-          <p className="text-sm text-gray-500">Pagos agrupados por horario del tour.</p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-slate-50">
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        {/* Navegador: ícono de calendario, flechas y fecha, cada uno aparte */}
-        <div className="relative flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setPickerMode(viewMode === "range" ? "range" : "single");
-              setCalendarOpen((o) => !o);
-            }}
-            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl shadow-sm transition ${
-              calendarOpen
-                ? "bg-emerald-600 text-white"
-                : "bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50"
-            }`}
-            title="Elegir fecha o rango"
-          >
+      <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
+        {/* Header */}
+        <div className="mb-5 flex items-center gap-3">
+          <button onClick={() => navigate("/matamoros")} aria-label="Volver"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 cursor-pointer">
+            <FiArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="flex items-center gap-2 text-2xl font-black text-slate-900">
+              <FiCalendar className="h-6 w-6 text-emerald-600" /> Reservaciones
+            </h1>
+            <p className="text-sm text-slate-500">Crear, editar, mover y cancelar reservas.</p>
+          </div>
+          <button onClick={() => setModal({ type: "create" })}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 cursor-pointer">
+            <FiPlus className="h-4 w-4" /> <span className="hidden sm:inline">Nueva</span>
+          </button>
+        </div>
+
+        {/* Nav fecha */}
+        <div className="relative mb-4 flex items-center gap-2">
+          <button type="button" onClick={() => setCalendarOpen((o) => !o)} aria-label="Elegir fecha"
+            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl shadow-sm transition cursor-pointer ${calendarOpen ? "bg-emerald-600 text-white" : "bg-white text-slate-500 ring-1 ring-slate-200"}`}>
             <FiCalendar className="h-4 w-4" />
           </button>
-
-          <div className="flex items-center gap-0.5 rounded-xl bg-white p-1 shadow-sm ring-1 ring-gray-200">
-            <button
-              type="button"
-              onClick={() => shiftActiveDate(-1)}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-gray-500 hover:bg-gray-100"
-            >
-              <FiChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => shiftActiveDate(1)}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-gray-500 hover:bg-gray-100"
-            >
-              <FiChevronRight className="h-4 w-4" />
-            </button>
+          <div className="flex items-center gap-0.5 rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
+            <button onClick={() => setDate((d) => shiftYmd(d, -1))} aria-label="Anterior" className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"><FiChevronLeft className="h-4 w-4" /></button>
+            <button onClick={() => setDate((d) => shiftYmd(d, 1))} aria-label="Siguiente" className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"><FiChevronRight className="h-4 w-4" /></button>
           </div>
-
-          <span className="whitespace-nowrap text-base font-bold text-gray-800">
-            {navLabel}
-          </span>
+          <span className="whitespace-nowrap text-base font-bold capitalize text-slate-800">{navLabel(date)}</span>
 
           {calendarOpen && (
-            <CalendarPopover
-              mode={pickerMode}
-              onModeChange={setPickerMode}
-              singleValue={activeDate || todayYmd}
-              rangeValue={range}
-              onPickSingle={pickSingleDate}
-              onPickRange={pickRange}
-              onClose={() => setCalendarOpen(false)}
-            />
+            <>
+              <button type="button" aria-hidden tabIndex={-1} onClick={() => setCalendarOpen(false)} className="fixed inset-0 z-20 cursor-default" />
+              <div className="absolute left-0 top-full z-30 mt-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                <CalendarPicker selected={date} bare onSelect={(ymd) => { if (ymd) { setDate(ymd); setCalendarOpen(false); } }} />
+              </div>
+            </>
           )}
         </div>
 
-        {/* Filtros rápidos */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={goToday}
-            className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-              viewMode === "day" && activeDate === todayYmd
-                ? "bg-emerald-600 text-white shadow-sm"
-                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            Hoy <span className="opacity-80">({counts.todayCount})</span>
-          </button>
-          <button
-            type="button"
-            onClick={goTomorrow}
-            className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-              viewMode === "day" && activeDate === tomorrowYmd
-                ? "bg-orange-500 text-white shadow-sm"
-                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            Mañana <span className="opacity-80">({counts.tomorrowCount})</span>
-          </button>
-          <button
-            type="button"
-            onClick={goAll}
-            className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-              viewMode === "all"
-                ? "bg-amber-500 text-white shadow-sm"
-                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            Todos <span className="opacity-80">({counts.futureCount})</span>
-          </button>
-        </div>
-      </div>
+        {/* Resumen */}
+        {!loading && (
+          <p className="mb-4 text-sm text-slate-500">
+            <span className="font-semibold text-slate-800">{activeCount}</span> reserva{activeCount === 1 ? "" : "s"} · <span className="font-semibold text-slate-800">{totalGuests}</span> persona{totalGuests === 1 ? "" : "s"}
+          </p>
+        )}
 
-      {groupedByDay.length === 0 && (
-        <p className="py-16 text-center text-sm text-gray-400">
-          No hay reservaciones para este filtro.
-        </p>
-      )}
-
-      <div className="space-y-8">
-        {groupedByDay.map((day) => (
-          <div key={day.ymd}>
-            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-emerald-700">
-              {formatDayHeader(day.ymd, todayYmd, tomorrowYmd)}
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {day.slots.map((slot) => (
-                <SlotCard
-                  key={`${day.ymd}|${slot.startTime}`}
-                  startTime={slot.startTime}
-                  bookings={slot.bookings}
-                  onOpen={() =>
-                    setSelectedSlot({ ymd: day.ymd, startTime: slot.startTime, bookings: slot.bookings })
-                  }
-                />
-              ))}
-            </div>
+        {/* Slots */}
+        {loading ? (
+          <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-slate-100" />)}</div>
+        ) : (
+          <div className="space-y-5">
+            {SLOTS.map((slot) => {
+              const items = bySlot.get(slot) || [];
+              return (
+                <div key={slot}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-600 text-white"><FiClock className="h-4 w-4" /></span>
+                    <h3 className="text-lg font-black text-slate-900 tabular-nums">{slot}</h3>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                      {items.filter((e) => !e.ghost && !e.cancelled).length} grupo{items.filter((e) => !e.ghost && !e.cancelled).length === 1 ? "" : "s"}
+                    </span>
+                    <button onClick={() => setModal({ type: "create", slot })}
+                      className="ml-auto inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer">
+                      <FiPlus className="h-3.5 w-3.5" /> Agregar
+                    </button>
+                  </div>
+                  {items.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-slate-200 bg-white py-4 text-center text-sm text-slate-400">Sin reservas</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {items.map((r) => (
+                        <ReservationCard
+                          key={r.id + (r.ghost ? "-g" : "")}
+                          r={r}
+                          date={date}
+                          busy={busyId === r.id}
+                          onEdit={(x) => setModal({ type: "edit", r: x })}
+                          onMove={(x) => setModal({ type: "move", r: x })}
+                          onCancel={handleCancel}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ))}
+        )}
       </div>
 
-      <SlotDetailModal
-        open={Boolean(selectedSlot)}
-        ymd={selectedSlot?.ymd}
-        startTime={selectedSlot?.startTime}
-        bookings={selectedSlot?.bookings ?? []}
-        todayYmd={todayYmd}
-        tomorrowYmd={tomorrowYmd}
-        onClose={() => setSelectedSlot(null)}
-      />
+      {modal?.type === "create" && (
+        <CreateModal date={date} slot={modal.slot} onClose={() => setModal(null)} onDone={afterModal} showToast={showToast} />
+      )}
+      {modal?.type === "edit" && (
+        <EditModal r={modal.r} onClose={() => setModal(null)} onDone={afterModal} showToast={showToast} />
+      )}
+      {modal?.type === "move" && (
+        <MoveModal r={modal.r} onClose={() => setModal(null)} onDone={afterModal} showToast={showToast} />
+      )}
     </div>
   );
 }

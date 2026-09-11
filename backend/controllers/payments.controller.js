@@ -274,6 +274,7 @@ export async function getAllPayments(req, res) {
     JOIN bookings b ON b.id = p.booking_id
     LEFT JOIN customers c ON c.id = p.customer_id
     LEFT JOIN resellers r ON r.id = p.reseller_id
+    WHERE b.status <> 'cancelled'
     ORDER BY b.tour_date DESC, b.start_time DESC, p.created_at DESC;
 
       `,

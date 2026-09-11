@@ -16,6 +16,7 @@ import resellersRoutes from "./routes/resellers.routes.js";
 import attendanceRoutes from "./routes/attendance.routes.js";
 import guidesRoutes from "./routes/guides.routes.js";
 import guidePortalRoutes from "./routes/guide-portal.routes.js";
+import bookingsManageRoutes from "./routes/bookings.manage.routes.js";
 import { pool } from "./db.js";
 
 dotenv.config();
@@ -63,6 +64,7 @@ app.use("/api/resellers", resellersRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/guides", guidesRoutes);
 app.use("/api/guide", guidePortalRoutes);
+app.use("/api/reservations", bookingsManageRoutes);
 
 const port = process.env.PORT || 4000;
 
