@@ -53,6 +53,13 @@ function paxLine(r) {
   return parts.join(" · ") || "—";
 }
 
+const SOURCE_BADGE = {
+  gyg: { label: "GetYourGuide", cls: "bg-orange-100 text-orange-700" },
+  viator: { label: "Viator", cls: "bg-teal-100 text-teal-700" },
+  web: { label: "Web", cls: "bg-emerald-100 text-emerald-700" },
+  manual: { label: "Manual", cls: "bg-slate-100 text-slate-600" },
+};
+
 // ─── Toast ──────────────────────────────────────────────────────────────────
 function Toast({ toast, onClose }) {
   if (!toast) return null;
@@ -285,9 +292,16 @@ function ReservationCard({ r, date, onEdit, onMove, onCancel, busy }) {
     <div className={`rounded-xl border p-3 ${r.cancelled ? "border-slate-200 bg-slate-50 opacity-75" : "border-slate-200 bg-white"}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className={`font-bold ${r.cancelled ? "text-slate-500 line-through" : "text-slate-900"}`}>
-            {r.customer?.name || "Sin nombre"}
-          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className={`font-bold ${r.cancelled ? "text-slate-500 line-through" : "text-slate-900"}`}>
+              {r.customer?.name || "Sin nombre"}
+            </p>
+            {SOURCE_BADGE[r.source] && (
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${SOURCE_BADGE[r.source].cls}`}>
+                {SOURCE_BADGE[r.source].label}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-slate-500">{paxLine(r)}</p>
           {r.customer?.phone && (
             <a href={`tel:${r.customer.phone}`} className="text-sm font-medium text-blue-600">{r.customer.phone}</a>

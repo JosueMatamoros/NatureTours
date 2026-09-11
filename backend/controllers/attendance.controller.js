@@ -57,8 +57,9 @@ function mapRow(row) {
     arrived: Boolean(row.arrived),
     arrivedAt: row.arrived_at,
     customer: {
-      name: isManual ? row.manual_name : row.customer_name,
-      phone: isManual ? row.manual_phone : row.customer_phone,
+      // Web usa customers; manual y OTAs (gyg/viator) usan manual_*.
+      name: row.source === "web" ? row.customer_name : row.manual_name,
+      phone: row.source === "web" ? row.customer_phone : row.manual_phone,
     },
     reseller: row.reseller_id
       ? { id: row.reseller_id, name: row.reseller_name }

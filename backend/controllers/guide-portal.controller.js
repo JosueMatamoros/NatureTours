@@ -43,7 +43,6 @@ function computeBalanceDue(row) {
 }
 
 function mapReservation(row) {
-  const isManual = row.source === "manual";
   const balanceDue = computeBalanceDue(row);
   return {
     id: row.id,
@@ -56,8 +55,9 @@ function mapReservation(row) {
     balanceDue,
     owes: balanceDue > 0,
     customer: {
-      name: isManual ? row.manual_name : row.customer_name,
-      phone: isManual ? row.manual_phone : row.customer_phone,
+      // Web usa customers; manual y OTAs (gyg/viator) usan manual_*.
+      name: row.source === "web" ? row.customer_name : row.manual_name,
+      phone: row.source === "web" ? row.customer_phone : row.manual_phone,
     },
   };
 }

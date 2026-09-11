@@ -72,7 +72,8 @@ function balanceDue(row) {
 }
 
 function mapEntry(row, { ghost = false } = {}) {
-  const isManual = row.source === "manual";
+  // Web usa customers (vía pago); manual y OTAs (gyg/viator) usan manual_*.
+  const isWeb = row.source === "web";
   const due = balanceDue(row);
   return {
     id: row.id,
@@ -91,9 +92,10 @@ function mapEntry(row, { ghost = false } = {}) {
     balanceDue: due,
     owes: due > 0,
     customer: {
-      name: isManual ? row.manual_name : row.customer_name,
-      phone: isManual ? row.manual_phone : row.customer_phone,
+      name: isWeb ? row.customer_name : row.manual_name,
+      phone: isWeb ? row.customer_phone : row.manual_phone,
     },
+    source: row.source,
     movedFrom: row.moved_from_date ? { date: row.moved_from_date, time: row.moved_from_time } : null,
     // ghost = marca "se movió a" que se muestra en el horario ORIGINAL
     ghost,
