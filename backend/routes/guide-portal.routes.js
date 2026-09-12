@@ -7,6 +7,8 @@ import {
   guideMyDay,
   guideMyDays,
   guideSetArrived,
+  guideAllGuides,
+  guideAssignSlot,
 } from "../controllers/guide-portal.controller.js";
 import { authenticateGuide } from "../middlewares/auth.middleware.js";
 
@@ -26,5 +28,7 @@ router.get("/me", authenticateGuide, guideMe);
 router.get("/my-day", authenticateGuide, guideMyDay);
 router.get("/my-days", authenticateGuide, guideMyDays);
 router.patch("/attendance/:bookingId", authenticateGuide, guideSetArrived);
+router.get("/all-guides", authenticateGuide, guideAllGuides);
+router.put("/assign", authenticateGuide, guideAssignSlot);
 
 export default router;

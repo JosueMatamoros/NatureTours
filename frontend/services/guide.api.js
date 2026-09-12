@@ -75,3 +75,15 @@ export function guideSetArrived(bookingId, arrived) {
     body: JSON.stringify({ arrived }),
   });
 }
+
+// Solo supervisores: lista de guías y asignación por slot.
+export function getGuideAllGuides() {
+  return guideRequest("/api/guide/all-guides");
+}
+
+export function assignGuideSlot({ tourId, tourDate, startTime, guideId, assigned }) {
+  return guideRequest("/api/guide/assign", {
+    method: "PUT",
+    body: JSON.stringify({ tourId, tourDate, startTime, guideId, assigned }),
+  });
+}

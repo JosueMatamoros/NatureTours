@@ -19,6 +19,33 @@ const daySchema = z.object({
 
 const arrivedSchema = z.object({ arrived: z.boolean() });
 
+const assignSchema = z.object({
+  tourId: z.number().int().positive(),
+  tourDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  guideId: z.string().uuid(),
+  assigned: z.boolean().default(true),
+});
+
+// Adjunta a cada slot los guías asignados ese día (id + nombre).
+async function attachSlotGuides(slots, date) {
+  if (!slots.length) return slots;
+  const q = await pool.query(
+    `SELECT sg.tour_id, to_char(sg.start_time,'HH24:MI') AS st, sg.guide_id, g.name
+     FROM slot_guides sg JOIN guides g ON g.id = sg.guide_id
+     WHERE sg.tour_date = $1::date`,
+    [date],
+  );
+  const byKey = new Map();
+  for (const r of q.rows) {
+    const key = `${r.tour_id}|${r.st}`;
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push({ id: r.guide_id, name: r.name });
+  }
+  for (const s of slots) s.guides = byKey.get(`${s.tourId}|${s.startTime}`) || [];
+  return slots;
+}
+
 function sessionCookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
   return {
@@ -194,6 +221,7 @@ export async function guideMyDay(req, res) {
         ...s,
         totalGuests: s.reservations.reduce((sum, r) => sum + r.guests, 0),
       }));
+      await attachSlotGuides(supSlots, date);
       return res.json({ ok: true, date, slots: supSlots, supervisor: true });
     }
 
@@ -257,6 +285,7 @@ export async function guideMyDay(req, res) {
       ...s,
       totalGuests: s.reservations.reduce((sum, r) => sum + r.guests, 0),
     }));
+    await attachSlotGuides(slots, date);
 
     return res.json({ ok: true, date, slots });
   } catch (err) {
@@ -340,5 +369,52 @@ export async function guideMyDays(req, res) {
   } catch (err) {
     console.error("guideMyDays error:", err);
     return res.status(500).json({ ok: false, message: "Error obteniendo días" });
+  }
+}
+
+// GET /api/guide/all-guides — lista de guías activos (solo supervisor), para
+// el selector de asignación por slot.
+export async function guideAllGuides(req, res) {
+  if (!req.guide.isSupervisor) {
+    return res.status(403).json({ ok: false, message: "Solo supervisores" });
+  }
+  try {
+    const q = await pool.query(`SELECT id, name FROM guides WHERE active = true ORDER BY name`);
+    return res.json({ ok: true, guides: q.rows });
+  } catch (err) {
+    console.error("guideAllGuides error:", err);
+    return res.status(500).json({ ok: false, message: "Error listando guías" });
+  }
+}
+
+// PUT /api/guide/assign — asigna/quita UN guía de un slot (solo supervisor).
+export async function guideAssignSlot(req, res) {
+  if (!req.guide.isSupervisor) {
+    return res.status(403).json({ ok: false, message: "Solo supervisores" });
+  }
+  const parsed = assignSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: parsed.error.flatten() });
+  }
+  const { tourId, tourDate, startTime, guideId, assigned } = parsed.data;
+  try {
+    if (!assigned) {
+      await pool.query(
+        `DELETE FROM slot_guides WHERE tour_id=$1 AND tour_date=$2::date AND start_time=$3::time AND guide_id=$4`,
+        [tourId, tourDate, startTime, guideId],
+      );
+      return res.json({ ok: true, guideId, assigned: false });
+    }
+    await pool.query(
+      `INSERT INTO slot_guides (tour_id, tour_date, start_time, guide_id)
+       VALUES ($1,$2::date,$3::time,$4)
+       ON CONFLICT (tour_id, tour_date, start_time, guide_id) DO NOTHING`,
+      [tourId, tourDate, startTime, guideId],
+    );
+    return res.json({ ok: true, guideId, assigned: true });
+  } catch (err) {
+    if (err.code === "23503") return res.status(400).json({ ok: false, message: "Guía o tour inválido" });
+    console.error("guideAssignSlot error:", err);
+    return res.status(500).json({ ok: false, message: "Error asignando guía" });
   }
 }

@@ -15,6 +15,7 @@ import {
   FiSettings,
   FiEye,
   FiEyeOff,
+  FiChevronDown,
 } from "react-icons/fi";
 import CalendarPicker from "../components/checkout/CalendarPicker";
 import SourceChip from "../components/SourceChip";
@@ -25,6 +26,8 @@ import {
   getGuideMyDay,
   getGuideMyDays,
   guideSetArrived,
+  getGuideAllGuides,
+  assignGuideSlot,
 } from "../../services/guide.api";
 
 const WEEKDAYS_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -171,20 +174,19 @@ function ReservationRow({ r, onToggle, busy }) {
             {r.customer?.name || "Sin nombre"}
           </p>
           <SourceChip source={r.source} />
+        </div>
+        <p className="text-sm text-slate-500">{parts.join(" · ")}</p>
+        {/* Debajo de la cantidad de personas: booking id y, solo si debe, el saldo */}
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500">{bookingId}</span>
-          {r.owes ? (
-            <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 ring-1 ring-red-200 tabular-nums">
+          {r.owes && (
+            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 ring-1 ring-red-200 tabular-nums">
               Debe ${r.balanceDue}
-            </span>
-          ) : (
-            <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-200">
-              Pagado
             </span>
           )}
         </div>
-        <p className="text-sm text-slate-500">{parts.join(" · ")}</p>
         {r.customer?.phone && (
-          <a href={`tel:${r.customer.phone}`} className="text-sm font-medium text-blue-600">
+          <a href={`tel:${r.customer.phone}`} className="mt-0.5 block text-sm font-medium text-blue-600">
             {r.customer.phone}
           </a>
         )}
@@ -209,6 +211,64 @@ function ReservationRow({ r, onToggle, busy }) {
   );
 }
 
+// ─── Selector de guía por slot (solo supervisor) ────────────────────────────
+function SlotGuidePicker({ slot, date, allGuides, onChanged }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const assignedIds = new Set((slot.guides || []).map((g) => g.id));
+
+  async function toggle(guideId) {
+    const isOn = assignedIds.has(guideId);
+    setSaving(true);
+    try {
+      await assignGuideSlot({
+        tourId: slot.tourId, tourDate: date, startTime: slot.startTime, guideId, assigned: !isOn,
+      });
+      await onChanged();
+    } catch { /* noop */ } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        disabled={saving}
+        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
+      >
+        <FiCompass className="h-3.5 w-3.5" /> Asignar <FiChevronDown className="h-3 w-3" />
+      </button>
+      {open && (
+        <>
+          <button type="button" aria-hidden tabIndex={-1} onClick={() => setOpen(false)} className="fixed inset-0 z-20 cursor-default" />
+          <div className="absolute right-0 top-full z-30 mt-1 w-52 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+            {allGuides.length === 0 ? (
+              <p className="px-3 py-2 text-xs text-slate-400">No hay guías</p>
+            ) : (
+              allGuides.map((g) => {
+                const on = assignedIds.has(g.id);
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => toggle(g.id)}
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer"
+                  >
+                    <span className={on ? "font-semibold text-emerald-700" : "text-slate-700"}>{g.name}</span>
+                    {on && <FiCheck className="h-4 w-4 text-emerald-600" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Día ────────────────────────────────────────────────────────────────────
 function GuideDay({ guide, onLogout }) {
   const navigate = useNavigate();
@@ -216,6 +276,7 @@ function GuideDay({ guide, onLogout }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [dayData, setDayData] = useState(null);
   const [myDays, setMyDays] = useState([]);
+  const [allGuides, setAllGuides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
 
@@ -238,6 +299,11 @@ function GuideDay({ guide, onLogout }) {
   useEffect(() => {
     getGuideMyDays().then((r) => setMyDays(r.days || [])).catch(() => setMyDays([]));
   }, []);
+  useEffect(() => {
+    if (guide.isSupervisor) {
+      getGuideAllGuides().then((r) => setAllGuides(r.guides || [])).catch(() => setAllGuides([]));
+    }
+  }, [guide.isSupervisor]);
 
   const slots = dayData?.slots || [];
   const totalGuests = slots.reduce((s, sl) => s + (sl.totalGuests || 0), 0);
@@ -409,19 +475,34 @@ function GuideDay({ guide, onLogout }) {
           <div className="space-y-4">
             {slots.map((slot) => (
               <div key={`${slot.tourId}-${slot.startTime}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-emerald-600 ring-1 ring-slate-200">
-                      <FiClock className="h-4 w-4" />
-                    </span>
-                    <div>
-                      <p className="text-lg font-black leading-none text-slate-900">{formatClock(slot.startTime)}</p>
-                      <p className="mt-0.5 text-xs font-medium text-slate-500">{slot.tourName}</p>
+                <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-emerald-600 ring-1 ring-slate-200">
+                        <FiClock className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <p className="text-lg font-black leading-none text-slate-900">{formatClock(slot.startTime)}</p>
+                        <p className="mt-0.5 text-xs font-medium text-slate-500">{slot.tourName}</p>
+                      </div>
                     </div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700 tabular-nums">
+                      <FiUsers className="h-3.5 w-3.5" /> {slot.totalGuests}
+                    </span>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700 tabular-nums">
-                    <FiUsers className="h-3.5 w-3.5" /> {slot.totalGuests}
-                  </span>
+
+                  {/* Guía asignado al slot */}
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                      <FiCompass className="h-3.5 w-3.5 text-slate-400" />
+                      {slot.guides && slot.guides.length > 0
+                        ? <span className="font-semibold text-slate-800">{slot.guides.map((g) => g.name).join(", ")}</span>
+                        : <span className="text-slate-400">Sin guía asignado</span>}
+                    </span>
+                    {guide.isSupervisor && (
+                      <SlotGuidePicker slot={slot} date={date} allGuides={allGuides} onChanged={() => loadDay(date)} />
+                    )}
+                  </div>
                 </div>
 
                 <div className="px-4 py-1">
