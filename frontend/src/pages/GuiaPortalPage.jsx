@@ -161,17 +161,17 @@ function ReservationRow({ r, onToggle, busy }) {
   if (r.children) parts.push(`${r.children} niño${r.children === 1 ? "" : "s"}`);
   if (r.babies) parts.push(`${r.babies} bebé${r.babies === 1 ? "" : "s"}`);
 
+  const bookingId = r.externalRef || `#${String(r.id).slice(0, 6).toUpperCase()}`;
+
   return (
     <div className={`flex items-center gap-3 border-t border-slate-100 py-3 first:border-t-0 ${r.arrived ? "opacity-70" : ""}`}>
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-slate-100 text-sm font-bold text-slate-500 tabular-nums">
-        {r.guests}
-      </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <p className={`truncate font-semibold ${r.arrived ? "text-slate-500 line-through" : "text-slate-900"}`}>
             {r.customer?.name || "Sin nombre"}
           </p>
           <SourceChip source={r.source} />
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500">{bookingId}</span>
           {r.owes ? (
             <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 ring-1 ring-red-200 tabular-nums">
               Debe ${r.balanceDue}

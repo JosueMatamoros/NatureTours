@@ -144,6 +144,18 @@ function CopyPhone({ text }) {
   );
 }
 
+// Hora en que se marcó la llegada (zona del negocio), formato HH:MM.
+function arrivedTimeLabel(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleTimeString("es-CR", {
+      hour: "2-digit", minute: "2-digit", hour12: false, timeZone: BUSINESS_TIME_ZONE,
+    });
+  } catch {
+    return "";
+  }
+}
+
 // ─── Fila de una reserva ─────────────────────────────────────────────────────
 function ReservationRow({ r, onToggleArrived, busy }) {
   const owes = r.owes;
@@ -219,7 +231,7 @@ function ReservationRow({ r, onToggleArrived, busy }) {
         }`}
       >
         <FiUserCheck className="h-4 w-4" />
-        {r.arrived ? "Llegó" : "Marcar"}
+        {r.arrived ? `Llegó${r.arrivedAt ? " " + arrivedTimeLabel(r.arrivedAt) : ""}` : "Marcar"}
       </button>
     </div>
   );

@@ -5,8 +5,8 @@ export function getGuides() {
   return api.get("/api/guides");
 }
 
-export function createGuide({ name, email, phone, canCreateManual }) {
-  return api.post("/api/guides", { name, email, phone, canCreateManual });
+export function createGuide(payload) {
+  return api.post("/api/guides", payload);
 }
 
 export function updateGuide(id, fields) {

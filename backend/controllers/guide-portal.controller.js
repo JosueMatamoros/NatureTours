@@ -46,6 +46,7 @@ function mapReservation(row) {
   const balanceDue = computeBalanceDue(row);
   return {
     id: row.id,
+    externalRef: row.external_ref,
     adults: Number(row.adults),
     children: Number(row.children),
     babies: Number(row.babies),
@@ -158,7 +159,7 @@ export async function guideMyDay(req, res) {
            to_char(b.start_time,'HH24:MI') AS start_time,
            b.adults, b.children, b.babies, b.guests,
            b.subtotal, b.deposit_amount, b.source,
-           b.arrived, b.manual_name, b.manual_phone, b.manual_paid,
+           b.arrived, b.external_ref, b.manual_name, b.manual_phone, b.manual_paid,
            pay.mode AS pay_mode, pay.amount AS pay_amount,
            c.name AS customer_name, c.phone AS customer_phone
          FROM bookings b
@@ -213,7 +214,7 @@ export async function guideMyDay(req, res) {
          to_char(b.start_time,'HH24:MI') AS start_time,
          b.adults, b.children, b.babies, b.guests,
          b.subtotal, b.deposit_amount, b.source,
-         b.arrived, b.manual_name, b.manual_phone, b.manual_paid,
+         b.arrived, b.external_ref, b.manual_name, b.manual_phone, b.manual_paid,
          pay.mode AS pay_mode, pay.amount AS pay_amount,
          c.name AS customer_name, c.phone AS customer_phone
        FROM bookings b

@@ -6,6 +6,7 @@
 // can_create_manual define si a futuro podrán crear reservas manuales.
 import { pool } from "../db.js";
 import { z } from "zod";
+import { hashPassword } from "../utils/password.js";
 
 const guideIdSchema = z.object({ id: z.string().uuid() });
 
@@ -13,7 +14,11 @@ const guideBodySchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(160),
   phone: z.string().trim().max(30).nullable().optional().or(z.literal("")),
+  cedula: z.string().trim().max(30).nullable().optional().or(z.literal("")),
+  password: z.string().max(200).optional().or(z.literal("")),
   canCreateManual: z.boolean().optional(),
+  isAdmin: z.boolean().optional(),
+  isSupervisor: z.boolean().optional(),
 });
 
 const updateGuideSchema = guideBodySchema.partial().extend({
@@ -40,15 +45,22 @@ function mapGuide(r) {
     phone: r.phone,
     active: r.active,
     canCreateManual: r.can_create_manual,
+    cedula: r.cedula,
+    isAdmin: r.is_admin,
+    isSupervisor: r.is_supervisor,
+    hasPassword: r.has_password,
     createdAt: r.created_at,
   };
 }
+
+const RETURN_COLS = `id, name, email, phone, active, can_create_manual,
+  cedula, is_admin, is_supervisor, (password_hash IS NOT NULL) AS has_password, created_at`;
 
 // GET /api/guides
 export async function getAllGuides(_req, res) {
   try {
     const q = await pool.query(
-      `SELECT id, name, email, phone, active, can_create_manual, created_at
+      `SELECT ${RETURN_COLS}
        FROM guides
        ORDER BY active DESC, name ASC`,
     );
@@ -65,18 +77,23 @@ export async function createGuide(req, res) {
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
-  const { name, email, phone, canCreateManual } = parsed.data;
+  const { name, email, phone, cedula, password, canCreateManual, isAdmin, isSupervisor } = parsed.data;
+  const passwordHash = password && password.trim() ? hashPassword(password) : null;
   try {
     const q = await pool.query(
-      `INSERT INTO guides (name, email, phone, can_create_manual)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, name, email, phone, active, can_create_manual, created_at`,
-      [name, email.toLowerCase(), phone || null, Boolean(canCreateManual)],
+      `INSERT INTO guides (name, email, phone, cedula, password_hash, can_create_manual, is_admin, is_supervisor)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING ${RETURN_COLS}`,
+      [
+        name, email.toLowerCase(), phone || null,
+        cedula && cedula.trim() ? cedula.trim() : null,
+        passwordHash, Boolean(canCreateManual), Boolean(isAdmin), Boolean(isSupervisor),
+      ],
     );
     return res.status(201).json({ ok: true, guide: mapGuide(q.rows[0]) });
   } catch (err) {
     if (err.code === "23505") {
-      return res.status(409).json({ ok: false, message: "Ya existe un guía con ese email" });
+      return res.status(409).json({ ok: false, message: "Ya existe un guía con ese email o cédula" });
     }
     console.error("createGuide error:", err);
     return res.status(500).json({ ok: false, message: "Error creando guía" });
@@ -93,24 +110,34 @@ export async function updateGuide(req, res) {
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
-  const { name, email, phone, active, canCreateManual } = parsed.data;
+  const { name, email, phone, cedula, password, active, canCreateManual, isAdmin, isSupervisor } = parsed.data;
+  // Contraseña en blanco = no la cambia; con valor = la reemplaza (hasheada).
+  const passwordHash = password && password.trim() ? hashPassword(password) : null;
   try {
     const q = await pool.query(
       `UPDATE guides
-       SET name = COALESCE($2, name),
-           email = COALESCE($3, email),
-           phone = COALESCE($4, phone),
-           active = COALESCE($5, active),
-           can_create_manual = COALESCE($6, can_create_manual)
+       SET name = COALESCE($2::text, name),
+           email = COALESCE($3::text, email),
+           phone = COALESCE($4::text, phone),
+           cedula = COALESCE($5::text, cedula),
+           active = COALESCE($6::boolean, active),
+           can_create_manual = COALESCE($7::boolean, can_create_manual),
+           is_admin = COALESCE($8::boolean, is_admin),
+           is_supervisor = COALESCE($9::boolean, is_supervisor),
+           password_hash = COALESCE($10::text, password_hash)
        WHERE id = $1
-       RETURNING id, name, email, phone, active, can_create_manual, created_at`,
+       RETURNING ${RETURN_COLS}`,
       [
         idParsed.data.id,
         name ?? null,
         email ? email.toLowerCase() : null,
         phone === "" ? null : phone ?? null,
+        cedula && cedula.trim() ? cedula.trim() : null,
         active ?? null,
         canCreateManual ?? null,
+        isAdmin ?? null,
+        isSupervisor ?? null,
+        passwordHash,
       ],
     );
     if (q.rowCount === 0) {
@@ -119,7 +146,7 @@ export async function updateGuide(req, res) {
     return res.json({ ok: true, guide: mapGuide(q.rows[0]) });
   } catch (err) {
     if (err.code === "23505") {
-      return res.status(409).json({ ok: false, message: "Ya existe un guía con ese email" });
+      return res.status(409).json({ ok: false, message: "Ya existe un guía con ese email o cédula" });
     }
     console.error("updateGuide error:", err);
     return res.status(500).json({ ok: false, message: "Error actualizando guía" });
