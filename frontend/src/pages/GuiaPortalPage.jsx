@@ -347,37 +347,42 @@ function GuideDay({ guide, onLogout }) {
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-lg px-4 py-6">
         {/* Header */}
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white">
-              <FiCompass className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-slate-500">Hola,</p>
-              <p className="truncate text-lg font-black leading-tight text-slate-900">{guide.name}</p>
-              {guide.isSupervisor && (
-                <span className="mt-0.5 inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700">
-                  Supervisor · todos los tours
-                </span>
-              )}
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white shadow-sm shadow-emerald-600/30">
+                <FiCompass className="h-6 w-6" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-slate-400">Hola,</p>
+                <p className="truncate text-xl font-black leading-tight text-slate-900">{guide.name}</p>
+                {guide.isSupervisor && (
+                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700 ring-1 ring-violet-100">
+                    <FiEye className="h-3 w-3" /> Supervisor · todos los tours
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {guide.isAdmin && (
+            <div className="flex shrink-0 items-center gap-2">
+              {guide.isAdmin && (
+                <button
+                  onClick={() => navigate("/matamoros")}
+                  title="Ir al panel admin"
+                  aria-label="Ir al panel admin"
+                  className="grid h-10 w-10 place-items-center rounded-xl bg-slate-900 text-white transition hover:bg-slate-800 cursor-pointer"
+                >
+                  <FiSettings className="h-5 w-5" />
+                </button>
+              )}
               <button
-                onClick={() => navigate("/matamoros")}
-                title="Ir al panel admin"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 cursor-pointer"
+                onClick={handleLogout}
+                title="Salir"
+                aria-label="Salir"
+                className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 cursor-pointer"
               >
-                <FiSettings className="h-4 w-4" /> <span className="hidden sm:inline">Admin</span>
+                <FiLogOut className="h-5 w-5" />
               </button>
-            )}
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
-            >
-              <FiLogOut className="h-4 w-4" /> <span className="hidden sm:inline">Salir</span>
-            </button>
+            </div>
           </div>
         </div>
 
