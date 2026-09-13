@@ -113,13 +113,28 @@ function parseGyg({ subject, body }) {
     return { provider: "gyg", kind: "cancellation", externalRef: ref };
   }
 
-  // "Fecha 11 de septiembre de 2026, 8:00"
-  const dateM = text.match(/Fecha\s*(\d{1,2})\s+de\s+([A-Za-zé]+)\s+de\s+(\d{4}),?\s*(\d{1,2}):(\d{2})/i);
-  if (!dateM) return null;
-  const month = MONTHS_ES[dateM[2].toLowerCase()];
-  if (!month) return null;
-  const date = `${dateM[3]}-${pad(month)}-${pad(dateM[1])}`;
-  const time = normTime(dateM[4], dateM[5]);
+  // GYG manda la fecha en dos formatos según el idioma del cliente:
+  //   Español: "Fecha 11 de septiembre de 2026, 8:00"
+  //   Inglés:  "Fecha September 11, 2026 3:00 PM"
+  let date, time;
+  const esM = text.match(/Fecha\s*(\d{1,2})\s+de\s+([A-Za-zé]+)\s+de\s+(\d{4}),?\s*(\d{1,2}):(\d{2})/i);
+  if (esM) {
+    const month = MONTHS_ES[esM[2].toLowerCase()];
+    if (!month) return null;
+    date = `${esM[3]}-${pad(month)}-${pad(esM[1])}`;
+    time = normTime(esM[4], esM[5]);
+  } else {
+    const enM = text.match(/Fecha\s*([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (!enM) return null;
+    const month = MONTHS_EN[enM[1].slice(0, 3).toLowerCase()];
+    if (!month) return null;
+    let h = Number(enM[4]);
+    const ampm = (enM[6] || "").toUpperCase();
+    if (ampm === "PM" && h < 12) h += 12;
+    if (ampm === "AM" && h === 12) h = 0;
+    date = `${enM[3]}-${pad(month)}-${pad(enM[2])}`;
+    time = normTime(h, enM[5]);
+  }
 
   const partM = text.match(/N[uú]mero de participantes\s*([^\n|]*(?:\n[^\n|]*x\s*[A-Za-z][^\n|]*)*)/i);
   const pax = parseParticipants(partM ? partM[1] : text);
