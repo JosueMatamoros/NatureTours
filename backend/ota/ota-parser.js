@@ -58,7 +58,7 @@ function parseViator({ from, subject, body }) {
   const isCancel = /chargebacks@viator\.com/i.test(from) || /cancellation|cancelled/i.test(subject);
 
   const ref =
-    (text.match(/Booking Reference:\s*(BR-\d+)/i) || [])[1] ||
+    (text.match(/Booking Reference:\s*#?(BR-\d+)/i) || [])[1] ||
     (subject.match(/(BR-\d+)/i) || [])[1] ||
     null;
   if (!ref) return null;
