@@ -19,6 +19,7 @@ const guideBodySchema = z.object({
   canCreateManual: z.boolean().optional(),
   isAdmin: z.boolean().optional(),
   isSupervisor: z.boolean().optional(),
+  isGuide: z.boolean().optional(),
 });
 
 const updateGuideSchema = guideBodySchema.partial().extend({
@@ -48,13 +49,14 @@ function mapGuide(r) {
     cedula: r.cedula,
     isAdmin: r.is_admin,
     isSupervisor: r.is_supervisor,
+    isGuide: r.is_guide,
     hasPassword: r.has_password,
     createdAt: r.created_at,
   };
 }
 
 const RETURN_COLS = `id, name, email, phone, active, can_create_manual,
-  cedula, is_admin, is_supervisor, (password_hash IS NOT NULL) AS has_password, created_at`;
+  cedula, is_admin, is_supervisor, is_guide, (password_hash IS NOT NULL) AS has_password, created_at`;
 
 // GET /api/guides
 export async function getAllGuides(_req, res) {
@@ -77,17 +79,18 @@ export async function createGuide(req, res) {
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
-  const { name, email, phone, cedula, password, canCreateManual, isAdmin, isSupervisor } = parsed.data;
+  const { name, email, phone, cedula, password, canCreateManual, isAdmin, isSupervisor, isGuide } = parsed.data;
   const passwordHash = password && password.trim() ? hashPassword(password) : null;
   try {
     const q = await pool.query(
-      `INSERT INTO guides (name, email, phone, cedula, password_hash, can_create_manual, is_admin, is_supervisor)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO guides (name, email, phone, cedula, password_hash, can_create_manual, is_admin, is_supervisor, is_guide)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING ${RETURN_COLS}`,
       [
         name, email.toLowerCase(), phone || null,
         cedula && cedula.trim() ? cedula.trim() : null,
         passwordHash, Boolean(canCreateManual), Boolean(isAdmin), Boolean(isSupervisor),
+        isGuide === undefined ? true : Boolean(isGuide),
       ],
     );
     return res.status(201).json({ ok: true, guide: mapGuide(q.rows[0]) });
@@ -110,7 +113,7 @@ export async function updateGuide(req, res) {
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
-  const { name, email, phone, cedula, password, active, canCreateManual, isAdmin, isSupervisor } = parsed.data;
+  const { name, email, phone, cedula, password, active, canCreateManual, isAdmin, isSupervisor, isGuide } = parsed.data;
   // Contraseña en blanco = no la cambia; con valor = la reemplaza (hasheada).
   const passwordHash = password && password.trim() ? hashPassword(password) : null;
   try {
@@ -124,6 +127,7 @@ export async function updateGuide(req, res) {
            can_create_manual = COALESCE($7::boolean, can_create_manual),
            is_admin = COALESCE($8::boolean, is_admin),
            is_supervisor = COALESCE($9::boolean, is_supervisor),
+           is_guide = COALESCE($11::boolean, is_guide),
            password_hash = COALESCE($10::text, password_hash)
        WHERE id = $1
        RETURNING ${RETURN_COLS}`,
@@ -138,6 +142,7 @@ export async function updateGuide(req, res) {
         isAdmin ?? null,
         isSupervisor ?? null,
         passwordHash,
+        isGuide ?? null,
       ],
     );
     if (q.rowCount === 0) {

@@ -47,7 +47,7 @@ function Toggle({ checked, onChange, disabled, label }) {
 
 const EMPTY = {
   name: "", email: "", phone: "", cedula: "", password: "",
-  canCreateManual: false, isAdmin: false, isSupervisor: false,
+  canCreateManual: false, isAdmin: false, isSupervisor: false, isGuide: true,
 };
 
 function GuideModal({ guide, onClose, onSaved }) {
@@ -65,6 +65,7 @@ function GuideModal({ guide, onClose, onSaved }) {
         name: guide.name || "", email: guide.email || "", phone: guide.phone || "",
         cedula: guide.cedula || "", password: "",
         canCreateManual: !!guide.canCreateManual, isAdmin: !!guide.isAdmin, isSupervisor: !!guide.isSupervisor,
+        isGuide: guide.isGuide !== false,
       });
     } else {
       setForm(EMPTY);
@@ -87,6 +88,7 @@ function GuideModal({ guide, onClose, onSaved }) {
         canCreateManual: form.canCreateManual,
         isAdmin: form.isAdmin,
         isSupervisor: form.isSupervisor,
+        isGuide: form.isGuide,
       };
       if (editing) await updateGuide(guide.id, payload);
       else await createGuide(payload);
@@ -156,6 +158,10 @@ function GuideModal({ guide, onClose, onSaved }) {
           </div>
 
           <div className="space-y-2 rounded-xl bg-gray-50 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Guía asignable <span className="text-gray-400">(aparece para asignar a horarios)</span></span>
+              <Toggle checked={form.isGuide} onChange={(v) => set("isGuide", v)} label="Guía asignable" />
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">Administrador <span className="text-gray-400">(entra al panel)</span></span>
               <Toggle checked={form.isAdmin} onChange={(v) => set("isAdmin", v)} label="Administrador" />

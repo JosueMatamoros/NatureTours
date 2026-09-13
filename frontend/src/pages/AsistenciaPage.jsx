@@ -334,7 +334,7 @@ export default function AsistenciaPage() {
   // Lista de guías activos (una vez).
   useEffect(() => {
     getGuides()
-      .then((res) => setGuides((res.guides || []).filter((g) => g.active)))
+      .then((res) => setGuides((res.guides || []).filter((g) => g.active && g.isGuide !== false)))
       .catch(() => setGuides([]));
   }, []);
 

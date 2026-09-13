@@ -379,7 +379,8 @@ export async function guideAllGuides(req, res) {
     return res.status(403).json({ ok: false, message: "Solo supervisores" });
   }
   try {
-    const q = await pool.query(`SELECT id, name FROM guides WHERE active = true ORDER BY name`);
+    // Solo guías asignables (no los que son solo supervisor, como Mario).
+    const q = await pool.query(`SELECT id, name FROM guides WHERE active = true AND is_guide = true ORDER BY name`);
     return res.json({ ok: true, guides: q.rows });
   } catch (err) {
     console.error("guideAllGuides error:", err);

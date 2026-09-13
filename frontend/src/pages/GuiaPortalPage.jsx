@@ -260,7 +260,7 @@ function SlotGuidePicker({ slot, date, allGuides, onChanged }) {
       {open && (
         <>
           <button type="button" aria-hidden tabIndex={-1} onClick={() => setOpen(false)} className="fixed inset-0 z-20 cursor-default" />
-          <div className="absolute right-0 top-full z-30 mt-1 w-52 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+          <div className="absolute left-0 top-full z-30 mt-1 w-56 max-w-[calc(100vw-3rem)] rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
             {allGuides.length === 0 ? (
               <p className="px-3 py-2 text-xs text-slate-400">No hay guías</p>
             ) : (
@@ -517,8 +517,8 @@ function GuideDay({ guide, onLogout }) {
         ) : (
           <div className="space-y-4">
             {slots.map((slot) => (
-              <div key={`${slot.tourId}-${slot.startTime}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+              <div key={`${slot.tourId}-${slot.startTime}`} className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="rounded-t-2xl border-b border-slate-100 bg-slate-50 px-4 py-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5">
                       <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-emerald-600 ring-1 ring-slate-200">
