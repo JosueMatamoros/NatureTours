@@ -45,6 +45,22 @@ function cleanPhone(raw) {
   return cleaned.length >= 6 ? cleaned : null;
 }
 
+// Los correos de GetYourGuide son HTML puro (sin parte text/plain). Si llega
+// HTML, lo pasamos a texto plano para poder parsearlo igual que Viator.
+function htmlToText(s) {
+  if (!s || !/<[a-z!/][^>]*>/i.test(s)) return s; // no parece HTML
+  return s
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&#(\d+);/g, (_m, d) => String.fromCharCode(Number(d)))
+    .replace(/&#x([0-9a-f]+);/gi, (_m, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/[ \t\r\n ]+/g, " ")
+    .trim();
+}
+
 export function detectProvider(from = "") {
   const f = from.toLowerCase();
   if (f.includes("getyourguide")) return "gyg";
@@ -70,11 +86,13 @@ function parseViator({ from, subject, body }) {
   const dateM = text.match(/Travel Date:\s*[A-Za-z]{3,},?\s*([A-Za-z]{3,})\s+(\d{1,2}),?\s*(\d{4})/i);
   const timeM =
     text.match(/Tour Grade Code:\s*TG\d+~(\d{1,2}:\d{2})/i) ||
-    text.match(/Tour Grade:[^\n|]*?(\d{1,2}:\d{2})/i);
-  const nameM = text.match(/Lead Traveler Name:\s*([^\n|]+)/i);
-  const travM = text.match(/Travelers?:\s*([^\n|]+)/i);
-  const phoneM = text.match(/Phone:\s*([^\n|]+)/i);
-  const tourM = text.match(/Tour Name:\s*([^\n|]+)/i);
+    text.match(/Tour Grade:[^|]*?(\d{1,2}:\d{2})/i);
+  // Acotados con .+? + el siguiente rótulo, para no capturar de más cuando el
+  // texto viene del HTML colapsado (sin saltos de línea ni pipes).
+  const nameM = text.match(/Lead Traveler Name:\s*(.+?)\s*(?:Traveler Names:|Travelers:|Product Code:|Tour Grade)/i);
+  const travM = text.match(/Travelers:\s*(.+?)\s*(?:Product Code:|Tour Grade|Tour Language|Location:)/i);
+  const phoneM = text.match(/Phone:\s*(?:\(Alternate Phone\))?\s*([A-Za-z]{0,3}[+\d][\d()\s+-]{5,20})/i);
+  const tourM = text.match(/Tour Name:\s*(.+?)\s*(?:Travel Date:|Booking Reference:)/i);
 
   if (!dateM || !timeM) return null;
   const month = MONTHS_EN[dateM[1].slice(0, 3).toLowerCase()];
@@ -92,7 +110,7 @@ function parseViator({ from, subject, body }) {
     tourId: tourIdFromName(tourM ? tourM[1] : ""),
     date,
     time: normTime(h, m),
-    name: nameM ? nameM[1].trim() : "Cliente Viator",
+    name: nameM ? nameM[1].replace(/[\s|]+$/, "").trim() : "Cliente Viator",
     phone: cleanPhone(phoneM ? phoneM[1] : ""),
     ...pax,
   };
@@ -136,7 +154,7 @@ function parseGyg({ subject, body }) {
     time = normTime(h, enM[5]);
   }
 
-  const partM = text.match(/N[uú]mero de participantes\s*([^\n|]*(?:\n[^\n|]*x\s*[A-Za-z][^\n|]*)*)/i);
+  const partM = text.match(/N[uú]mero de participantes\s*(.+?)\s*(?:Cliente principal|Idioma)/i);
   const pax = parseParticipants(partM ? partM[1] : text);
   if (pax.adults + pax.children < 1) pax.adults = 1;
 
@@ -161,9 +179,10 @@ function parseGyg({ subject, body }) {
 
 export function parseOtaEmail({ from = "", subject = "", body = "" }) {
   const provider = detectProvider(from);
+  const text = htmlToText(body); // funciona con HTML (GYG) o texto plano (Viator)
   try {
-    if (provider === "viator") return parseViator({ from, subject, body });
-    if (provider === "gyg") return parseGyg({ subject, body });
+    if (provider === "viator") return parseViator({ from, subject, body: text });
+    if (provider === "gyg") return parseGyg({ subject, body: text });
   } catch {
     return null;
   }

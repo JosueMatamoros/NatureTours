@@ -34,7 +34,9 @@ function procesarOTA() {
       var payload = {
         from: msg.getFrom(),
         subject: msg.getSubject(),
-        body: msg.getPlainBody(),
+        // getBody() = HTML. GetYourGuide manda HTML puro (sin texto plano) y
+        // getPlainBody() lo desarma mal; el backend ya sabe leer el HTML.
+        body: msg.getBody(),
       };
       try {
         var resp = UrlFetchApp.fetch(BACKEND_URL, {
