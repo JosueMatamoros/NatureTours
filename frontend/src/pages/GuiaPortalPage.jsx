@@ -16,6 +16,7 @@ import {
   FiEye,
   FiEyeOff,
   FiChevronDown,
+  FiUserPlus,
 } from "react-icons/fi";
 import CalendarPicker from "../components/checkout/CalendarPicker";
 import SourceChip from "../components/SourceChip";
@@ -230,16 +231,32 @@ function SlotGuidePicker({ slot, date, allGuides, onChanged }) {
     }
   }
 
+  const names = (slot.guides || []).map((g) => g.name).join(", ");
+  const hasGuide = (slot.guides || []).length > 0;
+
   return (
     <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        disabled={saving}
-        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
-      >
-        <FiCompass className="h-3.5 w-3.5" /> Asignar <FiChevronDown className="h-3 w-3" />
-      </button>
+      {hasGuide ? (
+        // Con guía: se cambia tocando el nombre (no hay botón aparte).
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          disabled={saving}
+          title="Tocá para cambiar el guía"
+          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 disabled:opacity-50 cursor-pointer"
+        >
+          <FiCompass className="h-3.5 w-3.5" /> Guía: {names}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-semibold text-slate-500 hover:border-emerald-400 hover:text-emerald-600 disabled:opacity-50 cursor-pointer"
+        >
+          <FiUserPlus className="h-3.5 w-3.5" /> Asignar guía
+        </button>
+      )}
       {open && (
         <>
           <button type="button" aria-hidden tabIndex={-1} onClick={() => setOpen(false)} className="fixed inset-0 z-20 cursor-default" />
@@ -354,13 +371,15 @@ function GuideDay({ guide, onLogout }) {
                 <FiCompass className="h-6 w-6" />
               </span>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-400">Hola,</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-medium text-slate-400">Hola,</p>
+                  {guide.isSupervisor && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700 ring-1 ring-violet-100">
+                      <FiEye className="h-3 w-3" /> Supervisor
+                    </span>
+                  )}
+                </div>
                 <p className="truncate text-xl font-black leading-tight text-slate-900">{guide.name}</p>
-                {guide.isSupervisor && (
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700 ring-1 ring-violet-100">
-                    <FiEye className="h-3 w-3" /> Supervisor · todos los tours
-                  </span>
-                )}
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -496,16 +515,16 @@ function GuideDay({ guide, onLogout }) {
                     </span>
                   </div>
 
-                  {/* Guía asignado al slot */}
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                      <FiCompass className="h-3.5 w-3.5 text-slate-400" />
-                      {slot.guides && slot.guides.length > 0
-                        ? <span className="font-semibold text-slate-800">{slot.guides.map((g) => g.name).join(", ")}</span>
-                        : <span className="text-slate-400">Sin guía asignado</span>}
-                    </span>
-                    {guide.isSupervisor && (
+                  {/* Guía asignado al slot (antes de los clientes) */}
+                  <div className="mt-2.5">
+                    {guide.isSupervisor ? (
                       <SlotGuidePicker slot={slot} date={date} allGuides={allGuides} onChanged={() => loadDay(date)} />
+                    ) : slot.guides && slot.guides.length > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                        <FiCompass className="h-3.5 w-3.5" /> Guía: {slot.guides.map((g) => g.name).join(", ")}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-medium text-slate-400">Sin guía asignado</span>
                     )}
                   </div>
                 </div>
