@@ -225,7 +225,7 @@ function SlotGuidePicker({ slot, date, allGuides, onChanged }) {
       await assignGuideSlot({
         tourId: slot.tourId, tourDate: date, startTime: slot.startTime, guideId, assigned: !isOn,
       });
-      await onChanged();
+      onChanged(guideId, !isOn); // update local del slot, sin recargar la página
     } catch { /* noop */ } finally {
       setSaving(false);
     }
@@ -343,6 +343,25 @@ function GuideDay({ guide, onLogout }) {
             r.id === bookingId ? { ...r, arrived } : r
           ),
         })),
+      };
+    });
+  }
+
+  // Agrega/quita el guía de un slot en memoria (sin recargar el día).
+  function patchSlotGuides(slot, guideId, assigned) {
+    const g = allGuides.find((x) => x.id === guideId);
+    setDayData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        slots: prev.slots.map((s) => {
+          if (s.tourId !== slot.tourId || s.startTime !== slot.startTime) return s;
+          const current = s.guides || [];
+          const next = assigned
+            ? (current.some((x) => x.id === guideId) ? current : [...current, { id: guideId, name: g?.name || "" }])
+            : current.filter((x) => x.id !== guideId);
+          return { ...s, guides: next };
+        }),
       };
     });
   }
@@ -518,7 +537,7 @@ function GuideDay({ guide, onLogout }) {
                   {/* Guía asignado al slot (antes de los clientes) */}
                   <div className="mt-2.5">
                     {guide.isSupervisor ? (
-                      <SlotGuidePicker slot={slot} date={date} allGuides={allGuides} onChanged={() => loadDay(date)} />
+                      <SlotGuidePicker slot={slot} date={date} allGuides={allGuides} onChanged={(gid, on) => patchSlotGuides(slot, gid, on)} />
                     ) : slot.guides && slot.guides.length > 0 ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
                         <FiCompass className="h-3.5 w-3.5" /> Guía: {slot.guides.map((g) => g.name).join(", ")}
