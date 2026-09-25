@@ -46,9 +46,16 @@ function procesarOTA() {
           payload: JSON.stringify(payload),
           muteHttpExceptions: true,
         });
+        var ignored = false;
+        try { ignored = JSON.parse(resp.getContentText()).ignored === true; } catch (e) {}
         if (resp.getResponseCode() >= 300) {
           okAll = false;
           Logger.log("Error %s: %s", resp.getResponseCode(), resp.getContentText());
+        } else if (ignored && /GYG[A-Z0-9]{6,}|BR-\d+/i.test(payload.subject)) {
+          // Trae referencia de reserva pero el backend no la pudo leer: no la
+          // etiquetamos, para que se reintente cuando se arregle el parser.
+          okAll = false;
+          Logger.log("NO LEÍDO (se reintenta): %s", payload.subject);
         } else {
           Logger.log("OK: %s → %s", msg.getSubject(), resp.getContentText());
         }

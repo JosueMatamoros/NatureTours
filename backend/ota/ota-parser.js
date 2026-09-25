@@ -160,8 +160,11 @@ function parseGyg({ subject, body }) {
 
   const nameM = text.match(/Cliente principal\s*(.+?)\s+(?:customer-|[\w.+-]+@)/is);
   const phoneM = text.match(/Tel[eé]fono:\s*(\+?[\d\s()-]+)/i);
-  const tourM = text.match(/reserva de última hora:\s*([^\n|]+)|Se ha reservado tu producto\s*([^\n|]+)/i);
-  const tourName = tourM ? (tourM[1] || tourM[2] || "").trim() : "GetYourGuide";
+  // Acotado hasta "Número de referencia": el HTML colapsado no trae saltos de línea.
+  const tourM = text.match(
+    /(?:reserva de última hora:|Se ha reservado tu producto)\s*(.+?)\s*(?:N[uú]mero de referencia|\||\n)/i,
+  );
+  const tourName = tourM ? tourM[1].trim() : "GetYourGuide";
 
   return {
     provider: "gyg",
