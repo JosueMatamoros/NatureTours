@@ -3,6 +3,7 @@
 // parsea y se inserta/cancela en la BD. Dedup por external_ref (idempotente).
 import { pool } from "../db.js";
 import { parseOtaEmail } from "../ota/ota-parser.js";
+import { notifyBooking } from "../utils/whatsapp.js";
 
 // POST /api/ota/inbound   header: x-ota-token
 // body: { from, subject, body }
@@ -27,6 +28,7 @@ export async function otaInbound(req, res) {
          RETURNING id`,
         [parsed.externalRef],
       );
+      if (q.rowCount) notifyBooking(q.rows[0].id, "cancelled");
       return res.json({ ok: true, action: q.rowCount ? "cancelled" : "cancel-noop", ref: parsed.externalRef });
     }
 
@@ -44,6 +46,7 @@ export async function otaInbound(req, res) {
         parsed.provider, parsed.name, parsed.phone, parsed.externalRef,
       ],
     );
+    if (q.rowCount) notifyBooking(q.rows[0].id, "new");
     return res.json({
       ok: true,
       action: q.rowCount ? "created" : "duplicate",

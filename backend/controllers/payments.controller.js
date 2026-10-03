@@ -2,6 +2,7 @@
 import { pool } from "../db.js";
 import { createPaymentSchema } from "../schemas/payments.schema.js";
 import { sendReceiptForPayment } from "./email.controller.js";
+import { notifyBooking } from "../utils/whatsapp.js";
 
 export async function createPayment(req, res) {
   const parsed = createPaymentSchema.safeParse(req.body);
@@ -57,6 +58,13 @@ export async function createPayment(req, res) {
         message: "Este booking ya fue pagado",
       });
     }
+
+    // Solo el primer pago avisa por WhatsApp (un saldo posterior no es reserva nueva).
+    const prevPaymentsQ = await client.query(
+      `SELECT 1 FROM payments WHERE booking_id = $1 AND status = 'completed' LIMIT 1`,
+      [bookingId],
+    );
+    const isFirstPayment = prevPaymentsQ.rowCount === 0;
 
     const toNum = (v) => Number(v);
     const expectedAmount =
@@ -139,6 +147,9 @@ export async function createPayment(req, res) {
     sendReceiptForPayment(paymentId).catch((e) => {
       console.error(`sendReceiptForPayment(${paymentId}) error:`, e);
     });
+
+    // Aviso por WhatsApp de la reserva directa (no bloquea la respuesta).
+    if (isFirstPayment) notifyBooking(bookingId, "new");
 
     return res.status(201).json({
       ok: true,
