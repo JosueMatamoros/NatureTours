@@ -47,6 +47,7 @@ export default function CalendarPicker({
       <DayPicker
         mode="single"
         selected={selectedDate}
+        defaultMonth={selectedDate}
         onSelect={(d) => {
           const normalized = normalizeToNoon(d);
           onSelect?.(normalized ? toYMDLocal(normalized) : undefined);

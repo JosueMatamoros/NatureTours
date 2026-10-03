@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDateParam } from "../hooks/useDateParam";
 import {
   FiArrowLeft,
   FiCalendar,
@@ -338,7 +339,8 @@ function ReservationCard({ r, date, onEdit, onMove, onCancel, busy }) {
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function ReservacionesPage() {
   const navigate = useNavigate();
-  const [date, setDate] = useState(() => todayYmd());
+  const initialToday = useMemo(() => todayYmd(), []);
+  const [date, setDate] = useDateParam(initialToday);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);

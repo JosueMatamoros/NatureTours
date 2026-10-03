@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDateParam } from "../hooks/useDateParam";
 import {
   FiArrowLeft,
   FiCheck,
@@ -308,7 +309,7 @@ export default function AsistenciaPage() {
   const todayYmd = useMemo(() => getTodayYmdInTimeZone(), []);
   const tomorrowYmd = useMemo(() => shiftYmd(todayYmd, 1), [todayYmd]);
 
-  const [date, setDate] = useState(todayYmd);
+  const [date, setDate] = useDateParam(todayYmd);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);

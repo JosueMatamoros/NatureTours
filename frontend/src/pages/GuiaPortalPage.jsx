@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDateParam } from "../hooks/useDateParam";
 import {
   FiCalendar,
   FiChevronLeft,
@@ -289,7 +290,8 @@ function SlotGuidePicker({ slot, date, allGuides, onChanged }) {
 // ─── Día ────────────────────────────────────────────────────────────────────
 function GuideDay({ guide, onLogout }) {
   const navigate = useNavigate();
-  const [date, setDate] = useState(() => todayYmd());
+  const initialToday = useMemo(() => todayYmd(), []);
+  const [date, setDate] = useDateParam(initialToday);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [dayData, setDayData] = useState(null);
   const [myDays, setMyDays] = useState([]);
