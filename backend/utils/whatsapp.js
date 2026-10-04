@@ -64,17 +64,22 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
+// Línea del 💵: si el cliente debe algo el día del tour. Solo las directas
+// (web con apartado, manuales) pueden tener saldo.
 function paymentText(b, event) {
-  if (event === "cancelled") return "Cancelada en la plataforma";
-  if (b.source === "web") {
-    const paid = Number(b.paid || 0);
+  const origin = SOURCE_LABEL[b.source] || b.source;
+  if (event === "cancelled") return `Cancelada en ${origin}, no hay nada que cobrar.`;
+  if (b.source === "web" || b.source === "manual") {
+    const paid = Number(b.source === "web" ? b.paid : b.manual_paid) || 0;
     const balance = Math.max(Number(b.subtotal || 0) - paid, 0);
-    return balance > 0.009
-      ? `Apartado ${money(paid)}, saldo ${money(balance)} el día del tour`
-      : `Pagado completo ${money(paid)}`;
+    if (balance > 0.009) {
+      return paid > 0
+        ? `Debe ${money(balance)} el día del tour (adelantó ${money(paid)}).`
+        : `Debe ${money(balance)} el día del tour.`;
+    }
+    return `No debe nada, pagó completo ${money(paid)}.`;
   }
-  if (b.source === "manual") return `Pagado ${money(b.manual_paid)}`;
-  return `Pagado en ${SOURCE_LABEL[b.source] || b.source}`;
+  return `No debe nada, ya pagó en ${origin}.`;
 }
 
 export async function loadBooking(bookingId) {
@@ -102,18 +107,25 @@ export async function loadBooking(bookingId) {
   return q.rows[0] || null;
 }
 
+function dateText(ymd) {
+  const d = DateTime.fromISO(ymd, { locale: "es" });
+  if (!d.isValid) return ymd;
+  const sameYear = d.year === DateTime.now().year;
+  return d.toFormat(sameYear ? "cccc d 'de' LLLL" : "cccc d 'de' LLLL 'de' yyyy");
+}
+
+// Orden = variables de la plantilla aviso_reserva (ver WHATSAPP.md).
 export function buildParams(b, event) {
-  const date = DateTime.fromISO(b.tour_date, { locale: "es" });
   return [
-    event === "cancelled" ? "Reserva CANCELADA" : "Nueva reserva",
-    SOURCE_LABEL[b.source] || b.source,
+    event === "cancelled" ? "reserva CANCELADA ❌" : "nueva reserva 🐴",
     b.name,
-    b.phone || "Sin teléfono",
     b.tour_name,
-    date.isValid ? date.toFormat("ccc d LLL yyyy") : b.tour_date,
+    dateText(b.tour_date),
     b.start_time,
     paxText(b),
+    b.phone || "Sin teléfono",
     b.external_ref || String(b.id).slice(0, 8),
+    SOURCE_LABEL[b.source] || b.source,
     paymentText(b, event),
   ].map((v) => clean(v));
 }
