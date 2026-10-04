@@ -27,25 +27,22 @@ En YCloud: *WhatsApp → Templates → Create*.
 - **Nombre:** `aviso_reserva`
 - **Categoría:** Utility
 - **Idioma:** Spanish (`es`)
-- **Cuerpo** (copiar tal cual; ninguna variable puede quedar al inicio ni al final):
+- **Cuerpo** (copiar tal cual; ninguna variable puede quedar al inicio ni al
+  final, y Meta rechaza plantillas con muchas variables para poco texto):
 
 ```
-Nature Tours: {{1}}
+Hola, hay una novedad en las reservas de Nature Tours.
 
-{{2}} reservó *{{3}}* para el {{4}} a las {{5}}, son {{6}}.
+{{1}} reservó para el {{2}} a las {{3}}, son {{4}}.
+Booking ID: {{5}}
 
-📲 {{7}}
-🔖 {{8}} ({{9}})
+{{6}}
 
-💵 {{10}}
-
-Aviso automático del sistema de reservas.
+Este es un aviso automático del sistema de reservas.
 ```
 
-- **Ejemplos** para las variables (Meta los pide para aprobar):
-  `nueva reserva 🐴` · `Juan Segura` · `Horseback Riding` ·
-  `domingo 4 de octubre` · `08:00` · `2 adultos` · `+15550001111` ·
-  `BR-1453233169` · `Viator` · `No debe nada, ya pagó en Viator.`
+- **Ejemplos:** `Juan Segura` · `domingo 4 de octubre` · `08:00` ·
+  `2 adultos` · `BR-1453233169` · `Reserva de Viator, ya viene pagada.`
 
 Esperá a que quede **Approved**.
 

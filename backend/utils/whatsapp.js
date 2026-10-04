@@ -64,22 +64,22 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
-// Línea del 💵: si el cliente debe algo el día del tour. Solo las directas
-// (web con apartado, manuales) pueden tener saldo.
-function paymentText(b, event) {
+// Última línea del aviso: solo a las directas (web con apartado, manuales) les
+// importa el saldo; las OTA ya vienen pagadas.
+function statusText(b, event) {
   const origin = SOURCE_LABEL[b.source] || b.source;
-  if (event === "cancelled") return `Cancelada en ${origin}, no hay nada que cobrar.`;
+  if (event === "cancelled") return `❌ Esta reserva fue CANCELADA en ${origin}.`;
   if (b.source === "web" || b.source === "manual") {
     const paid = Number(b.source === "web" ? b.paid : b.manual_paid) || 0;
     const balance = Math.max(Number(b.subtotal || 0) - paid, 0);
     if (balance > 0.009) {
       return paid > 0
-        ? `Debe ${money(balance)} el día del tour (adelantó ${money(paid)}).`
-        : `Debe ${money(balance)} el día del tour.`;
+        ? `💵 Reserva directa: debe ${money(balance)} el día del tour (adelantó ${money(paid)}).`
+        : `💵 Reserva directa: debe ${money(balance)} el día del tour.`;
     }
-    return `No debe nada, pagó completo ${money(paid)}.`;
+    return "💵 Reserva directa: no debe nada, pagó completo.";
   }
-  return `No debe nada, ya pagó en ${origin}.`;
+  return `Reserva de ${origin}, ya viene pagada.`;
 }
 
 export async function loadBooking(bookingId) {
@@ -117,16 +117,12 @@ function dateText(ymd) {
 // Orden = variables de la plantilla aviso_reserva (ver WHATSAPP.md).
 export function buildParams(b, event) {
   return [
-    event === "cancelled" ? "reserva CANCELADA ❌" : "nueva reserva 🐴",
     b.name,
-    b.tour_name,
     dateText(b.tour_date),
     b.start_time,
     paxText(b),
-    b.phone || "Sin teléfono",
     b.external_ref || String(b.id).slice(0, 8),
-    SOURCE_LABEL[b.source] || b.source,
-    paymentText(b, event),
+    statusText(b, event),
   ].map((v) => clean(v));
 }
 
