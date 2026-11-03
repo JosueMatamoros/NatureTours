@@ -1,7 +1,7 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { FiCalendar, FiSliders, FiUsers, FiUserCheck, FiCompass } from "react-icons/fi";
+import { FiCalendar, FiSliders, FiUsers, FiUserCheck, FiCompass, FiLink } from "react-icons/fi";
 
 const CARDS = [
   {
@@ -53,6 +53,16 @@ const CARDS = [
     card: "border-rose-300/20 bg-linear-to-br from-rose-500 to-red-700 shadow-[0_18px_40px_rgba(244,63,94,0.25)] hover:shadow-[0_24px_60px_rgba(244,63,94,0.35)] focus:ring-rose-300/30",
     eyebrowColor: "text-rose-50/80",
     descColor: "text-rose-50/90",
+  },
+  {
+    to: "/matamoros/links",
+    eyebrow: "Ventas directas",
+    title: "Links especiales",
+    desc: "Link de pago con fecha, horario, pasajeros o monto fijo.",
+    icon: FiLink,
+    card: "border-teal-300/20 bg-linear-to-br from-teal-500 to-cyan-700 shadow-[0_18px_40px_rgba(20,184,166,0.25)] hover:shadow-[0_24px_60px_rgba(20,184,166,0.35)] focus:ring-teal-300/30",
+    eyebrowColor: "text-teal-50/80",
+    descColor: "text-teal-50/90",
   },
 ];
 

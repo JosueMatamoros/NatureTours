@@ -513,7 +513,8 @@ export default function PaymentPage() {
                 feePercentText={feePercentText}
                 showPaypalFeeInfo={showPaypalFeeInfo}
                 setShowPaypalFeeInfo={setShowPaypalFeeInfo}
-                breakdown={{
+                // Link especial con monto fijo: sin desglose por persona.
+                breakdown={booking.custom_subtotal != null ? null : {
                   adults: Number(booking.adults) || 0,
                   children: Number(booking.children) || 0,
                   babies: Number(booking.babies) || 0,

@@ -18,6 +18,7 @@ import guidesRoutes from "./routes/guides.routes.js";
 import guidePortalRoutes from "./routes/guide-portal.routes.js";
 import bookingsManageRoutes from "./routes/bookings.manage.routes.js";
 import otaRoutes from "./routes/ota.routes.js";
+import specialLinksRoutes from "./routes/special-links.routes.js";
 import { pool } from "./db.js";
 
 dotenv.config();
@@ -67,6 +68,7 @@ app.use("/api/guides", guidesRoutes);
 app.use("/api/guide", guidePortalRoutes);
 app.use("/api/reservations", bookingsManageRoutes);
 app.use("/api/ota", otaRoutes);
+app.use("/api/special-links", specialLinksRoutes);
 
 const port = process.env.PORT || 4000;
 

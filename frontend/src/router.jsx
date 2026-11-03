@@ -27,6 +27,8 @@ const LoginPage = lazy(() => import("./pages/LoginPage"));
 const GuiaPortalPage = lazy(() => import("./pages/GuiaPortalPage"));
 const ResellerPage = lazy(() => import("./pages/ResellerPage"));
 const ResellersAdminPage = lazy(() => import("./pages/ResellersAdminPage"));
+const SpecialLinkPage = lazy(() => import("./pages/SpecialLinkPage"));
+const SpecialLinksAdminPage = lazy(() => import("./pages/SpecialLinksAdminPage"));
 
 function PageLoader() {
   return (
@@ -75,6 +77,14 @@ const router = createBrowserRouter([
         element: (
           <LazyPage>
             <ResellerPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/link/:linkId",
+        element: (
+          <LazyPage>
+            <SpecialLinkPage />
           </LazyPage>
         ),
       },
@@ -201,6 +211,14 @@ const router = createBrowserRouter([
             element: (
               <LazyPage>
                 <ResellersAdminPage />
+              </LazyPage>
+            ),
+          },
+          {
+            path: "/matamoros/links",
+            element: (
+              <LazyPage>
+                <SpecialLinksAdminPage />
               </LazyPage>
             ),
           },

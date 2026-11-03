@@ -188,7 +188,9 @@ export function generateReceiptHTML(receipt, reseller = null) {
           <!-- Payment Information -->
           ${SECTION('Payment Information', [
             ROW('Payment Type', paymentBadge),
-            ...(hasBreakdown
+            ...(receipt.customPrice
+              ? [ROW('Special price', `$${subtotal.toFixed(2)}`)]
+              : hasBreakdown
               ? [
                   ROW(`Adults (${adults} × $${adultPrice.toFixed(2)})`, `$${(adults * adultPrice).toFixed(2)}`),
                   children > 0 ? ROW(`Children (${children} × $${childPrice.toFixed(2)})`, `$${(children * childPrice).toFixed(2)}`) : '',
@@ -198,7 +200,7 @@ export function generateReceiptHTML(receipt, reseller = null) {
                   ROW('Price per person', `$${Number(receipt.pricePerPerson).toFixed(2)}`),
                   ROW(`Subtotal (${receipt.personas} × $${Number(receipt.pricePerPerson).toFixed(2)})`, `$${subtotal.toFixed(2)}`),
                 ]),
-            hasBreakdown ? ROW('Subtotal', `$${subtotal.toFixed(2)}`) : '',
+            hasBreakdown && !receipt.customPrice ? ROW('Subtotal', `$${subtotal.toFixed(2)}`) : '',
             ROW('Amount Paid', `$${Number(receipt.amount).toFixed(2)}`, true),
             commissionRow,
             reseller ? ROW('After commission', `$${netAfterCommission.toFixed(2)}`, true) : '',
@@ -243,6 +245,7 @@ async function buildReceiptForPayment(paymentId) {
       b.children          AS children,
       b.babies            AS babies,
       b.subtotal          AS subtotal,
+      (b.custom_subtotal IS NOT NULL) AS custom_price,
       t.name              AS tour,
       round(t.price * (100 - COALESCE(GREATEST(30 - r.commission, 0), 0)) / 100, 2) AS price_per_person,
       round(COALESCE(t.child_price, t.price) * (100 - COALESCE(GREATEST(30 - r.commission, 0), 0)) / 100, 2) AS child_price,
@@ -273,6 +276,7 @@ async function buildReceiptForPayment(paymentId) {
     children: r.children,
     babies: r.babies,
     subtotal: parseFloat(r.subtotal),
+    customPrice: Boolean(r.custom_price),
     fecha: r.fecha,
     hora: r.hora,
     pricePerPerson: parseFloat(r.price_per_person),

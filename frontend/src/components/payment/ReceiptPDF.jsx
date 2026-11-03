@@ -170,7 +170,12 @@ export default function ReceiptPDF({ receipt }) {
               </span>
             </span>
           </div>
-          ${hasBreakdown ? `
+          ${receipt.customPrice ? `
+          <div class="row">
+            <span class="row-label">Special price</span>
+            <span class="row-value">$${subtotal.toFixed(2)}</span>
+          </div>
+          ` : hasBreakdown ? `
           <div class="row">
             <span class="row-label">Adults (${adults} × $${adultPrice.toFixed(2)})</span>
             <span class="row-value">$${(adults * adultPrice).toFixed(2)}</span>

@@ -19,20 +19,39 @@ function slotsForTour(tourId) {
 
 const BOOKING_HOLD_MINUTES = 20;
 
+const reply = (status, body) => ({ status, body });
+
 export async function createBooking(req, res) {
   const parsed = createBookingSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
 
-  const { tourId, tourDate, startTime, adults, children, babies, resellerId } =
-    parsed.data;
+  const { status, body } = await insertPendingBooking(parsed.data);
+  return res.status(status).json(body);
+}
+
+// Crea un booking 'pending' validando horario, anticipación mínima y
+// disponibilidad. Lo usan la reserva normal y los links especiales
+// (estos últimos pueden traer customSubtotal y specialLinkId).
+// Devuelve { status, body } para que cada endpoint responda igual.
+export async function insertPendingBooking({
+  tourId,
+  tourDate,
+  startTime,
+  adults,
+  children,
+  babies,
+  resellerId = null,
+  customSubtotal = null,
+  specialLinkId = null,
+}) {
   // Espacios ocupados: los bebés van con un adulto y no cuentan para la capacidad.
   const seats = adults + children;
   const allowedSlots = slotsForTour(tourId);
 
   if (!allowedSlots.includes(startTime)) {
-    return res.status(400).json({
+    return reply(400, {
       ok: false,
       message: "Ese horario no es valido para este tour.",
     });
@@ -42,7 +61,7 @@ export async function createBooking(req, res) {
   const minLeadTimeMs = nowPlusMsInBusinessZone(MIN_BOOKING_LEAD_TIME_MS).toMillis();
 
   if (!Number.isFinite(bookingStartMs) || bookingStartMs <= minLeadTimeMs) {
-    return res.status(400).json({
+    return reply(400, {
       ok: false,
       message: "Las reservas deben hacerse con al menos 2 horas de anticipación.",
     });
@@ -61,7 +80,7 @@ export async function createBooking(req, res) {
 
       if (resellerQ.rowCount === 0) {
         await client.query("ROLLBACK");
-        return res.status(400).json({
+        return reply(400, {
           ok: false,
           message: "Reseller inválido o inactivo.",
         });
@@ -119,7 +138,7 @@ export async function createBooking(req, res) {
 
       if (seats > remaining) {
         await client.query("ROLLBACK");
-        return res.status(409).json({
+        return reply(409, {
           ok: false,
           message:
             remaining === 0
@@ -147,7 +166,7 @@ export async function createBooking(req, res) {
 
       if (existingBooking.rowCount > 0) {
         await client.query("ROLLBACK");
-        return res.status(409).json({
+        return reply(409, {
           ok: false,
           message: "Ese horario ya está ocupado. Elegí otro.",
         });
@@ -157,25 +176,36 @@ export async function createBooking(req, res) {
     // El trigger de la BD calcula guests (adults + children), subtotal, fee, total y deposit.
     const created = await client.query(
       `
-      insert into bookings (tour_id, tour_date, start_time, adults, children, babies, status, expires_at, reseller_id)
-      values ($1, $2::date, $3::time, $4, $5, $6, 'pending', now() + ($7 || ' minutes')::interval, $8)
+      insert into bookings (tour_id, tour_date, start_time, adults, children, babies, status, expires_at, reseller_id, custom_subtotal, special_link_id)
+      values ($1, $2::date, $3::time, $4, $5, $6, 'pending', now() + ($7 || ' minutes')::interval, $8, $9, $10)
       returning
         id, tour_id, tour_date, start_time, guests, adults, children, babies,
         subtotal, paypal_fee, total,
         status, expires_at, created_at, updated_at, deposit_amount;
       `,
-      [tourId, tourDate, startTime, adults, children, babies, BOOKING_HOLD_MINUTES, resellerId || null]
+      [
+        tourId,
+        tourDate,
+        startTime,
+        adults,
+        children,
+        babies,
+        BOOKING_HOLD_MINUTES,
+        resellerId || null,
+        customSubtotal ?? null,
+        specialLinkId ?? null,
+      ]
     );
 
     await client.query("COMMIT");
 
-    return res.status(201).json({ ok: true, id: created.rows[0].id });
+    return reply(201, { ok: true, id: created.rows[0].id });
   } catch (err) {
     try {
       await client.query("ROLLBACK");
     } catch (_) {}
     console.error(err);
-    return res.status(500).json({ ok: false, message: "Error creando booking" });
+    return reply(500, { ok: false, message: "Error creando booking" });
   } finally {
     client.release();
   }
@@ -197,7 +227,7 @@ export async function getBookingById(req, res) {
         -- Precios por persona con descuento de reseller aplicado (si hay).
         round(t.price * (100 - coalesce(greatest(30 - r.commission, 0), 0)) / 100, 2) as tour_price,
         round(coalesce(t.child_price, t.price) * (100 - coalesce(greatest(30 - r.commission, 0), 0)) / 100, 2) as tour_child_price,
-        b.reseller_id,
+        b.reseller_id, b.custom_subtotal, b.special_link_id,
         b.tour_date, b.start_time, b.guests,
         b.adults, b.children, b.babies,
         b.subtotal, b.paypal_fee, b.total,
