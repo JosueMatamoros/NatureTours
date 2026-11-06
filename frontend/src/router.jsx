@@ -28,6 +28,7 @@ const GuiaPortalPage = lazy(() => import("./pages/GuiaPortalPage"));
 const ResellerPage = lazy(() => import("./pages/ResellerPage"));
 const ResellersAdminPage = lazy(() => import("./pages/ResellersAdminPage"));
 const SpecialLinkPage = lazy(() => import("./pages/SpecialLinkPage"));
+const CustomPaymentPage = lazy(() => import("./pages/CustomPaymentPage"));
 const SpecialLinksAdminPage = lazy(() => import("./pages/SpecialLinksAdminPage"));
 
 function PageLoader() {
@@ -77,6 +78,14 @@ const router = createBrowserRouter([
         element: (
           <LazyPage>
             <ResellerPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/custom-payment",
+        element: (
+          <LazyPage>
+            <CustomPaymentPage />
           </LazyPage>
         ),
       },

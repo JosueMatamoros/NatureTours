@@ -3,8 +3,21 @@
 // opcionalmente, un monto personalizado. El cliente abre /link/:id y paga.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiCopy, FiCheck, FiLink } from "react-icons/fi";
+import {
+  FiArrowLeft,
+  FiCopy,
+  FiCheck,
+  FiLink,
+  FiCalendar,
+  FiClock,
+  FiUsers,
+  FiCreditCard,
+  FiChevronDown,
+} from "react-icons/fi";
 import { TOURS } from "../data/tours";
+import CalendarPicker from "../components/checkout/CalendarPicker";
+import GuestCounterRow from "../components/ui/GuestCounterRow";
+import { getAllCustomPayments } from "../../services/custom-payments.api";
 import {
   getAllSpecialLinks,
   createSpecialLink,
@@ -26,11 +39,6 @@ const SLOTS = {
 const FEE = 0.054;
 const round2 = (n) => Math.round(n * 100) / 100;
 const fmt = (n) => `$${Number(n ?? 0).toFixed(2)}`;
-
-function todayYmd() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function linkUrl(id) {
   return `${window.location.origin}/link/${id}`;
@@ -62,21 +70,88 @@ function CopyButton({ text }) {
   );
 }
 
-function Counter({ label, value, onChange, min = 0 }) {
+function dateLabel(ymd) {
+  if (!ymd) return "Elegir fecha";
+  const [y, m, d] = ymd.split("-").map(Number);
+  const txt = new Date(y, m - 1, d, 12).toLocaleDateString("es-CR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+
+function SectionLabel({ icon, children }) {
+  const Ico = { C: icon };
   return (
-    <label className="block">
-      <span className="text-xs font-semibold text-gray-600">{label}</span>
-      <input
-        type="number"
-        min={min}
-        max={25}
-        value={value}
-        onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
-        className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
-      />
-    </label>
+    <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-800">
+      <Ico.C className="h-4 w-4 text-emerald-600" />
+      {children}
+    </p>
   );
 }
+
+// Opción seleccionable tipo tarjeta (reemplaza los <select> nativos).
+function ChoiceButton({ active, onClick, children, sub }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition",
+        "focus:outline-none focus:ring-2 focus:ring-emerald-600/30",
+        active
+          ? "border-emerald-600 bg-emerald-50"
+          : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50",
+      ].join(" ")}
+    >
+      <span>
+        <span className={active ? "font-semibold text-gray-900" : "text-gray-700"}>{children}</span>
+        {sub && <span className="block text-xs text-gray-500">{sub}</span>}
+      </span>
+      <span
+        className={[
+          "grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition-colors",
+          active ? "border-emerald-600 bg-emerald-600" : "border-gray-300 bg-white",
+        ].join(" ")}
+        aria-hidden="true"
+      >
+        {active && <span className="h-2 w-2 rounded-full bg-white" />}
+      </span>
+    </button>
+  );
+}
+
+function Toggle({ checked, onChange, label }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="flex items-center gap-3 text-sm font-semibold text-gray-800"
+    >
+      <span
+        className={[
+          "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+          checked ? "bg-emerald-600" : "bg-gray-300",
+        ].join(" ")}
+      >
+        <span
+          className={[
+            "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+            checked ? "translate-x-5" : "translate-x-0.5",
+          ].join(" ")}
+        />
+      </span>
+      {label}
+    </button>
+  );
+}
+
+const NO_SPIN =
+  "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 export default function SpecialLinksAdminPage() {
   const navigate = useNavigate();
@@ -90,6 +165,9 @@ export default function SpecialLinksAdminPage() {
   const [useCustom, setUseCustom] = useState(false);
   const [customAmount, setCustomAmount] = useState("");
   const [note, setNote] = useState("");
+  const [calOpen, setCalOpen] = useState(false);
+  const [customPayments, setCustomPayments] = useState([]);
+  const [showPayments, setShowPayments] = useState(false);
 
   const [links, setLinks] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -100,6 +178,12 @@ export default function SpecialLinksAdminPage() {
     try {
       const data = await getAllSpecialLinks();
       setLinks(data?.links ?? []);
+    } catch (e) {
+      console.error(e);
+    }
+    try {
+      const cp = await getAllCustomPayments();
+      setCustomPayments(cp?.payments ?? []);
     } catch (e) {
       console.error(e);
     }
@@ -183,75 +267,131 @@ export default function SpecialLinksAdminPage() {
           onSubmit={handleCreate}
           className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
         >
-          <div className="grid gap-4 sm:grid-cols-3">
-            <label className="block">
-              <span className="text-xs font-semibold text-gray-600">Tour</span>
-              <select
-                value={tourId}
-                onChange={(e) => {
-                  setTourId(Number(e.target.value));
-                  setStartTime("");
-                }}
-                className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
-              >
-                <option value={2}>Horseback Riding</option>
-                <option value={1}>Night Walk</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs font-semibold text-gray-600">Fecha</span>
-              <input
-                type="date"
-                min={todayYmd()}
-                value={tourDate}
-                onChange={(e) => setTourDate(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-semibold text-gray-600">Horario</span>
-              <select
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
-              >
-                <option value="">Elegir…</option>
-                {SLOTS[tourId].map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <section>
+            <SectionLabel icon={FiLink}>Tour</SectionLabel>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[2, 1].map((id) => (
+                <ChoiceButton
+                  key={id}
+                  active={tourId === id}
+                  sub={`$${TOURS[id].price} adulto${TOURS[id].childPrice ? ` · $${TOURS[id].childPrice} niño` : ""}`}
+                  onClick={() => {
+                    setTourId(id);
+                    setStartTime("");
+                  }}
+                >
+                  {TOURS[id].name}
+                </ChoiceButton>
+              ))}
+            </div>
+          </section>
 
-          <div className="grid grid-cols-3 gap-4">
-            <Counter label="Adultos" value={adults} onChange={setAdults} min={1} />
-            <Counter label="Niños (4–12)" value={children} onChange={setChildren} />
-            <Counter label="Bebés (<4)" value={babies} onChange={setBabies} />
-          </div>
+          <section className="relative">
+            <SectionLabel icon={FiCalendar}>Fecha</SectionLabel>
+            <button
+              type="button"
+              onClick={() => setCalOpen((o) => !o)}
+              className={[
+                "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition",
+                calOpen || tourDate ? "border-emerald-600 bg-emerald-50" : "border-gray-200 bg-white hover:bg-gray-50",
+              ].join(" ")}
+            >
+              <span className={tourDate ? "font-semibold text-gray-900" : "text-gray-500"}>
+                {dateLabel(tourDate)}
+              </span>
+              <FiChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${calOpen ? "rotate-180" : ""}`} />
+            </button>
+            {calOpen && (
+              <>
+                <button
+                  type="button"
+                  aria-hidden
+                  tabIndex={-1}
+                  onClick={() => setCalOpen(false)}
+                  className="fixed inset-0 z-20 cursor-default"
+                />
+                <div className="absolute left-0 top-full z-30 mt-2 rounded-2xl border border-gray-200 bg-white p-2 shadow-xl">
+                  <CalendarPicker
+                    selected={tourDate || undefined}
+                    bare
+                    onSelect={(ymd) => {
+                      if (ymd) {
+                        setTourDate(ymd);
+                        setCalOpen(false);
+                      }
+                    }}
+                  />
+                </div>
+              </>
+            )}
+          </section>
 
-          <div className="rounded-xl border border-gray-200 p-3">
-            <label className="flex items-center gap-2 text-sm font-semibold">
-              <input
-                type="checkbox"
-                checked={useCustom}
-                onChange={(e) => setUseCustom(e.target.checked)}
+          <section>
+            <SectionLabel icon={FiClock}>Horario</SectionLabel>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {SLOTS[tourId].map((sl) => (
+                <ChoiceButton
+                  key={sl.value}
+                  active={startTime === sl.value}
+                  onClick={() => setStartTime(sl.value)}
+                >
+                  {sl.label}
+                </ChoiceButton>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <SectionLabel icon={FiUsers}>Pasajeros</SectionLabel>
+            <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+              <GuestCounterRow
+                label="Adultos"
+                sublabel={`13+ · $${tour?.price}`}
+                value={adults}
+                onDecrease={() => setAdults((a) => Math.max(1, a - 1))}
+                onIncrease={() => setAdults((a) => Math.min(25, a + 1))}
+                decreaseDisabled={adults <= 1}
+                increaseDisabled={adults + children >= 25}
               />
-              Monto personalizado
-            </label>
+              <GuestCounterRow
+                label="Niños"
+                sublabel={`4–12 · $${tour?.childPrice ?? tour?.price}`}
+                value={children}
+                onDecrease={() => setChildren((c) => Math.max(0, c - 1))}
+                onIncrease={() => setChildren((c) => c + 1)}
+                decreaseDisabled={children <= 0}
+                increaseDisabled={adults + children >= 25}
+              />
+              <GuestCounterRow
+                label="Bebés"
+                sublabel="Menos de 4 · gratis, van con un adulto"
+                value={babies}
+                onDecrease={() => setBabies((b) => Math.max(0, b - 1))}
+                onIncrease={() => setBabies((b) => Math.min(adults, b + 1))}
+                decreaseDisabled={babies <= 0}
+                increaseDisabled={babies >= adults}
+              />
+            </div>
+          </section>
+
+          <div className="rounded-xl border border-gray-200 p-4">
+            <Toggle checked={useCustom} onChange={setUseCustom} label="Monto personalizado" />
             {useCustom ? (
-              <input
-                type="number"
-                min="1"
-                step="0.01"
-                placeholder="Monto del tour en USD (sin el fee de PayPal)"
-                value={customAmount}
-                onChange={(e) => setCustomAmount(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
-              />
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-3 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20">
+                <span className="text-lg font-bold text-emerald-600">$</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="1"
+                  step="0.01"
+                  placeholder="Monto del tour (sin el fee de PayPal)"
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  className={`w-full bg-transparent text-sm outline-none ${NO_SPIN}`}
+                />
+              </div>
             ) : (
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-2 text-xs text-gray-500">
                 Precio normal: {fmt(normalSubtotal)} ({adults} × {fmt(tour?.price)}
                 {children > 0 ? ` + ${children} × ${fmt(tour?.childPrice ?? tour?.price)}` : ""})
               </p>
@@ -266,7 +406,7 @@ export default function SpecialLinksAdminPage() {
               placeholder="Ej: nombre del cliente"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
             />
           </label>
 
@@ -277,9 +417,6 @@ export default function SpecialLinksAdminPage() {
             <span className="text-lg font-bold text-emerald-600">{fmt(total)}</span>
           </div>
 
-          {babies > adults && (
-            <p className="text-xs text-red-600">Cada bebé debe ir con un adulto.</p>
-          )}
           {error && <p className="text-xs text-red-600">{error}</p>}
 
           <button
@@ -300,6 +437,55 @@ export default function SpecialLinksAdminPage() {
             </div>
           )}
         </form>
+
+        <section className="rounded-2xl border border-indigo-200 bg-linear-to-br from-indigo-50 to-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="flex items-center gap-2 text-base font-bold">
+                <FiCreditCard className="text-indigo-600" />
+                Pago personalizado
+              </p>
+              <p className="mt-1 text-sm text-gray-600">
+                El cliente pone el monto y la descripción, confirma y paga con PayPal.
+                Llega un correo de pago (no de reserva) a él y a ustedes.
+              </p>
+            </div>
+            <CopyButton text={`${window.location.origin}/custom-payment`} />
+          </div>
+          <code className="mt-3 block truncate rounded-lg bg-white px-3 py-2 text-xs text-gray-700 ring-1 ring-indigo-100">
+            {`${window.location.origin}/custom-payment`}
+          </code>
+
+          <button
+            type="button"
+            onClick={() => setShowPayments((v) => !v)}
+            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-700"
+          >
+            Pagos recibidos ({customPayments.length})
+            <FiChevronDown className={`h-4 w-4 transition-transform ${showPayments ? "rotate-180" : ""}`} />
+          </button>
+          {showPayments && (
+            <div className="mt-3 space-y-2">
+              {customPayments.length === 0 && (
+                <p className="text-sm text-gray-500">Todavía no hay pagos.</p>
+              )}
+              {customPayments.map((p) => (
+                <div key={p.id} className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-gray-900">{p.name}</span>
+                    <span className="font-bold text-emerald-600">{fmt(p.amount)}</span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap text-gray-700">{p.description}</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {p.email}
+                    {p.phone ? ` · ${p.phone}` : ""} ·{" "}
+                    {new Date(p.createdAt).toLocaleString("es-CR", { dateStyle: "medium", timeStyle: "short" })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <div className="space-y-3">
           <h2 className="text-lg font-bold">Links creados</h2>

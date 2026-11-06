@@ -8,6 +8,8 @@ Allow: /
 # Pages we don't want indexed (payment/transaction/admin pages)
 Disallow: /payment/
 Disallow: /success/
+Disallow: /link/
+Disallow: /custom-payment
 Disallow: /matamoros
 Disallow: /login
 Disallow: /reseller/

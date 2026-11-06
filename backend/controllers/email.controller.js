@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import { pool } from "../db.js";
 
 // Configurar transporter de nodemailer
-const transporter = nodemailer.createTransport({
+export const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: process.env.EMAIL_USER,

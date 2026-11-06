@@ -19,6 +19,7 @@ import guidePortalRoutes from "./routes/guide-portal.routes.js";
 import bookingsManageRoutes from "./routes/bookings.manage.routes.js";
 import otaRoutes from "./routes/ota.routes.js";
 import specialLinksRoutes from "./routes/special-links.routes.js";
+import customPaymentsRoutes from "./routes/custom-payments.routes.js";
 import { pool } from "./db.js";
 
 dotenv.config();
@@ -69,6 +70,7 @@ app.use("/api/guide", guidePortalRoutes);
 app.use("/api/reservations", bookingsManageRoutes);
 app.use("/api/ota", otaRoutes);
 app.use("/api/special-links", specialLinksRoutes);
+app.use("/api/custom-payments", customPaymentsRoutes);
 
 const port = process.env.PORT || 4000;
 
