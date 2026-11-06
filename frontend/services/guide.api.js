@@ -52,7 +52,35 @@ export async function guideLogin(cedula, password) {
 }
 
 export async function guideLogout() {
+  // Dar de baja las notificaciones de este teléfono antes de cerrar sesión.
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration?.();
+    const sub = await reg?.pushManager?.getSubscription?.();
+    if (sub) {
+      await guideRequest("/api/push/unsubscribe", {
+        method: "POST",
+        body: JSON.stringify({ endpoint: sub.endpoint }),
+      }).catch(() => {});
+      await sub.unsubscribe().catch(() => {});
+    }
+  } catch { /* sin soporte de push */ }
   try { await guideRequest("/api/guide/logout", { method: "POST" }); } finally { clearTokens(); }
+}
+
+// ─── Notificaciones push (app instalada) ────────────────────────────────────
+export function getPushPublicKey() {
+  return guideRequest("/api/push/public-key");
+}
+
+export function savePushSubscription(subscription) {
+  return guideRequest("/api/push/subscribe", {
+    method: "POST",
+    body: JSON.stringify({ subscription }),
+  });
+}
+
+export function sendPushTest() {
+  return guideRequest("/api/push/test", { method: "POST" });
 }
 
 export function guideMe() {

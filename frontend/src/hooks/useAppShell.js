@@ -58,6 +58,10 @@ export function useAppShell() {
       setHeadTag("meta", { name: "apple-mobile-web-app-status-bar-style", content: "default" }),
       setHeadTag("meta", { name: "robots", content: "noindex, nofollow" }),
     ];
+    // Service worker (solo push; no cachea). Se registra al entrar a la app.
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch((e) => console.error("SW:", e));
+    }
     return () => undo.forEach((fn) => fn());
   }, [active]);
 }

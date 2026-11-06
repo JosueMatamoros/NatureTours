@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { createPaymentSchema } from "../schemas/payments.schema.js";
 import { sendReceiptForPayment } from "./email.controller.js";
 import { notifyBooking } from "../utils/whatsapp.js";
+import { pushBookingToAdmins } from "../utils/push.js";
 
 export async function createPayment(req, res) {
   const parsed = createPaymentSchema.safeParse(req.body);
@@ -157,7 +158,7 @@ export async function createPayment(req, res) {
     });
 
     // Aviso por WhatsApp de la reserva directa (no bloquea la respuesta).
-    if (isFirstPayment) notifyBooking(bookingId, "new");
+    if (isFirstPayment) { notifyBooking(bookingId, "new"); pushBookingToAdmins(bookingId, "new"); }
 
     return res.status(201).json({
       ok: true,

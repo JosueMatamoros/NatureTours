@@ -5,6 +5,7 @@
 // posterior; por ahora el email queda guardado como identificador y
 // can_create_manual define si a futuro podrán crear reservas manuales.
 import { pool } from "../db.js";
+import { pushAssignmentToGuide } from "../utils/push.js";
 import { z } from "zod";
 import { hashPassword } from "../utils/password.js";
 
@@ -232,12 +233,14 @@ export async function assignGuide(req, res) {
       return res.json({ ok: true, guideId, assigned: false });
     }
 
-    await pool.query(
+    const ins = await pool.query(
       `INSERT INTO slot_guides (tour_id, tour_date, start_time, guide_id)
        VALUES ($1, $2::date, $3::time, $4)
        ON CONFLICT (tour_id, tour_date, start_time, guide_id) DO NOTHING`,
       [tourId, tourDate, startTime, guideId],
     );
+    // Aviso push al guía (solo si la asignación es nueva).
+    if (ins.rowCount > 0) pushAssignmentToGuide({ guideId, tourId, tourDate, startTime });
     return res.json({ ok: true, guideId, assigned: true });
   } catch (err) {
     if (err.code === "23503") {

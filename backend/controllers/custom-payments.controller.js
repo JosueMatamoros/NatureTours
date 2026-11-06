@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { pool } from "../db.js";
 import { transporter } from "./email.controller.js";
+import { pushCustomPaymentToAdmins } from "../utils/push.js";
 
 const INTERNAL_EMAIL = "naturetourslafortuna@gmail.com";
 
@@ -194,7 +195,7 @@ export async function createCustomPayment(req, res) {
           paypal_order_id, paypal_capture_id, status)
        values ($1, $2, $3, $4, $5, $6, $7, 'completed')
        on conflict (paypal_order_id) do update set paypal_order_id = excluded.paypal_order_id
-       returning id`,
+       returning id, (xmax = 0) as inserted`,
       [
         d.name,
         d.email,
@@ -210,6 +211,11 @@ export async function createCustomPayment(req, res) {
     sendCustomPaymentMails(id).catch((e) =>
       console.error(`sendCustomPaymentMails(${id}) error:`, e)
     );
+
+    // Aviso push a admins solo la primera vez que se registra este pedido.
+    if (q.rows[0].inserted) {
+      pushCustomPaymentToAdmins({ name: d.name, amount: d.amount, description: d.description });
+    }
 
     return res.status(201).json({ ok: true, id });
   } catch (err) {

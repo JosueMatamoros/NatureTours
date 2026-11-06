@@ -2,6 +2,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import InstallAppCard from "../components/ui/InstallAppCard";
+import NotificationsCard from "../components/ui/NotificationsCard";
 import { FiCalendar, FiSliders, FiUsers, FiUserCheck, FiCompass, FiLink, FiArrowLeft } from "react-icons/fi";
 
 const CARDS = [
@@ -80,6 +81,9 @@ export default function AdminPage() {
           <FiArrowLeft className="h-4 w-4" />
           Volver a asistencia
         </button>
+        <div className="mt-3">
+          <NotificationsCard isAdmin />
+        </div>
       </div>
       <div className="w-full max-w-4xl rounded-4xl border border-gray-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:p-10">
         <div className="mb-8 text-center">

@@ -3,6 +3,7 @@
 // de horarios que no son suyos.
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
+import { pushAssignmentToGuide } from "../utils/push.js";
 import { verifyPassword } from "../utils/password.js";
 import { z } from "zod";
 
@@ -406,12 +407,16 @@ export async function guideAssignSlot(req, res) {
       );
       return res.json({ ok: true, guideId, assigned: false });
     }
-    await pool.query(
+    const ins = await pool.query(
       `INSERT INTO slot_guides (tour_id, tour_date, start_time, guide_id)
        VALUES ($1,$2::date,$3::time,$4)
        ON CONFLICT (tour_id, tour_date, start_time, guide_id) DO NOTHING`,
       [tourId, tourDate, startTime, guideId],
     );
+    // Aviso push al guía (si es nueva y no se la asignó él mismo).
+    if (ins.rowCount > 0 && guideId !== req.guide.guideId) {
+      pushAssignmentToGuide({ guideId, tourId, tourDate, startTime });
+    }
     return res.json({ ok: true, guideId, assigned: true });
   } catch (err) {
     if (err.code === "23503") return res.status(400).json({ ok: false, message: "Guía o tour inválido" });

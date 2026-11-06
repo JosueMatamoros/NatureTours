@@ -22,6 +22,7 @@ import {
 import CalendarPicker from "../components/checkout/CalendarPicker";
 import SourceChip from "../components/SourceChip";
 import InstallAppCard from "../components/ui/InstallAppCard";
+import NotificationsCard from "../components/ui/NotificationsCard";
 import {
   guideLogin,
   guideLogout,
@@ -427,6 +428,10 @@ function GuideDay({ guide, onLogout }) {
               </button>
             </div>
           </div>
+        </div>
+
+        <div className="mb-4">
+          <NotificationsCard isAdmin={guide.isAdmin} />
         </div>
 
         {/* Navegador de fecha */}
