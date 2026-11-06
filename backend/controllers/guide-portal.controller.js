@@ -52,7 +52,7 @@ function sessionCookieOptions() {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? "none" : "lax",
-    maxAge: 12 * 60 * 60 * 1000, // 12 h
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días (app instalada)
     path: "/",
   };
 }
@@ -113,7 +113,7 @@ export async function guideLogin(req, res) {
     const token = jwt.sign(
       { guideId: guide.id, role: "guide", name: guide.name, isAdmin, isSupervisor },
       process.env.JWT_SECRET,
-      { expiresIn: "12h" },
+      { expiresIn: "30d" },
     );
     res.cookie("guide_token", token, sessionCookieOptions());
 
@@ -124,7 +124,7 @@ export async function guideLogin(req, res) {
       adminToken = jwt.sign(
         { username: guide.name, role: "admin", guideId: guide.id },
         process.env.JWT_SECRET,
-        { expiresIn: "12h" },
+        { expiresIn: "30d" },
       );
       res.cookie("admin_token", adminToken, sessionCookieOptions());
     }
