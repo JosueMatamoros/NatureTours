@@ -124,6 +124,14 @@ export async function createPayment(req, res) {
       ],
     );
 
+    // Link especial: es de un solo uso. Con el primer pago (completo o
+    // depósito) queda desactivado y ya no sirve para otra reserva.
+    await client.query(
+      `UPDATE special_links SET active = false
+       WHERE id = (SELECT special_link_id FROM bookings WHERE id = $1)`,
+      [bookingId],
+    );
+
     const nextBookingStatus = mode === "full" ? "paid" : "pending";
 
     await client.query(

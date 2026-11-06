@@ -2,7 +2,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import InstallAppCard from "../components/ui/InstallAppCard";
-import { FiCalendar, FiSliders, FiUsers, FiUserCheck, FiCompass, FiLink } from "react-icons/fi";
+import { FiCalendar, FiSliders, FiUsers, FiUserCheck, FiCompass, FiLink, FiArrowLeft } from "react-icons/fi";
 
 const CARDS = [
   {
@@ -71,6 +71,16 @@ export default function AdminPage() {
   const navigate = useNavigate();
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white px-4 py-12 text-black">
+      <div className="mb-4 w-full max-w-4xl">
+        <button
+          type="button"
+          onClick={() => navigate("/asistencia")}
+          className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm ring-1 ring-emerald-200 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+        >
+          <FiArrowLeft className="h-4 w-4" />
+          Volver a asistencia
+        </button>
+      </div>
       <div className="w-full max-w-4xl rounded-4xl border border-gray-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:p-10">
         <div className="mb-8 text-center">
           <p className="mb-3 inline-flex rounded-full border border-gray-300 bg-gray-50 px-4 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-gray-700">

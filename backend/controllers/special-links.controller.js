@@ -123,13 +123,18 @@ export async function updateSpecialLink(req, res) {
     return res.status(400).json({ ok: false, message: "Datos inválidos" });
   }
   try {
-    const q = await pool.query(
-      `update special_links set active = $2 where id = $1 returning id`,
-      [p.data.id, b.data.active]
-    );
-    if (q.rowCount === 0) {
+    const cur = await pool.query(`${LINK_SELECT} where l.id = $1`, [p.data.id]);
+    if (cur.rowCount === 0) {
       return res.status(404).json({ ok: false, message: "Link no encontrado" });
     }
+    // Un link pagado es de un solo uso: no se puede reactivar.
+    if (cur.rows[0].used && b.data.active) {
+      return res.status(409).json({ ok: false, message: "Este link ya fue pagado y no se puede reactivar" });
+    }
+    await pool.query(`update special_links set active = $2 where id = $1`, [
+      p.data.id,
+      b.data.active,
+    ]);
     return res.json({ ok: true });
   } catch (err) {
     console.error("updateSpecialLink error:", err);
@@ -145,7 +150,8 @@ export async function getSpecialLink(req, res) {
   }
   try {
     const q = await pool.query(`${LINK_SELECT} where l.id = $1`, [p.data.id]);
-    if (q.rowCount === 0 || !q.rows[0].active) {
+    // Un link pagado (ya desactivado) se sigue mostrando como "ya pagado".
+    if (q.rowCount === 0 || (!q.rows[0].active && !q.rows[0].used)) {
       return res.status(404).json({ ok: false, message: "Link no encontrado" });
     }
     const link = toLink(q.rows[0]);
@@ -168,11 +174,11 @@ export async function bookSpecialLink(req, res) {
   try {
     const q = await pool.query(`${LINK_SELECT} where l.id = $1`, [p.data.id]);
     const row = q.rows[0];
+    if (row?.used) {
+      return res.status(409).json({ ok: false, message: "This link has already been paid." });
+    }
     if (!row || !row.active) {
       return res.status(404).json({ ok: false, message: "This link is no longer available." });
-    }
-    if (row.used) {
-      return res.status(409).json({ ok: false, message: "This link has already been paid." });
     }
 
     const { status, body } = await insertPendingBooking({

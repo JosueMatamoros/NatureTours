@@ -13,11 +13,12 @@ import {
   FiUsers,
   FiCreditCard,
   FiChevronDown,
+  FiPower,
+  FiCheckCircle,
 } from "react-icons/fi";
 import { TOURS } from "../data/tours";
 import CalendarPicker from "../components/checkout/CalendarPicker";
 import GuestCounterRow from "../components/ui/GuestCounterRow";
-import { getAllCustomPayments } from "../../services/custom-payments.api";
 import {
   getAllSpecialLinks,
   createSpecialLink,
@@ -48,7 +49,7 @@ function slotLabel(tourId, hm) {
   return SLOTS[tourId]?.find((s) => s.value === hm)?.label ?? hm;
 }
 
-function CopyButton({ text }) {
+function CopyButton({ text, primary = false, className = "" }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -62,11 +63,119 @@ function CopyButton({ text }) {
           /* sin permiso de portapapeles */
         }
       }}
-      className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+      className={[
+        "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500/30",
+        copied
+          ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+          : primary
+          ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+          : "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50",
+        className,
+      ].join(" ")}
     >
-      {copied ? <FiCheck className="h-3.5 w-3.5 text-emerald-600" /> : <FiCopy className="h-3.5 w-3.5" />}
-      {copied ? "Copiado" : "Copiar link"}
+      {copied ? <FiCheck className="h-4 w-4" /> : <FiCopy className="h-4 w-4" />}
+      {copied ? "¡Copiado!" : "Copiar link"}
     </button>
+  );
+}
+
+function shortDate(ymd) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const txt = new Date(y, m - 1, d, 12).toLocaleDateString("es-CR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+  return txt.charAt(0).toUpperCase() + txt.slice(1).replace(/\./g, "");
+}
+
+function guestsLabel(l) {
+  const parts = [`${l.adults} adulto${l.adults === 1 ? "" : "s"}`];
+  if (l.children > 0) parts.push(`${l.children} niño${l.children === 1 ? "" : "s"}`);
+  if (l.babies > 0) parts.push(`${l.babies} bebé${l.babies === 1 ? "" : "s"}`);
+  return parts.join(" · ");
+}
+
+const STATUS = {
+  paid: { label: "Pagado", chip: "bg-emerald-100 text-emerald-700", card: "border-emerald-200", bar: "bg-emerald-500" },
+  open: { label: "Sin pagar", chip: "bg-amber-100 text-amber-700", card: "border-gray-200", bar: "bg-amber-400" },
+  off: { label: "Desactivado", chip: "bg-gray-100 text-gray-500", card: "border-gray-200", bar: "bg-gray-300" },
+};
+
+function LinkCard({ link: l, onToggle }) {
+  const status = l.used ? "paid" : l.active ? "open" : "off";
+  const st = STATUS[status];
+  return (
+    <article className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm ${st.card}`}>
+      <span className={`absolute inset-y-0 left-0 w-1 ${st.bar}`} aria-hidden="true" />
+      <div className={`p-4 pl-5 sm:p-5 sm:pl-6 ${status === "off" ? "opacity-70" : ""}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold text-gray-900">{l.tourName}</p>
+            {l.note && <p className="mt-0.5 truncate text-sm text-gray-500">{l.note}</p>}
+          </div>
+          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${st.chip}`}>
+            {st.label}
+          </span>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-gray-700">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 ring-1 ring-gray-100">
+            <FiCalendar className="h-3.5 w-3.5 text-emerald-600" /> {shortDate(l.tourDate)}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 ring-1 ring-gray-100">
+            <FiClock className="h-3.5 w-3.5 text-emerald-600" /> {slotLabel(l.tourId, l.startTime)}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 ring-1 ring-gray-100">
+            <FiUsers className="h-3.5 w-3.5 text-emerald-600" /> {guestsLabel(l)}
+          </span>
+        </div>
+
+        <div className="mt-4 flex items-end justify-between gap-3 border-t border-gray-100 pt-3">
+          <p className="text-xs text-gray-500">
+            {l.customSubtotal != null ? "Monto personalizado" : "Precio normal"} {fmt(l.subtotal)}
+            <br />+ fee PayPal {fmt(l.fee)}
+          </p>
+          <p className="text-right">
+            <span className="block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              {status === "paid" ? "Cobrado" : "Total"}
+            </span>
+            <span className={`text-xl font-black ${status === "paid" ? "text-emerald-600" : "text-gray-900"}`}>
+              {fmt(l.total)}
+            </span>
+          </p>
+        </div>
+
+        {status === "paid" ? (
+          <p className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-emerald-50 py-2.5 text-sm font-semibold text-emerald-700">
+            <FiCheckCircle className="h-4 w-4" /> Pagado · el link ya no se puede usar
+          </p>
+        ) : (
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {status === "open" ? (
+              <CopyButton text={linkUrl(l.id)} primary className="w-full" />
+            ) : (
+              <span className="inline-flex items-center justify-center rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-400">
+                Link inactivo
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => onToggle(l)}
+              className={[
+                "inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ring-1 transition",
+                status === "open"
+                  ? "bg-white text-red-600 ring-red-200 hover:bg-red-50"
+                  : "bg-white text-emerald-700 ring-emerald-200 hover:bg-emerald-50",
+              ].join(" ")}
+            >
+              <FiPower className="h-4 w-4" />
+              {status === "open" ? "Desactivar" : "Activar"}
+            </button>
+          </div>
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -166,8 +275,6 @@ export default function SpecialLinksAdminPage() {
   const [customAmount, setCustomAmount] = useState("");
   const [note, setNote] = useState("");
   const [calOpen, setCalOpen] = useState(false);
-  const [customPayments, setCustomPayments] = useState([]);
-  const [showPayments, setShowPayments] = useState(false);
 
   const [links, setLinks] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -178,12 +285,6 @@ export default function SpecialLinksAdminPage() {
     try {
       const data = await getAllSpecialLinks();
       setLinks(data?.links ?? []);
-    } catch (e) {
-      console.error(e);
-    }
-    try {
-      const cp = await getAllCustomPayments();
-      setCustomPayments(cp?.payments ?? []);
     } catch (e) {
       console.error(e);
     }
@@ -439,103 +540,44 @@ export default function SpecialLinksAdminPage() {
         </form>
 
         <section className="rounded-2xl border border-indigo-200 bg-linear-to-br from-indigo-50 to-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="flex items-center gap-2 text-base font-bold">
-                <FiCreditCard className="text-indigo-600" />
-                Pago personalizado
-              </p>
-              <p className="mt-1 text-sm text-gray-600">
-                El cliente pone el monto y la descripción, confirma y paga con PayPal.
-                Llega un correo de pago (no de reserva) a él y a ustedes.
-              </p>
-            </div>
-            <CopyButton text={`${window.location.origin}/custom-payment`} />
+          <p className="flex items-center gap-2 text-base font-bold">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-100 text-indigo-600">
+              <FiCreditCard className="h-4 w-4" />
+            </span>
+            Pago personalizado
+          </p>
+          <p className="mt-2 text-sm text-gray-600">
+            El cliente pone el monto y la descripción, confirma y paga con PayPal.
+            Le llega un correo de pago (no de reserva) a él y a ustedes.
+          </p>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <code className="min-w-0 flex-1 truncate rounded-xl bg-white px-3 py-2.5 text-xs text-gray-700 ring-1 ring-indigo-100">
+              {`${window.location.origin}/custom-payment`}
+            </code>
+            <CopyButton text={`${window.location.origin}/custom-payment`} primary className="w-full sm:w-auto" />
           </div>
-          <code className="mt-3 block truncate rounded-lg bg-white px-3 py-2 text-xs text-gray-700 ring-1 ring-indigo-100">
-            {`${window.location.origin}/custom-payment`}
-          </code>
-
-          <button
-            type="button"
-            onClick={() => setShowPayments((v) => !v)}
-            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-700"
-          >
-            Pagos recibidos ({customPayments.length})
-            <FiChevronDown className={`h-4 w-4 transition-transform ${showPayments ? "rotate-180" : ""}`} />
-          </button>
-          {showPayments && (
-            <div className="mt-3 space-y-2">
-              {customPayments.length === 0 && (
-                <p className="text-sm text-gray-500">Todavía no hay pagos.</p>
-              )}
-              {customPayments.map((p) => (
-                <div key={p.id} className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-semibold text-gray-900">{p.name}</span>
-                    <span className="font-bold text-emerald-600">{fmt(p.amount)}</span>
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap text-gray-700">{p.description}</p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {p.email}
-                    {p.phone ? ` · ${p.phone}` : ""} ·{" "}
-                    {new Date(p.createdAt).toLocaleString("es-CR", { dateStyle: "medium", timeStyle: "short" })}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
         </section>
 
-        <div className="space-y-3">
-          <h2 className="text-lg font-bold">Links creados</h2>
-          {links.length === 0 && <p className="text-sm text-gray-500">Todavía no hay links.</p>}
+        <section className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-lg font-bold">Links creados</h2>
+            {links.length > 0 && (
+              <span className="text-xs text-gray-500">
+                {links.filter((l) => !l.used && l.active).length} sin pagar ·{" "}
+                {links.filter((l) => l.used).length} pagado
+                {links.filter((l) => l.used).length === 1 ? "" : "s"}
+              </span>
+            )}
+          </div>
+          {links.length === 0 && (
+            <p className="rounded-2xl border border-dashed border-gray-200 bg-white py-8 text-center text-sm text-gray-500">
+              Todavía no hay links.
+            </p>
+          )}
           {links.map((l) => (
-            <div
-              key={l.id}
-              className={`rounded-2xl border bg-white p-4 shadow-sm ${l.active ? "border-gray-200" : "border-gray-100 opacity-60"}`}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="flex items-center gap-2 text-sm font-semibold">
-                    <FiLink className="text-emerald-600" />
-                    {l.tourName} · {l.tourDate} · {slotLabel(l.tourId, l.startTime)}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {l.adults} adulto{l.adults === 1 ? "" : "s"}
-                    {l.children > 0 ? ` · ${l.children} niño${l.children === 1 ? "" : "s"}` : ""}
-                    {l.babies > 0 ? ` · ${l.babies} bebé${l.babies === 1 ? "" : "s"}` : ""}
-                    {" · "}
-                    {l.customSubtotal != null ? "monto personalizado " : ""}
-                    {fmt(l.subtotal)} → paga {fmt(l.total)}
-                  </p>
-                  {l.note && <p className="mt-1 text-xs text-gray-700">{l.note}</p>}
-                </div>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    l.used
-                      ? "bg-emerald-100 text-emerald-700"
-                      : l.active
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-gray-100 text-gray-500"
-                  }`}
-                >
-                  {l.used ? "Pagado" : l.active ? "Sin pagar" : "Desactivado"}
-                </span>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <CopyButton text={linkUrl(l.id)} />
-                <button
-                  type="button"
-                  onClick={() => toggleActive(l)}
-                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
-                >
-                  {l.active ? "Desactivar" : "Activar"}
-                </button>
-              </div>
-            </div>
+            <LinkCard key={l.id} link={l} onToggle={toggleActive} />
           ))}
-        </div>
+        </section>
       </div>
     </div>
   );
