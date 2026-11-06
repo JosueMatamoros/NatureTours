@@ -4,6 +4,14 @@ import { RouterProvider } from 'react-router-dom'
 import './index.css'
 import router from './router.jsx'
 
+// Android/Chrome: guardar el aviso de instalación de la app (PWA) para que el
+// botón "Instalar app" del portal lo pueda disparar cuando el usuario quiera.
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault()
+  window.__ntInstallPrompt = e
+  window.dispatchEvent(new Event('nt-install-ready'))
+})
+
 const root = document.getElementById('root')
 const app = (
   <StrictMode>

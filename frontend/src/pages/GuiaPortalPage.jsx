@@ -21,6 +21,7 @@ import {
 } from "react-icons/fi";
 import CalendarPicker from "../components/checkout/CalendarPicker";
 import SourceChip from "../components/SourceChip";
+import InstallAppCard from "../components/ui/InstallAppCard";
 import {
   guideLogin,
   guideLogout,
@@ -154,6 +155,8 @@ function GuideLogin({ onLoggedIn }) {
             {submitting ? "Ingresando…" : "Ingresar"}
           </button>
         </form>
+
+        <InstallAppCard />
       </div>
     </div>
   );

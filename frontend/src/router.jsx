@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import ScrollToTop from "./ScrollToTop";
 import AdminGuard from "./router/AdminGuard";
+import { useAppShell } from "./hooks/useAppShell";
 
 import Home from "./pages/HomePage";
 import NotFound from "./pages/NotFound";
@@ -44,6 +45,9 @@ function LazyPage({ children }) {
 }
 
 function RootLayout() {
+  // Manifest + meta de iOS en /asistencia y /matamoros (instalable como app).
+  useAppShell();
+
   // Quita el velo de arranque (spa-boot) que index.html activa en rutas no
   // prerenderizadas; a partir de aquí ya se ve la ruta correcta, no el home.
   useEffect(() => {

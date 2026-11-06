@@ -1,6 +1,7 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import InstallAppCard from "../components/ui/InstallAppCard";
 import { FiCalendar, FiSliders, FiUsers, FiUserCheck, FiCompass, FiLink } from "react-icons/fi";
 
 const CARDS = [
@@ -100,6 +101,8 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
+
+        <InstallAppCard />
       </div>
     </div>
   );
