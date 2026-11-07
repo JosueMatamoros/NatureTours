@@ -4,7 +4,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { pool } from "../db.js";
 import { authenticateGuide } from "../middlewares/auth.middleware.js";
-import { getVapidPublicKey, pushToGuide } from "../utils/push.js";
+import { getVapidPublicKey } from "../utils/push.js";
 
 const router = Router();
 
@@ -70,20 +70,6 @@ router.post("/unsubscribe", authenticateGuide, async (req, res) => {
     console.error("push unsubscribe error:", err);
     return res.status(500).json({ ok: false, message: "Error" });
   }
-});
-
-// POST /api/push/test — notificación de prueba a mis teléfonos.
-router.post("/test", authenticateGuide, async (req, res) => {
-  const first = String(req.guide.name || "").trim().split(/\s+/)[0];
-  await pushToGuide(req.guide.guideId, {
-    title: `🔔 ¡Listo${first ? `, ${first}` : ""}!`,
-    body: req.guide.isAdmin
-      ? "Desde ahora te avisamos al instante de cada reserva nueva, cancelación y pago recibido."
-      : "Desde ahora te avisamos cada vez que te asignen un tour.",
-    url: req.guide.isAdmin ? "/matamoros" : "/asistencia",
-    tag: "push-test",
-  });
-  return res.json({ ok: true });
 });
 
 export default router;

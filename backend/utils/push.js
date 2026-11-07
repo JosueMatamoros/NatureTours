@@ -1,7 +1,7 @@
 // Notificaciones push de la app (PWA) — Web Push estándar con VAPID.
 //
-// - Admins/owners (guides.is_admin): reservas nuevas (web y OTA),
-//   cancelaciones de OTA y pagos personalizados.
+// - Admins/owners (guides.is_admin): reservas nuevas (web y OTA) y
+//   cancelaciones de OTA.
 // - Guías: cuando se les asigna un tour.
 // Claves VAPID: env VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY si existen; si no, las
 // de app_settings (scripts/migrate-push.mjs). Nunca lanza: un fallo de push no
@@ -107,10 +107,10 @@ export async function pushToGuide(guideId, payload) {
 const TZ = "America/Costa_Rica";
 
 const SOURCE = {
-  web: { label: "directa", emoji: "🐴" },
+  web: { label: "directa", emoji: "🟢" },
   manual: { label: "manual", emoji: "📝" },
   gyg: { label: "de GetYourGuide", emoji: "🟠" },
-  viator: { label: "de Viator", emoji: "🟢" },
+  viator: { label: "de Viator", emoji: "🔵" },
   localbird: { label: "de Localbird", emoji: "🟡" },
 };
 
@@ -190,19 +190,18 @@ export async function pushBookingToAdmins(bookingId, event = "new") {
     const who = `${b.name || "Cliente"} · ${paxShort(b)}`;
     const when = `${b.tour_name} · ${whenLabel(b.tour_date, b.start_time)}`;
 
-    let money_line;
+    // Tercera línea: en cancelación, los espacios liberados; en reserva nueva,
+    // solo si el cliente todavía debe plata (directas con depósito).
+    let extra = null;
     if (cancelled) {
       const seats = Number(b.adults || 0) + Number(b.children || 0);
-      money_line = `Se liberan ${seats} espacio${seats === 1 ? "" : "s"} en ese horario.`;
-    } else if (b.source === "web") {
-      const paid = Number(b.paid) || 0;
+      extra = `Se liberan ${seats} espacio${seats === 1 ? "" : "s"} en ese horario.`;
+    } else if (b.source === "web" || b.source === "manual") {
+      const paid = Number(b.source === "web" ? b.paid : b.manual_paid) || 0;
       const due = Math.max(Number(b.subtotal || 0) - paid, 0);
-      money_line =
-        b.pay_mode === "deposit" && due > 0.009
-          ? `💵 Adelantó ${money(paid)} · debe ${money(due)}`
-          : `✅ Pagó completo ${money(paid)}`;
-    } else {
-      money_line = `✅ Ya viene pagada${b.external_ref ? ` · Ref ${b.external_ref}` : ""}`;
+      if (due > 0.009) {
+        extra = paid > 0 ? `💵 Adelantó ${money(paid)} · debe ${money(due)}` : `💵 Debe ${money(due)}`;
+      }
     }
 
     const phoneLink = waLink(b.phone);
@@ -210,7 +209,7 @@ export async function pushBookingToAdmins(bookingId, event = "new") {
       title: cancelled
         ? `❌ Cancelación ${src.label === "directa" ? "" : src.label}`.trim()
         : `${src.emoji} Nueva reserva ${src.label}`,
-      body: [who, when, money_line].join("\n"),
+      body: [who, when, extra].filter(Boolean).join("\n"),
       image: cancelled ? undefined : TOUR_IMAGE[b.tour_id],
       url: `/matamoros/reservaciones?fecha=${b.tour_date}`,
       tag: `booking-${b.id}-${event}`,
@@ -225,35 +224,14 @@ export async function pushBookingToAdmins(bookingId, event = "new") {
   }
 }
 
-export async function pushCustomPaymentToAdmins({ name, amount, description }) {
-  const desc = String(description || "").trim();
-  await pushToAdmins({
-    title: `💳 Pago recibido · ${money(amount)}`,
-    body: `${name}\n“${desc.length > 110 ? `${desc.slice(0, 110)}…` : desc}”`,
-    url: "/matamoros",
-    tag: `custom-payment-${Date.now()}`,
-  });
-}
-
 export async function pushAssignmentToGuide({ guideId, tourId, tourDate, startTime }) {
   try {
-    const q = await pool.query(
-      `select t.name,
-              (select coalesce(sum(b.adults + b.children), 0)::int from bookings b
-                where b.tour_id = $1 and b.tour_date = $2::date and b.start_time = $3::time
-                  and b.status in ('paid','pending')
-                  and (b.status <> 'pending' or b.expires_at > now())) as seats
-       from tours t where t.id = $1`,
-      [tourId, tourDate, startTime]
-    );
-    const r = q.rows[0];
-    if (!r) return;
-    const seatsLine = r.seats
-      ? `👥 ${r.seats} persona${r.seats === 1 ? "" : "s"} reservada${r.seats === 1 ? "" : "s"}`
-      : "👥 Todavía sin reservas";
+    const q = await pool.query(`select name from tours where id = $1`, [tourId]);
+    const tourName = q.rows[0]?.name;
+    if (!tourName) return;
     await pushToGuide(guideId, (sub) => ({
       title: `🧭 ¡${firstName(sub.guide_name) || "Hola"}, tenés un tour!`,
-      body: [r.name, whenLabel(tourDate, startTime), seatsLine].join("\n"),
+      body: `${tourName}\n${whenLabel(tourDate, startTime)}`,
       image: TOUR_IMAGE[tourId],
       url: `/asistencia?fecha=${tourDate}`,
       tag: `assign-${tourId}-${tourDate}-${startTime}`,

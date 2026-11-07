@@ -79,10 +79,6 @@ export function savePushSubscription(subscription) {
   });
 }
 
-export function sendPushTest() {
-  return guideRequest("/api/push/test", { method: "POST" });
-}
-
 export function guideMe() {
   return guideRequest("/api/guide/me");
 }

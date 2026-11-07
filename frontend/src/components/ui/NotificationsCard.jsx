@@ -7,7 +7,6 @@ import {
   getGuideToken,
   getPushPublicKey,
   savePushSubscription,
-  sendPushTest,
 } from "../../../services/guide.api";
 import { isStandalone } from "../../hooks/useAppShell";
 
@@ -82,7 +81,6 @@ export default function NotificationsCard({ isAdmin = false, className = "" }) {
           applicationServerKey: urlBase64ToUint8Array(publicKey),
         }));
       await savePushSubscription(sub.toJSON());
-      sendPushTest().catch(() => {});
       // Confirmación breve; después la tarjeta desaparece para siempre.
       setState("just-on");
       setTimeout(() => setState("on"), 3500);
@@ -97,7 +95,7 @@ export default function NotificationsCard({ isAdmin = false, className = "" }) {
   if (state === "checking" || state === "unsupported" || state === "on") return null;
 
   const what = isAdmin
-    ? "Te avisamos al instante de cada reserva nueva, cancelación de OTA y pago personalizado."
+    ? "Te avisamos al instante de cada reserva nueva y de las cancelaciones."
     : "Te avisamos cuando te asignen un tour.";
 
   if (state === "just-on") {
