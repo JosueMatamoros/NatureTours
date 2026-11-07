@@ -115,6 +115,13 @@ export async function updateGuide(req, res) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
   const { name, email, phone, cedula, password, active, canCreateManual, isAdmin, isSupervisor, isGuide } = parsed.data;
+  // Evitar auto-bloqueo: un admin no puede desactivarse ni quitarse el rol admin.
+  if (req.user?.guideId && req.user.guideId === idParsed.data.id && (active === false || isAdmin === false)) {
+    return res.status(400).json({
+      ok: false,
+      message: "No podés desactivarte ni quitarte el rol de admin a vos mismo.",
+    });
+  }
   // Contraseña en blanco = no la cambia; con valor = la reemplaza (hasheada).
   const passwordHash = password && password.trim() ? hashPassword(password) : null;
   try {
@@ -164,6 +171,9 @@ export async function deleteGuide(req, res) {
   const idParsed = guideIdSchema.safeParse(req.params);
   if (!idParsed.success) {
     return res.status(400).json({ ok: false, message: "Id inválido" });
+  }
+  if (req.user?.guideId && req.user.guideId === idParsed.data.id) {
+    return res.status(400).json({ ok: false, message: "No podés eliminar tu propio usuario." });
   }
   try {
     const q = await pool.query(`DELETE FROM guides WHERE id = $1 RETURNING id`, [idParsed.data.id]);

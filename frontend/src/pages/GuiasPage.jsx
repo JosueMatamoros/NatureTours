@@ -254,7 +254,8 @@ export default function GuiasPage() {
     setGuides((list) => list.map((x) => (x.id === g.id ? { ...x, active } : x)));
     try {
       await updateGuide(g.id, { active });
-    } catch {
+    } catch (e) {
+      if (e?.message) window.alert(e.message);
       load();
     } finally {
       setBusyId(null);
@@ -306,10 +307,25 @@ export default function GuiasPage() {
       )}
 
       {!loading && !error && guides.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {guides.map((g) => (
-            <GuideCard key={g.id} g={g} onEdit={(x) => setModal({ guide: x })} onToggleActive={toggleActive} onDelete={removeGuide} busy={busyId === g.id} />
-          ))}
+        <div className="space-y-8">
+          {[
+            { title: "Guías", sub: "Se pueden asignar a los tours.", list: guides.filter((g) => g.isGuide !== false) },
+            { title: "Administración", sub: "Acceso al panel; no aparecen para asignar tours.", list: guides.filter((g) => g.isGuide === false) },
+          ]
+            .filter((sec) => sec.list.length > 0)
+            .map((sec) => (
+              <section key={sec.title}>
+                <div className="mb-3 flex items-baseline justify-between">
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">{sec.title}</h2>
+                  <span className="text-xs text-gray-400">{sec.sub}</span>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {sec.list.map((g) => (
+                    <GuideCard key={g.id} g={g} onEdit={(x) => setModal({ guide: x })} onToggleActive={toggleActive} onDelete={removeGuide} busy={busyId === g.id} />
+                  ))}
+                </div>
+              </section>
+            ))}
         </div>
       )}
 
