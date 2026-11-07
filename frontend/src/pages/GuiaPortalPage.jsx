@@ -18,6 +18,7 @@ import {
   FiEyeOff,
   FiChevronDown,
   FiUserPlus,
+  FiArrowRight,
 } from "react-icons/fi";
 import CalendarPicker from "../components/checkout/CalendarPicker";
 import SourceChip from "../components/SourceChip";
@@ -91,22 +92,37 @@ function GuideLogin({ onLoggedIn }) {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 text-center">
-          <span className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/30">
-            <FiCompass className="h-7 w-7" />
+    <div className="relative min-h-screen overflow-hidden bg-slate-50">
+      {/* Fondo: franja verde con brillo suave */}
+      <div className="absolute inset-x-0 top-0 h-[46vh] min-h-80 bg-linear-to-br from-emerald-500 via-emerald-600 to-teal-700">
+        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -left-20 top-32 h-56 w-56 rounded-full bg-teal-300/20 blur-2xl" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-b from-transparent to-slate-50/0" />
+      </div>
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-sm flex-col px-5 pt-[max(3.5rem,env(safe-area-inset-top))] pb-8">
+        {/* Marca */}
+        <div className="text-center text-white">
+          <span className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-white p-2 shadow-xl shadow-emerald-900/25 ring-4 ring-white/30">
+            <img src="/app/icon-192.png" alt="Nature Tours" className="h-full w-full rounded-2xl object-contain" />
           </span>
-          <h1 className="text-2xl font-black text-slate-900">Portal de guías</h1>
-          <p className="mt-1 text-sm text-slate-500">Ingresá para ver tus tours del día.</p>
+          <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-50/80">
+            Nature Tours La Fortuna
+          </p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight">¡Bienvenido!</h1>
+          <p className="mt-1 text-sm text-emerald-50/90">Ingresá con tu cédula para ver tu día.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {/* Tarjeta */}
+        <form
+          onSubmit={handleSubmit}
+          className="mt-8 rounded-3xl bg-white p-6 shadow-[0_24px_60px_rgba(15,23,42,0.14)] ring-1 ring-slate-100"
+        >
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
             Cédula
           </label>
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-slate-200 px-3 focus-within:border-emerald-400">
-            <FiUser className="h-4 w-4 shrink-0 text-slate-400" />
+          <div className="mb-5 flex items-center gap-3 rounded-2xl border-2 border-slate-100 bg-slate-50 px-4 transition focus-within:border-emerald-500 focus-within:bg-white">
+            <FiUser className="h-5 w-5 shrink-0 text-emerald-600" />
             <input
               inputMode="numeric"
               value={formatCedula(cedula)}
@@ -114,15 +130,15 @@ function GuideLogin({ onLoggedIn }) {
               required
               autoComplete="username"
               placeholder="0 0000 0000"
-              className="w-full bg-transparent py-2.5 text-base tracking-wider outline-none"
+              className="w-full bg-transparent py-3.5 text-lg font-semibold tracking-[0.12em] text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-300"
             />
           </div>
 
-          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
             Contraseña
           </label>
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 focus-within:border-emerald-400">
-            <FiLock className="h-4 w-4 shrink-0 text-slate-400" />
+          <div className="flex items-center gap-3 rounded-2xl border-2 border-slate-100 bg-slate-50 px-4 transition focus-within:border-emerald-500 focus-within:bg-white">
+            <FiLock className="h-5 w-5 shrink-0 text-emerald-600" />
             <input
               type={showPassword ? "text" : "password"}
               value={password}
@@ -130,34 +146,48 @@ function GuideLogin({ onLoggedIn }) {
               required
               autoComplete="current-password"
               placeholder="••••••••"
-              className="w-full bg-transparent py-2.5 text-base outline-none"
+              className="w-full bg-transparent py-3.5 text-lg text-slate-900 outline-none placeholder:text-slate-300"
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
             >
-              {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
+              {showPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
             </button>
           </div>
 
           {error && (
-            <p className="mt-4 flex items-center gap-1.5 text-sm font-medium text-red-600">
-              <FiAlertCircle className="h-4 w-4" /> {error}
+            <p className="mt-4 flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700">
+              <FiAlertCircle className="h-4 w-4 shrink-0" /> {error}
             </p>
           )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="mt-6 w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60 cursor-pointer"
+            className="group mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-emerald-600 to-teal-600 py-4 text-base font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:shadow-emerald-600/40 active:scale-[0.99] disabled:opacity-60 cursor-pointer"
           >
-            {submitting ? "Ingresando…" : "Ingresar"}
+            {submitting ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                Ingresando…
+              </>
+            ) : (
+              <>
+                Ingresar
+                <FiArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+              </>
+            )}
           </button>
         </form>
 
         <InstallAppCard />
+
+        <p className="mt-auto pt-8 text-center text-xs text-slate-400">
+          Acceso solo para el equipo de Nature Tours
+        </p>
       </div>
     </div>
   );
@@ -430,9 +460,7 @@ function GuideDay({ guide, onLogout }) {
           </div>
         </div>
 
-        <div className="mb-4">
-          <NotificationsCard isAdmin={guide.isAdmin} />
-        </div>
+        <NotificationsCard isAdmin={guide.isAdmin} className="mb-4" />
 
         {/* Navegador de fecha */}
         <div className="relative mb-3 flex items-center justify-between gap-2">

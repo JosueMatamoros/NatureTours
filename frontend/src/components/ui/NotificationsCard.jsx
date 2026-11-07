@@ -2,7 +2,7 @@
 // Admins: reservas nuevas, cancelaciones OTA y pagos personalizados.
 // Guías: cuando les asignan un tour.
 import { useEffect, useState } from "react";
-import { FiBell, FiBellOff, FiCheckCircle, FiSend } from "react-icons/fi";
+import { FiBell, FiBellOff, FiCheckCircle } from "react-icons/fi";
 import {
   getGuideToken,
   getPushPublicKey,
@@ -32,8 +32,8 @@ async function getRegistration() {
   return navigator.serviceWorker.ready;
 }
 
-export default function NotificationsCard({ isAdmin = false }) {
-  // checking | unsupported | needs-install | needs-login | denied | off | on
+export default function NotificationsCard({ isAdmin = false, className = "" }) {
+  // checking | unsupported | needs-install | needs-login | denied | off | just-on | on
   const [state, setState] = useState("checking");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -82,9 +82,10 @@ export default function NotificationsCard({ isAdmin = false }) {
           applicationServerKey: urlBase64ToUint8Array(publicKey),
         }));
       await savePushSubscription(sub.toJSON());
-      setState("on");
-      await sendPushTest().catch(() => {});
-      setMsg("Te mandamos una notificación de prueba.");
+      sendPushTest().catch(() => {});
+      // Confirmación breve; después la tarjeta desaparece para siempre.
+      setState("just-on");
+      setTimeout(() => setState("on"), 3500);
     } catch (e) {
       console.error("push enable error:", e);
       setMsg("No se pudieron activar. Intentá de nuevo.");
@@ -93,48 +94,24 @@ export default function NotificationsCard({ isAdmin = false }) {
     }
   }
 
-  async function test() {
-    setBusy(true);
-    setMsg("");
-    try {
-      await sendPushTest();
-      setMsg("Listo, revisá tus notificaciones.");
-    } catch {
-      setMsg("No se pudo enviar la prueba.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (state === "checking" || state === "unsupported") return null;
+  if (state === "checking" || state === "unsupported" || state === "on") return null;
 
   const what = isAdmin
     ? "Te avisamos al instante de cada reserva nueva, cancelación de OTA y pago personalizado."
     : "Te avisamos cuando te asignen un tour.";
 
-  if (state === "on") {
+  if (state === "just-on") {
     return (
-      <div>
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm">
-        <span className="flex items-center gap-2 font-semibold text-emerald-800">
+      <div className={className}>
+        <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
           <FiCheckCircle className="h-4 w-4" /> Notificaciones activadas
-        </span>
-        <button
-          type="button"
-          onClick={test}
-          disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 disabled:opacity-60 cursor-pointer"
-        >
-          <FiSend className="h-3.5 w-3.5" /> Probar
-        </button>
-      </div>
-      {msg && <p className="mt-1.5 px-1 text-xs text-emerald-700">{msg}</p>}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-slate-700">
+    <div className={`rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-slate-700 ${className}`}>
       <p className="flex items-center gap-2 font-bold text-amber-900">
         {state === "denied" ? <FiBellOff className="h-4 w-4" /> : <FiBell className="h-4 w-4" />}
         Notificaciones
