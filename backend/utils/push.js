@@ -9,7 +9,6 @@
 import { setVapidDetails, sendNotification } from "web-push";
 import { DateTime } from "luxon";
 import { pool } from "../db.js";
-import { loadBooking } from "./whatsapp.js";
 
 let vapidReady = null;
 
@@ -50,16 +49,18 @@ async function ensureVapid() {
 
 // Envía a una lista de suscripciones (filas de push_subscriptions).
 // Las que el navegador ya invalidó (404/410) se borran.
+// payload puede ser un objeto o una función (fila) => objeto, para
+// personalizar el mensaje por destinatario (ej. su nombre).
 async function sendToSubscriptions(rows, payload) {
   if (rows.length === 0) return;
   await ensureVapid();
-  const body = JSON.stringify(payload);
   await Promise.allSettled(
     rows.map(async (s) => {
       try {
+        const data = typeof payload === "function" ? payload(s) : payload;
         await sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          body,
+          JSON.stringify(data),
           { TTL: 60 * 60 * 24, urgency: "high" }
         );
         await pool.query(`update push_subscriptions set last_success_at = now() where id = $1`, [s.id]);
@@ -77,7 +78,7 @@ async function sendToSubscriptions(rows, payload) {
 export async function pushToAdmins(payload) {
   try {
     const q = await pool.query(
-      `select s.* from push_subscriptions s
+      `select s.*, g.name as guide_name from push_subscriptions s
        join guides g on g.id = s.guide_id
        where g.active and g.is_admin`
     );
@@ -90,7 +91,7 @@ export async function pushToAdmins(payload) {
 export async function pushToGuide(guideId, payload) {
   try {
     const q = await pool.query(
-      `select s.* from push_subscriptions s
+      `select s.*, g.name as guide_name from push_subscriptions s
        join guides g on g.id = s.guide_id
        where g.active and g.id = $1`,
       [guideId]
@@ -103,11 +104,33 @@ export async function pushToGuide(guideId, payload) {
 
 // ─── Mensajes ───────────────────────────────────────────────────────────────
 
-const SOURCE = { web: "Web", gyg: "GetYourGuide", viator: "Viator", manual: "Manual", localbird: "Localbird" };
+const TZ = "America/Costa_Rica";
 
-function dateShort(ymd) {
-  const d = DateTime.fromISO(ymd, { locale: "es" });
-  return d.isValid ? d.toFormat("ccc d LLL") : ymd;
+const SOURCE = {
+  web: { label: "directa", emoji: "🐴" },
+  manual: { label: "manual", emoji: "📝" },
+  gyg: { label: "de GetYourGuide", emoji: "🟠" },
+  viator: { label: "de Viator", emoji: "🟢" },
+  localbird: { label: "de Localbird", emoji: "🟡" },
+};
+
+// Imagen grande (Android) según el tour.
+const TOUR_IMAGE = { 1: "/app/notif-night.jpg", 2: "/app/notif-horse.jpg" };
+
+const money = (n) => {
+  const v = Number(n || 0);
+  return Number.isInteger(v) ? `$${v}` : `$${v.toFixed(2)}`;
+};
+const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "";
+
+// "Hoy · 12:00 MD", "Mañana (sáb 7 nov) · 8:00 AM", "mié 12 nov · 6:00 PM"
+function whenLabel(ymd, hm) {
+  const d = DateTime.fromISO(ymd, { zone: TZ, locale: "es" });
+  const today = DateTime.now().setZone(TZ).startOf("day");
+  const diff = Math.round(d.startOf("day").diff(today, "days").days);
+  const day = d.isValid ? d.toFormat("ccc d LLL") : ymd;
+  const rel = diff === 0 ? "Hoy" : diff === 1 ? `Mañana (${day})` : day;
+  return `${rel} · ${timeLabel(hm)}`;
 }
 
 function timeLabel(hm) {
@@ -124,21 +147,78 @@ function paxShort(b) {
   return parts.join(", ");
 }
 
+function waLink(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  return digits.length >= 8 ? `https://wa.me/${digits}` : null;
+}
+
+async function loadBookingForPush(bookingId) {
+  const q = await pool.query(
+    `select b.id, b.tour_id, b.source, b.external_ref, b.adults, b.children, b.babies,
+            b.subtotal, b.total, b.manual_paid,
+            to_char(b.tour_date, 'YYYY-MM-DD') as tour_date,
+            to_char(b.start_time, 'HH24:MI') as start_time,
+            t.name as tour_name,
+            coalesce(c.name, b.manual_name) as name,
+            coalesce(c.phone, b.manual_phone) as phone,
+            (select coalesce(sum(p.amount), 0) from payments p
+              where p.booking_id = b.id and p.status = 'completed') as paid,
+            (select p.mode from payments p
+              where p.booking_id = b.id and p.status = 'completed'
+              order by p.created_at limit 1) as pay_mode
+     from bookings b
+     join tours t on t.id = b.tour_id
+     left join lateral (
+       select cu.name, cu.phone from payments p
+       join customers cu on cu.id = p.customer_id
+       where p.booking_id = b.id and p.status = 'completed'
+       order by p.created_at limit 1
+     ) c on true
+     where b.id = $1`,
+    [bookingId]
+  );
+  return q.rows[0] || null;
+}
+
 // event: "new" | "cancelled"
 export async function pushBookingToAdmins(bookingId, event = "new") {
   try {
-    const b = await loadBooking(bookingId);
+    const b = await loadBookingForPush(bookingId);
     if (!b) return;
-    const origin = SOURCE[b.source] || b.source;
+    const src = SOURCE[b.source] || { label: b.source, emoji: "🐴" };
     const cancelled = event === "cancelled";
+    const who = `${b.name || "Cliente"} · ${paxShort(b)}`;
+    const when = `${b.tour_name} · ${whenLabel(b.tour_date, b.start_time)}`;
+
+    let money_line;
+    if (cancelled) {
+      const seats = Number(b.adults || 0) + Number(b.children || 0);
+      money_line = `Se liberan ${seats} espacio${seats === 1 ? "" : "s"} en ese horario.`;
+    } else if (b.source === "web") {
+      const paid = Number(b.paid) || 0;
+      const due = Math.max(Number(b.subtotal || 0) - paid, 0);
+      money_line =
+        b.pay_mode === "deposit" && due > 0.009
+          ? `💵 Adelantó ${money(paid)} · debe ${money(due)}`
+          : `✅ Pagó completo ${money(paid)}`;
+    } else {
+      money_line = `✅ Ya viene pagada${b.external_ref ? ` · Ref ${b.external_ref}` : ""}`;
+    }
+
+    const phoneLink = waLink(b.phone);
     await pushToAdmins({
-      title: cancelled ? `❌ Cancelada (${origin})` : `🐴 Nueva reserva · ${origin}`,
-      body: [
-        `${b.tour_name} · ${dateShort(b.tour_date)} · ${timeLabel(b.start_time)}`,
-        `${b.name || "Cliente"} · ${paxShort(b)}`,
-      ].join("\n"),
+      title: cancelled
+        ? `❌ Cancelación ${src.label === "directa" ? "" : src.label}`.trim()
+        : `${src.emoji} Nueva reserva ${src.label}`,
+      body: [who, when, money_line].join("\n"),
+      image: cancelled ? undefined : TOUR_IMAGE[b.tour_id],
       url: `/matamoros/reservaciones?fecha=${b.tour_date}`,
       tag: `booking-${b.id}-${event}`,
+      actions: [
+        { action: "open", title: "Ver reserva" },
+        ...(phoneLink && !cancelled ? [{ action: "whatsapp", title: "💬 WhatsApp" }] : []),
+      ],
+      whatsapp: phoneLink,
     });
   } catch (err) {
     console.error(`pushBookingToAdmins(${bookingId}) error:`, err);
@@ -146,9 +226,10 @@ export async function pushBookingToAdmins(bookingId, event = "new") {
 }
 
 export async function pushCustomPaymentToAdmins({ name, amount, description }) {
+  const desc = String(description || "").trim();
   await pushToAdmins({
-    title: `💳 Pago personalizado · $${Number(amount).toFixed(2)}`,
-    body: `${name}: ${String(description).slice(0, 120)}`,
+    title: `💳 Pago recibido · ${money(amount)}`,
+    body: `${name}\n“${desc.length > 110 ? `${desc.slice(0, 110)}…` : desc}”`,
     url: "/matamoros",
     tag: `custom-payment-${Date.now()}`,
   });
@@ -167,14 +248,17 @@ export async function pushAssignmentToGuide({ guideId, tourId, tourDate, startTi
     );
     const r = q.rows[0];
     if (!r) return;
-    await pushToGuide(guideId, {
-      title: "🧭 Te asignaron un tour",
-      body: `${r.name} · ${dateShort(tourDate)} · ${timeLabel(startTime)}${
-        r.seats ? ` · ${r.seats} persona${r.seats === 1 ? "" : "s"}` : ""
-      }`,
+    const seatsLine = r.seats
+      ? `👥 ${r.seats} persona${r.seats === 1 ? "" : "s"} reservada${r.seats === 1 ? "" : "s"}`
+      : "👥 Todavía sin reservas";
+    await pushToGuide(guideId, (sub) => ({
+      title: `🧭 ¡${firstName(sub.guide_name) || "Hola"}, tenés un tour!`,
+      body: [r.name, whenLabel(tourDate, startTime), seatsLine].join("\n"),
+      image: TOUR_IMAGE[tourId],
       url: `/asistencia?fecha=${tourDate}`,
       tag: `assign-${tourId}-${tourDate}-${startTime}`,
-    });
+      actions: [{ action: "open", title: "Ver mi día" }],
+    }));
   } catch (err) {
     console.error("pushAssignmentToGuide error:", err);
   }

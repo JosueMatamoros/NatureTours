@@ -74,11 +74,12 @@ router.post("/unsubscribe", authenticateGuide, async (req, res) => {
 
 // POST /api/push/test — notificación de prueba a mis teléfonos.
 router.post("/test", authenticateGuide, async (req, res) => {
+  const first = String(req.guide.name || "").trim().split(/\s+/)[0];
   await pushToGuide(req.guide.guideId, {
-    title: "✅ Notificaciones activadas",
+    title: `🔔 ¡Listo${first ? `, ${first}` : ""}!`,
     body: req.guide.isAdmin
-      ? "Te vamos a avisar de cada reserva nueva."
-      : "Te vamos a avisar cuando te asignen un tour.",
+      ? "Desde ahora te avisamos al instante de cada reserva nueva, cancelación y pago recibido."
+      : "Desde ahora te avisamos cada vez que te asignen un tour.",
     url: req.guide.isAdmin ? "/matamoros" : "/asistencia",
     tag: "push-test",
   });
