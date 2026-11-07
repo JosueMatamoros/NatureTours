@@ -30,27 +30,45 @@ export async function otaInbound(req, res) {
         [parsed.externalRef],
       );
       if (q.rowCount) { notifyBooking(q.rows[0].id, "cancelled"); pushBookingToAdmins(q.rows[0].id, "cancelled"); }
+      // Siempre se recuerda la cancelación: si la confirmación llega (o se
+      // procesa) después, la reserva se crea ya cancelada.
+      await pool.query(
+        `INSERT INTO ota_cancellations (external_ref, provider) VALUES ($1, $2)
+         ON CONFLICT (external_ref) DO NOTHING`,
+        [parsed.externalRef, parsed.provider],
+      );
       return res.json({ ok: true, action: q.rowCount ? "cancelled" : "cancel-noop", ref: parsed.externalRef });
     }
 
-    // Confirmación → insertar una sola vez (dedup por external_ref).
+    // ¿Ya llegó la cancelación de esta reserva? (correos fuera de orden)
+    const preCancelled = (
+      await pool.query(`SELECT 1 FROM ota_cancellations WHERE external_ref = $1`, [parsed.externalRef])
+    ).rowCount > 0;
+
+    // Confirmación → insertar una sola vez (dedup por external_ref). Si ya
+    // estaba cancelada, se guarda como cancelada y no se notifica.
     const q = await pool.query(
       `INSERT INTO bookings
          (tour_id, tour_date, start_time, adults, children, babies,
-          status, source, manual_name, manual_phone, manual_paid, expires_at, external_ref)
-       VALUES ($1,$2::date,$3::time,$4,$5,$6,'paid',$7,$8,$9,0,NULL,$10)
+          status, source, manual_name, manual_phone, manual_paid, expires_at, external_ref,
+          cancelled_at)
+       VALUES ($1,$2::date,$3::time,$4,$5,$6,
+               CASE WHEN $11 THEN 'cancelled' ELSE 'paid' END,
+               $7,$8,$9,0,NULL,$10,
+               CASE WHEN $11 THEN now() ELSE NULL END)
        ON CONFLICT (external_ref) WHERE external_ref IS NOT NULL DO NOTHING
        RETURNING id`,
       [
         parsed.tourId, parsed.date, parsed.time,
         parsed.adults, parsed.children, parsed.babies,
         parsed.provider, parsed.name, parsed.phone, parsed.externalRef,
+        preCancelled,
       ],
     );
-    if (q.rowCount) { notifyBooking(q.rows[0].id, "new"); pushBookingToAdmins(q.rows[0].id, "new"); }
+    if (q.rowCount && !preCancelled) { notifyBooking(q.rows[0].id, "new"); pushBookingToAdmins(q.rows[0].id, "new"); }
     return res.json({
       ok: true,
-      action: q.rowCount ? "created" : "duplicate",
+      action: q.rowCount ? (preCancelled ? "created-cancelled" : "created") : "duplicate",
       ref: parsed.externalRef,
       provider: parsed.provider,
     });
