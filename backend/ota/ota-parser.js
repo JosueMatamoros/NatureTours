@@ -71,7 +71,11 @@ export function detectProvider(from = "") {
 // ─── Viator ─────────────────────────────────────────────────────────────────
 function parseViator({ from, subject, body }) {
   const text = body || "";
-  const isCancel = /chargebacks@viator\.com/i.test(from) || /cancellation|cancelled/i.test(subject);
+  // "Canceled" (EE.UU., una L) o "Cancelled"; también por el encabezado del cuerpo.
+  const isCancel =
+    /chargebacks@viator\.com/i.test(from) ||
+    /cancel+ed|cancellation/i.test(subject) ||
+    /Booking\s+Cancel+ed/i.test(text);
 
   const ref =
     (text.match(/Booking Reference:\s*#?(BR-\d+)/i) || [])[1] ||
@@ -119,7 +123,7 @@ function parseViator({ from, subject, body }) {
 // ─── GetYourGuide ────────────────────────────────────────────────────────────
 function parseGyg({ subject, body }) {
   const text = body || "";
-  const isCancel = /cancelaci[oó]n|cancelad|cancelled|cancellation/i.test(subject);
+  const isCancel = /cancelaci[oó]n|cancelad|cancel+ed|cancellation/i.test(subject);
 
   const ref =
     (text.match(/N[uú]mero de referencia\s*(GYG[A-Z0-9]+)/i) || [])[1] ||
