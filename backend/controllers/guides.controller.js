@@ -67,6 +67,7 @@ export async function getAllGuides(_req, res) {
     const q = await pool.query(
       `SELECT ${RETURN_COLS}
        FROM guides
+       WHERE NOT is_viewer -- el perfil de solo lectura (Eraida) no se lista
        ORDER BY active DESC, name ASC`,
     );
     return res.json({ ok: true, guides: q.rows.map(mapGuide) });

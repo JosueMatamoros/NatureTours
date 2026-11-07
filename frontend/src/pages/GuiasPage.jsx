@@ -47,7 +47,7 @@ function Toggle({ checked, onChange, disabled, label }) {
 
 const EMPTY = {
   name: "", email: "", phone: "", cedula: "", password: "",
-  canCreateManual: false, isAdmin: false, isSupervisor: false, isGuide: true, isViewer: false,
+  canCreateManual: false, isAdmin: false, isSupervisor: false, isGuide: true,
 };
 
 function GuideModal({ guide, onClose, onSaved }) {
@@ -66,7 +66,6 @@ function GuideModal({ guide, onClose, onSaved }) {
         cedula: guide.cedula || "", password: "",
         canCreateManual: !!guide.canCreateManual, isAdmin: !!guide.isAdmin, isSupervisor: !!guide.isSupervisor,
         isGuide: guide.isGuide !== false,
-        isViewer: Boolean(guide.isViewer),
       });
     } else {
       setForm(EMPTY);
@@ -90,7 +89,6 @@ function GuideModal({ guide, onClose, onSaved }) {
         isAdmin: form.isAdmin,
         isSupervisor: form.isSupervisor,
         isGuide: form.isGuide,
-        isViewer: form.isViewer,
       };
       if (editing) await updateGuide(guide.id, payload);
       else await createGuide(payload);
@@ -161,10 +159,6 @@ function GuideModal({ guide, onClose, onSaved }) {
 
           <div className="space-y-2 rounded-xl bg-gray-50 p-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Solo lectura <span className="text-gray-400">(ve el día, no marca ni asigna; sesión sin vencer)</span></span>
-              <Toggle checked={form.isViewer} onChange={(v) => set("isViewer", v)} label="Solo lectura" />
-            </div>
-            <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">Guía asignable <span className="text-gray-400">(aparece para asignar a horarios)</span></span>
               <Toggle checked={form.isGuide} onChange={(v) => set("isGuide", v)} label="Guía asignable" />
             </div>
@@ -205,7 +199,6 @@ function GuideCard({ g, onEdit, onToggleActive, onDelete, busy }) {
             <p className="truncate font-bold text-gray-900">{g.name}</p>
             {g.isAdmin && <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-white">Admin</span>}
             {g.isSupervisor && <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">Supervisor</span>}
-            {g.isViewer && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-700">Solo lectura</span>}
             {!g.active && <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-600">Inactivo</span>}
           </div>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-500"><FiMail className="h-3.5 w-3.5" /> {g.email}</p>

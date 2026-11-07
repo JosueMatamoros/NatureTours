@@ -67,6 +67,13 @@ function formatCedula(digits) {
   return [d.slice(0, 1), d.slice(1, 5), d.slice(5, 9)].filter(Boolean).join(" ");
 }
 
+// Cédula corta de 7 dígitos (x-xxx-xxx) → completa de 9 (x-0xxx-0xxx),
+// ej. "2448088" → "204480088". Se aplica al salir del campo o al ingresar
+// (no mientras escribe, para no estorbar a quien teclea los 9 dígitos).
+function expandCedula(digits) {
+  return digits.length === 7 ? `${digits[0]}0${digits.slice(1, 4)}0${digits.slice(4)}` : digits;
+}
+
 // ─── Login ──────────────────────────────────────────────────────────────────
 function GuideLogin({ onLoggedIn }) {
   const [cedula, setCedula] = useState("");
@@ -78,13 +85,15 @@ function GuideLogin({ onLoggedIn }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
-    if (cedula.length !== 9 && cedula.length !== 7) {
+    const fullCedula = expandCedula(cedula);
+    if (fullCedula !== cedula) setCedula(fullCedula);
+    if (fullCedula.length !== 9) {
       setError("Revisá la cédula: debe tener 9 dígitos.");
       return;
     }
     setSubmitting(true);
     try {
-      const r = await guideLogin(cedula, password); // cedula = solo dígitos
+      const r = await guideLogin(fullCedula, password); // cedula = solo dígitos
       onLoggedIn(r.guide);
     } catch (err) {
       setError(err?.message || "No se pudo iniciar sesión");
@@ -129,6 +138,7 @@ function GuideLogin({ onLoggedIn }) {
               inputMode="numeric"
               value={formatCedula(cedula)}
               onChange={(e) => setCedula(e.target.value.replace(/\D/g, "").slice(0, 9))}
+              onBlur={() => setCedula((c) => expandCedula(c))}
               required
               autoComplete="username"
               placeholder="0 0000 0000"
