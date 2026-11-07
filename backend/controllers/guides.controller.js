@@ -21,6 +21,7 @@ const guideBodySchema = z.object({
   isAdmin: z.boolean().optional(),
   isSupervisor: z.boolean().optional(),
   isGuide: z.boolean().optional(),
+  isViewer: z.boolean().optional(), // solo lectura (ve el día, no marca ni asigna)
 });
 
 const updateGuideSchema = guideBodySchema.partial().extend({
@@ -51,13 +52,14 @@ function mapGuide(r) {
     isAdmin: r.is_admin,
     isSupervisor: r.is_supervisor,
     isGuide: r.is_guide,
+    isViewer: r.is_viewer,
     hasPassword: r.has_password,
     createdAt: r.created_at,
   };
 }
 
 const RETURN_COLS = `id, name, email, phone, active, can_create_manual,
-  cedula, is_admin, is_supervisor, is_guide, (password_hash IS NOT NULL) AS has_password, created_at`;
+  cedula, is_admin, is_supervisor, is_guide, is_viewer, (password_hash IS NOT NULL) AS has_password, created_at`;
 
 // GET /api/guides
 export async function getAllGuides(_req, res) {
@@ -80,18 +82,19 @@ export async function createGuide(req, res) {
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
-  const { name, email, phone, cedula, password, canCreateManual, isAdmin, isSupervisor, isGuide } = parsed.data;
+  const { name, email, phone, cedula, password, canCreateManual, isAdmin, isSupervisor, isGuide, isViewer } = parsed.data;
   const passwordHash = password && password.trim() ? hashPassword(password) : null;
   try {
     const q = await pool.query(
-      `INSERT INTO guides (name, email, phone, cedula, password_hash, can_create_manual, is_admin, is_supervisor, is_guide)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO guides (name, email, phone, cedula, password_hash, can_create_manual, is_admin, is_supervisor, is_guide, is_viewer)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING ${RETURN_COLS}`,
       [
         name, email.toLowerCase(), phone || null,
         cedula && cedula.trim() ? cedula.trim() : null,
         passwordHash, Boolean(canCreateManual), Boolean(isAdmin), Boolean(isSupervisor),
         isGuide === undefined ? true : Boolean(isGuide),
+        Boolean(isViewer),
       ],
     );
     return res.status(201).json({ ok: true, guide: mapGuide(q.rows[0]) });
@@ -114,7 +117,7 @@ export async function updateGuide(req, res) {
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
-  const { name, email, phone, cedula, password, active, canCreateManual, isAdmin, isSupervisor, isGuide } = parsed.data;
+  const { name, email, phone, cedula, password, active, canCreateManual, isAdmin, isSupervisor, isGuide, isViewer } = parsed.data;
   // Evitar auto-bloqueo: un admin no puede desactivarse ni quitarse el rol admin.
   if (req.user?.guideId && req.user.guideId === idParsed.data.id && (active === false || isAdmin === false)) {
     return res.status(400).json({
@@ -136,6 +139,7 @@ export async function updateGuide(req, res) {
            is_admin = COALESCE($8::boolean, is_admin),
            is_supervisor = COALESCE($9::boolean, is_supervisor),
            is_guide = COALESCE($11::boolean, is_guide),
+           is_viewer = COALESCE($12::boolean, is_viewer),
            password_hash = COALESCE($10::text, password_hash)
        WHERE id = $1
        RETURNING ${RETURN_COLS}`,
@@ -151,6 +155,7 @@ export async function updateGuide(req, res) {
         isSupervisor ?? null,
         passwordHash,
         isGuide ?? null,
+        isViewer ?? null,
       ],
     );
     if (q.rowCount === 0) {

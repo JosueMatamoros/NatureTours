@@ -91,32 +91,54 @@ function mapReservation(row) {
   };
 }
 
+// Cédula corta (x-xxx-xxx, 7 dígitos) → formato completo de 9 dígitos
+// (x-0xxx-0xxx). Ej: "2448088" → "204480088". Algunas personas la escriben
+// sin los ceros, así que el login acepta las dos formas.
+function expandShortCedula(digits) {
+  if (!/^\d{7}$/.test(digits)) return null;
+  return `${digits[0]}0${digits.slice(1, 4)}0${digits.slice(4, 7)}`;
+}
+
+// Rol de solo lectura: la sesión no vence (≈10 años); igual se revalida en
+// cada request que siga activo, así desactivarlo corta el acceso.
+const VIEWER_SESSION = "3650d";
+const VIEWER_COOKIE_MS = 3650 * 24 * 60 * 60 * 1000;
+
 // POST /api/guide/login  { cedula, password }
 export async function guideLogin(req, res) {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ ok: false, message: "Cédula y contraseña requeridas" });
   }
-  const { cedula, password } = parsed.data;
+  const cedula = parsed.data.cedula.replace(/\D/g, "");
+  const { password } = parsed.data;
   try {
+    const candidates = [cedula, expandShortCedula(cedula)].filter(Boolean);
     const q = await pool.query(
-      `SELECT id, name, cedula, password_hash, active, is_admin, is_supervisor
-       FROM guides WHERE cedula = $1`,
-      [cedula],
+      `SELECT id, name, cedula, password_hash, active, is_admin, is_supervisor, is_viewer
+       FROM guides WHERE cedula = ANY($1::text[])
+       ORDER BY (cedula = $2) DESC LIMIT 1`,
+      [candidates, cedula],
     );
     const guide = q.rows[0];
     if (!guide || !guide.active || !verifyPassword(password, guide.password_hash)) {
       return res.status(401).json({ ok: false, message: "Cédula o contraseña incorrecta" });
     }
 
-    const isAdmin = Boolean(guide.is_admin);
-    const isSupervisor = Boolean(guide.is_supervisor);
+    // Solo lectura: nunca admin ni supervisor, aunque la fila diga otra cosa.
+    const isViewer = Boolean(guide.is_viewer);
+    const isAdmin = !isViewer && Boolean(guide.is_admin);
+    const isSupervisor = !isViewer && Boolean(guide.is_supervisor);
     const token = jwt.sign(
-      { guideId: guide.id, role: "guide", name: guide.name, isAdmin, isSupervisor },
+      { guideId: guide.id, role: "guide", name: guide.name, isAdmin, isSupervisor, isViewer },
       process.env.JWT_SECRET,
-      { expiresIn: "30d" },
+      { expiresIn: isViewer ? VIEWER_SESSION : "30d" },
     );
-    res.cookie("guide_token", token, sessionCookieOptions());
+    res.cookie(
+      "guide_token",
+      token,
+      isViewer ? { ...sessionCookieOptions(), maxAge: VIEWER_COOKIE_MS } : sessionCookieOptions(),
+    );
 
     // Si el guía es admin, el mismo login le abre el panel: emitimos también el
     // token de admin que consume el AdminGuard (cookie + body para localStorage).
@@ -136,7 +158,7 @@ export async function guideLogin(req, res) {
       ok: true,
       token,
       adminToken: adminToken ?? null,
-      guide: { id: guide.id, name: guide.name, isAdmin, isSupervisor },
+      guide: { id: guide.id, name: guide.name, isAdmin, isSupervisor, isViewer },
     });
   } catch (err) {
     console.error("guideLogin error:", err);
@@ -162,6 +184,7 @@ export async function guideMe(req, res) {
       name: req.guide.name,
       isAdmin: Boolean(req.guide.isAdmin),
       isSupervisor: Boolean(req.guide.isSupervisor),
+      isViewer: Boolean(req.guide.isViewer),
     },
   });
 }
@@ -180,7 +203,7 @@ export async function guideMyDay(req, res) {
   try {
     // Supervisor: ve TODOS los horarios/tours del día (no solo los asignados),
     // para ayudar a pasar lista en cualquier grupo.
-    if (req.guide.isSupervisor) {
+    if (req.guide.isSupervisor || req.guide.isViewer) {
       const q = await pool.query(
         `SELECT
            b.id, b.tour_id, t.name AS tour_name,
@@ -303,6 +326,9 @@ export async function guideSetArrived(req, res) {
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   }
+  if (req.guide.isViewer) {
+    return res.status(403).json({ ok: false, message: "Perfil de solo lectura" });
+  }
   const { bookingId } = req.params;
   const guideId = req.guide.guideId;
   const isSupervisor = Boolean(req.guide.isSupervisor);
@@ -345,7 +371,7 @@ export async function guideMyDays(req, res) {
   const guideId = req.guide.guideId;
   try {
     // Supervisor: días con reservas de cualquier tour. Guía: sus días asignados.
-    const q = req.guide.isSupervisor
+    const q = req.guide.isSupervisor || req.guide.isViewer
       ? await pool.query(
           `SELECT to_char(b.tour_date,'YYYY-MM-DD') AS date, COUNT(*)::int AS slots
            FROM bookings b

@@ -59,9 +59,11 @@ function formatClock(hhmm) {
   return `${h12}:${hhmm.slice(3)} ${suffix}`;
 }
 
-// Cédula: solo dígitos (máx 9), mostrada agrupada 1-4-4 → "2 0862 0302".
+// Cédula: solo dígitos (máx 9). Con 9 se agrupa 1-4-4 → "2 0862 0302";
+// la forma corta de 7 dígitos (sin ceros) se agrupa 1-3-3 → "2 448 088".
 function formatCedula(digits) {
   const d = digits.slice(0, 9);
+  if (d.length <= 7) return [d.slice(0, 1), d.slice(1, 4), d.slice(4, 7)].filter(Boolean).join(" ");
   return [d.slice(0, 1), d.slice(1, 5), d.slice(5, 9)].filter(Boolean).join(" ");
 }
 
@@ -76,8 +78,8 @@ function GuideLogin({ onLoggedIn }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
-    if (cedula.length !== 9) {
-      setError("La cédula debe tener 9 dígitos.");
+    if (cedula.length !== 9 && cedula.length !== 7) {
+      setError("Revisá la cédula: debe tener 9 dígitos.");
       return;
     }
     setSubmitting(true);
@@ -194,7 +196,7 @@ function GuideLogin({ onLoggedIn }) {
 }
 
 // ─── Reserva ────────────────────────────────────────────────────────────────
-function ReservationRow({ r, onToggle, busy }) {
+function ReservationRow({ r, onToggle, busy, readOnly = false }) {
   const parts = [];
   if (r.adults) parts.push(`${r.adults} adulto${r.adults === 1 ? "" : "s"}`);
   if (r.children) parts.push(`${r.children} niño${r.children === 1 ? "" : "s"}`);
@@ -228,7 +230,14 @@ function ReservationRow({ r, onToggle, busy }) {
         )}
       </div>
 
-      {/* Pasar lista */}
+      {/* Pasar lista (solo lectura: solo muestra si ya llegó) */}
+      {readOnly ? (
+        r.arrived ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+            <FiCheck className="h-3.5 w-3.5" /> Llegó
+          </span>
+        ) : null
+      ) : (
       <button
         type="button"
         onClick={() => onToggle(r)}
@@ -243,6 +252,7 @@ function ReservationRow({ r, onToggle, busy }) {
       >
         <FiCheck className="h-5 w-5" />
       </button>
+      )}
     </div>
   );
 }
@@ -437,6 +447,7 @@ function GuideDay({ guide, onLogout }) {
                 <p className="truncate text-xl font-black leading-tight text-slate-900">{guide.name}</p>
               </div>
             </div>
+            {!guide.isViewer && (
             <div className="flex shrink-0 items-center gap-2">
               {guide.isAdmin && (
                 <button
@@ -457,10 +468,11 @@ function GuideDay({ guide, onLogout }) {
                 <FiLogOut className="h-5 w-5" />
               </button>
             </div>
+            )}
           </div>
         </div>
 
-        <NotificationsCard isAdmin={guide.isAdmin} className="mb-4" />
+        {!guide.isViewer && <NotificationsCard isAdmin={guide.isAdmin} className="mb-4" />}
 
         {/* Navegador de fecha */}
         <div className="relative mb-3 flex items-center justify-between gap-2">
@@ -591,7 +603,7 @@ function GuideDay({ guide, onLogout }) {
                     <p className="py-4 text-center text-sm text-slate-400">Aún no hay reservas.</p>
                   ) : (
                     slot.reservations.map((r) => (
-                      <ReservationRow key={r.id} r={r} onToggle={handleToggleArrived} busy={busyId === r.id} />
+                      <ReservationRow key={r.id} r={r} onToggle={handleToggleArrived} busy={busyId === r.id} readOnly={guide.isViewer} />
                     ))
                   )}
                 </div>
