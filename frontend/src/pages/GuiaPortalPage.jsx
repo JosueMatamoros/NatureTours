@@ -482,7 +482,7 @@ function GuideDay({ guide, onLogout }) {
           </div>
         </div>
 
-        {!guide.isViewer && <NotificationsCard isAdmin={guide.isAdmin} className="mb-4" />}
+        <NotificationsCard isAdmin={guide.isAdmin} isViewer={guide.isViewer} className="mb-4" />
 
         {/* Navegador de fecha */}
         <div className="relative mb-3 flex items-center justify-between gap-2">

@@ -31,7 +31,7 @@ async function getRegistration() {
   return navigator.serviceWorker.ready;
 }
 
-export default function NotificationsCard({ isAdmin = false, className = "" }) {
+export default function NotificationsCard({ isAdmin = false, isViewer = false, className = "" }) {
   // checking | unsupported | needs-install | needs-login | denied | off | just-on | on
   const [state, setState] = useState("checking");
   const [busy, setBusy] = useState(false);
@@ -94,7 +94,9 @@ export default function NotificationsCard({ isAdmin = false, className = "" }) {
 
   if (state === "checking" || state === "unsupported" || state === "on") return null;
 
-  const what = isAdmin
+  const what = isViewer
+    ? "Te avisamos cuando entre o se cancele una reserva para hoy o mañana."
+    : isAdmin
     ? "Te avisamos al instante de cada reserva nueva y de las cancelaciones."
     : "Te avisamos cuando te asignen un tour.";
 

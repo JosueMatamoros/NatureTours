@@ -88,6 +88,21 @@ export async function pushToAdmins(payload) {
   }
 }
 
+// Perfil de solo lectura (Eraida): recibe reservas nuevas y cancelaciones
+// solo de hoy o mañana (filtro en pushBookingToAdmins).
+export async function pushToViewers(payload) {
+  try {
+    const q = await pool.query(
+      `select s.*, g.name as guide_name from push_subscriptions s
+       join guides g on g.id = s.guide_id
+       where g.active and g.is_viewer`
+    );
+    await sendToSubscriptions(q.rows, payload);
+  } catch (err) {
+    console.error("pushToViewers error:", err);
+  }
+}
+
 export async function pushToGuide(guideId, payload) {
   try {
     const q = await pool.query(
@@ -122,6 +137,12 @@ const money = (n) => {
   return Number.isInteger(v) ? `$${v}` : `$${v.toFixed(2)}`;
 };
 const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "";
+
+function daysFromToday(ymd) {
+  const d = DateTime.fromISO(ymd, { zone: TZ });
+  const today = DateTime.now().setZone(TZ).startOf("day");
+  return Math.round(d.startOf("day").diff(today, "days").days);
+}
 
 // "Hoy · 12:00 MD", "Mañana (sáb 7 nov) · 8:00 AM", "mié 12 nov · 6:00 PM"
 function whenLabel(ymd, hm) {
@@ -205,11 +226,27 @@ export async function pushBookingToAdmins(bookingId, event = "new") {
     }
 
     const phoneLink = waLink(b.phone);
+    const title = cancelled
+      ? `❌ Cancelación ${src.label === "directa" ? "" : src.label}`.trim()
+      : `${src.emoji} Nueva reserva ${src.label}`;
+    const body = [who, when, extra].filter(Boolean).join("\n");
+
+    // Eraida (solo lectura): solo si la reserva es para hoy o mañana.
+    const days = daysFromToday(b.tour_date);
+    if (days === 0 || days === 1) {
+      pushToViewers({
+        title,
+        body,
+        image: cancelled ? undefined : TOUR_IMAGE[b.tour_id],
+        url: `/asistencia?fecha=${b.tour_date}`,
+        tag: `booking-${b.id}-${event}`,
+        actions: [{ action: "open", title: "Ver" }],
+      });
+    }
+
     await pushToAdmins({
-      title: cancelled
-        ? `❌ Cancelación ${src.label === "directa" ? "" : src.label}`.trim()
-        : `${src.emoji} Nueva reserva ${src.label}`,
-      body: [who, when, extra].filter(Boolean).join("\n"),
+      title,
+      body,
       image: cancelled ? undefined : TOUR_IMAGE[b.tour_id],
       url: `/matamoros/reservaciones?fecha=${b.tour_date}`,
       tag: `booking-${b.id}-${event}`,
