@@ -29,7 +29,7 @@ export async function getVapidPublicKey() {
   return k?.publicKey ?? null;
 }
 
-async function ensureVapid() {
+export async function ensureVapid() {
   if (!vapidReady) {
     vapidReady = loadVapid().then((k) => {
       if (!k) throw new Error("VAPID sin configurar");

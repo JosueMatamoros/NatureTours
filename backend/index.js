@@ -21,6 +21,8 @@ import otaRoutes from "./routes/ota.routes.js";
 import specialLinksRoutes from "./routes/special-links.routes.js";
 import customPaymentsRoutes from "./routes/custom-payments.routes.js";
 import pushRoutes from "./routes/push.routes.js";
+import gastosRoutes from "./gastos/routes.js";
+import { migrarGastos } from "./gastos/esquema.js";
 import { pool } from "./db.js";
 
 dotenv.config();
@@ -38,6 +40,8 @@ const allowedOrigins = [
   "http://localhost:5174", // Vite usa este puerto cuando el 5173 está ocupado
   "http://localhost:5175", // fallback cuando 5173/5174 están ocupados
   process.env.FRONTEND_URL,
+  // App Mis Gastos (GitHub Pages)
+  ...(process.env.GASTOS_FRONTEND_URL || "https://josuematamoros.github.io").split(",").map((s) => s.trim()),
 ].filter(Boolean);
 
 app.use(cors({
@@ -73,6 +77,7 @@ app.use("/api/ota", otaRoutes);
 app.use("/api/special-links", specialLinksRoutes);
 app.use("/api/custom-payments", customPaymentsRoutes);
 app.use("/api/push", pushRoutes);
+app.use("/api/gastos", gastosRoutes);
 
 const port = process.env.PORT || 4000;
 
@@ -117,6 +122,7 @@ const startupMigrations = [
     for (const sql of startupMigrations) {
       await pool.query(sql);
     }
+    await migrarGastos();
     app.listen(port, () => console.log(`API running on http://localhost:${port}`));
   } catch (err) {
     console.error("Migration failed:", err);
