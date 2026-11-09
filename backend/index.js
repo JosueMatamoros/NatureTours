@@ -122,7 +122,12 @@ const startupMigrations = [
     for (const sql of startupMigrations) {
       await pool.query(sql);
     }
-    await migrarGastos();
+    // Mis Gastos (app aparte): si algo falla aquí, el negocio arranca igual.
+    try {
+      await migrarGastos();
+    } catch (err) {
+      console.error("Mis Gastos: migración falló (el resto del backend sigue normal):", err.message);
+    }
     app.listen(port, () => console.log(`API running on http://localhost:${port}`));
   } catch (err) {
     console.error("Migration failed:", err);
