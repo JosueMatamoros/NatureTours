@@ -3,12 +3,16 @@ import { pool } from "../db.js";
 
 // Las sesiones del portal duran 30 días: en cada request se confirma que el
 // guía siga activo (y admin, si entra al panel). Desactivarlo corta el acceso.
-async function guideStillAllowed(guideId, needAdmin) {
+async function loadGuide(guideId) {
   const q = await pool.query(
-    `SELECT active, is_admin FROM guides WHERE id = $1`,
+    `SELECT active, is_admin, is_supervisor, is_viewer FROM guides WHERE id = $1`,
     [guideId]
   );
-  const g = q.rows[0];
+  return q.rows[0] || null;
+}
+
+async function guideStillAllowed(guideId, needAdmin) {
+  const g = await loadGuide(guideId);
   return Boolean(g && g.active && (!needAdmin || g.is_admin));
 }
 
@@ -59,15 +63,27 @@ export function authenticateGuide(req, res, next) {
     if (payload?.role !== "guide" || !payload?.guideId) {
       return res.status(403).json({ message: "Token no es de guía" });
     }
+    let g;
     try {
-      if (!(await guideStillAllowed(payload.guideId, false))) {
-        return res.status(403).json({ message: "Acceso revocado" });
-      }
+      g = await loadGuide(payload.guideId);
     } catch (e) {
       console.error("authenticateGuide check error:", e);
       return res.status(500).json({ message: "Error de autenticación" });
     }
-    req.guide = payload;
+    if (!g || !g.active) {
+      return res.status(403).json({ message: "Acceso revocado" });
+    }
+    // Los roles salen SIEMPRE de la BD, no del token (que dura 30 días): si a
+    // alguien le quitan supervisor, deja de ver lo de supervisor (p. ej. el
+    // dinero del día) en la siguiente consulta. Solo lectura nunca es admin
+    // ni supervisor.
+    const isViewer = Boolean(g.is_viewer);
+    req.guide = {
+      ...payload,
+      isViewer,
+      isAdmin: !isViewer && Boolean(g.is_admin),
+      isSupervisor: !isViewer && Boolean(g.is_supervisor),
+    };
     next();
   });
 }
