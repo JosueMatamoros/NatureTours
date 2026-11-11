@@ -269,11 +269,12 @@ function ReservationRow({ r, onToggle, busy, readOnly = false }) {
 }
 
 // ─── Total generado del día (solo supervisores) ─────────────────────────────
+// El monto se ve siempre; el desglose por origen se abre al tocarlo.
 const REVENUE_ROWS = [
-  { key: "direct", label: "Directo", dot: "bg-emerald-500" },
-  { key: "viator", label: "Viator", dot: "bg-blue-500" },
-  { key: "gyg", label: "GetYourGuide", dot: "bg-red-500" },
-  { key: "localbird", label: "Localbird", dot: "bg-yellow-400" },
+  { key: "direct", label: "Directo", dot: "bg-emerald-300", bar: "bg-emerald-300" },
+  { key: "viator", label: "Viator", dot: "bg-sky-300", bar: "bg-sky-300" },
+  { key: "gyg", label: "GetYourGuide", dot: "bg-rose-300", bar: "bg-rose-300" },
+  { key: "localbird", label: "Localbird", dot: "bg-amber-300", bar: "bg-amber-300" },
 ];
 
 function money(n) {
@@ -282,37 +283,75 @@ function money(n) {
 }
 
 function DayRevenueCard({ revenue }) {
-  const rows = REVENUE_ROWS.filter((r) => revenue.bySource?.[r.key] != null);
+  const [open, setOpen] = useState(false);
+  const total = Number(revenue.total) || 0;
+  const rows = REVENUE_ROWS
+    .filter((r) => revenue.bySource?.[r.key] != null)
+    .map((r) => ({ ...r, amount: Number(revenue.bySource[r.key]) || 0 }))
+    .sort((a, b) => b.amount - a.amount);
+
   return (
-    <div className="mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-4 text-white shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-100">Generado del día</p>
-          <p className="mt-0.5 text-3xl font-black tabular-nums leading-tight">{money(revenue.total)}</p>
-        </div>
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/15">
+    <div className="relative mb-4 overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/20">
+      {/* brillo decorativo */}
+      <span aria-hidden className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+      <span aria-hidden className="pointer-events-none absolute -bottom-16 -left-8 h-36 w-36 rounded-full bg-teal-300/20 blur-2xl" />
+
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls="day-revenue-breakdown"
+        className="relative flex w-full items-center gap-3 px-5 py-4 text-left transition active:scale-[0.99] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white/70"
+      >
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20 backdrop-blur-sm">
           <FiDollarSign className="h-5 w-5" />
         </span>
-      </div>
-      {rows.length > 0 && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {rows.map((r) => (
-            <div key={r.key} className="flex items-center justify-between gap-2 rounded-xl bg-white/10 px-3 py-2">
-              <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold text-emerald-50">
-                <span className={`h-2 w-2 shrink-0 rounded-full ${r.dot}`} />
-                <span className="truncate">{r.label}</span>
-              </span>
-              <span className="text-sm font-bold tabular-nums">{money(revenue.bySource[r.key])}</span>
-            </div>
-          ))}
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-100/90">Generado del día</span>
+          <span className="mt-0.5 block text-[2rem] font-black leading-none tabular-nums tracking-tight">{money(total)}</span>
+        </span>
+        <span
+          className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/15 transition-transform duration-300 ease-out motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+        >
+          <FiChevronDown className="h-4 w-4" />
+        </span>
+      </button>
+
+      <div
+        id="day-revenue-breakdown"
+        className={`relative grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+      >
+        <div className="overflow-hidden">
+          <div className="mx-4 mb-4 space-y-3 rounded-2xl bg-black/15 p-4 ring-1 ring-white/10">
+            {rows.map((r) => {
+              const pct = total > 0 ? Math.round((r.amount / total) * 100) : 0;
+              return (
+                <div key={r.key}>
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="inline-flex min-w-0 items-center gap-2 font-semibold text-white/90">
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${r.dot}`} />
+                      <span className="truncate">{r.label}</span>
+                    </span>
+                    <span className="flex items-baseline gap-2 tabular-nums">
+                      <span className="text-xs font-medium text-emerald-100/70">{pct}%</span>
+                      <span className="font-bold">{money(r.amount)}</span>
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className={`h-full rounded-full ${r.bar}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+            {revenue.missing > 0 && (
+              <p className="flex items-center gap-1.5 border-t border-white/10 pt-3 text-xs font-medium text-emerald-50/80">
+                <FiAlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {revenue.missing} reserva{revenue.missing === 1 ? "" : "s"} OTA sin precio (no se suma{revenue.missing === 1 ? "" : "n"})
+              </p>
+            )}
+          </div>
         </div>
-      )}
-      {revenue.missing > 0 && (
-        <p className="mt-2.5 text-xs font-medium text-emerald-100">
-          {revenue.missing} reserva{revenue.missing === 1 ? "" : "s"} OTA sin precio todavía (no se suma{revenue.missing === 1 ? "" : "n"}).
-        </p>
-      )}
-      <p className="mt-2 text-[11px] text-emerald-100/80">Neto para el negocio: Viator ya sin comisión, GetYourGuide −30 %.</p>
+      </div>
     </div>
   );
 }
