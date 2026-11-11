@@ -91,6 +91,28 @@ function mapReservation(row) {
   };
 }
 
+// Total generado en el día (lo que le queda al negocio), por origen:
+//   directo (web/manual/Localbird) → precio del tour (subtotal, sin la
+//     comisión de PayPal que paga el cliente)
+//   Viator → "Net Rate" del correo
+//   GetYourGuide → precio del correo − 30 % de comisión
+// Las reservas OTA sin precio guardado se cuentan aparte en `missing`.
+const OTA_SOURCES = new Set(["viator", "gyg"]);
+function dayRevenue(rows) {
+  const bySource = {};
+  let total = 0;
+  let missing = 0;
+  for (const r of rows) {
+    const amount = OTA_SOURCES.has(r.source) ? r.ota_net : r.subtotal;
+    if (amount == null) { missing += 1; continue; }
+    const n = Number(amount) || 0;
+    const key = OTA_SOURCES.has(r.source) ? r.source : r.source === "localbird" ? "localbird" : "direct";
+    bySource[key] = Math.round(((bySource[key] || 0) + n) * 100) / 100;
+    total += n;
+  }
+  return { total: Math.round(total * 100) / 100, bySource, missing };
+}
+
 // Cédula corta (x-xxx-xxx, 7 dígitos) → formato completo de 9 dígitos
 // (x-0xxx-0xxx). Ej: "2448088" → "204480088". Algunas personas la escriben
 // sin los ceros, así que el login acepta las dos formas.
@@ -209,7 +231,7 @@ export async function guideMyDay(req, res) {
            b.id, b.tour_id, t.name AS tour_name,
            to_char(b.start_time,'HH24:MI') AS start_time,
            b.adults, b.children, b.babies, b.guests,
-           b.subtotal, b.deposit_amount, b.source,
+           b.subtotal, b.deposit_amount, b.source, b.ota_net,
            b.arrived, b.external_ref, b.manual_name, b.manual_phone, b.manual_paid,
            pay.mode AS pay_mode, pay.amount AS pay_amount,
            c.name AS customer_name, c.phone AS customer_phone
@@ -246,7 +268,9 @@ export async function guideMyDay(req, res) {
         totalGuests: s.reservations.reduce((sum, r) => sum + r.guests, 0),
       }));
       await attachSlotGuides(supSlots, date);
-      return res.json({ ok: true, date, slots: supSlots, supervisor: true });
+      // El dinero del día SOLO lo ven supervisores (ni guías ni solo lectura).
+      const revenue = req.guide.isSupervisor ? dayRevenue(q.rows) : undefined;
+      return res.json({ ok: true, date, slots: supSlots, supervisor: true, revenue });
     }
 
     const slotsQ = await pool.query(

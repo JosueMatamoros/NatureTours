@@ -69,3 +69,38 @@ function procesarOTA() {
     if (okAll) thread.addLabel(label);
   });
 }
+
+/**
+ * Rellenar precios de reservas OTA que ya estaban en el sistema (una sola vez).
+ * Re-envía los correos de reserva ya procesados con `backfill: true`: el
+ * backend SOLO completa el precio de reservas que existen. No crea reservas,
+ * no cancela y no manda notificaciones. Se puede correr las veces que haga falta.
+ */
+function rellenarPrecios() {
+  var query =
+    "(from:notification.getyourguide.com OR from:t1.viator.com) newer_than:400d " +
+    "-subject:cancel -subject:cancelado -subject:cancelación -subject:canceled";
+  var start = 0, page = 50, enviados = 0, rellenados = 0;
+  while (true) {
+    var threads = GmailApp.search(query, start, page);
+    if (!threads.length) break;
+    threads.forEach(function (thread) {
+      thread.getMessages().forEach(function (msg) {
+        if (!/GYG[A-Z0-9]{6,}|BR-\d+/i.test(msg.getSubject())) return;
+        var resp = UrlFetchApp.fetch(BACKEND_URL, {
+          method: "post",
+          contentType: "application/json",
+          headers: { "x-ota-token": TOKEN },
+          payload: JSON.stringify({
+            from: msg.getFrom(), subject: msg.getSubject(), body: msg.getBody(), backfill: true,
+          }),
+          muteHttpExceptions: true,
+        });
+        enviados++;
+        if (/price-filled/.test(resp.getContentText())) rellenados++;
+      });
+    });
+    start += page;
+  }
+  Logger.log("Listo: %s correos revisados, %s reservas con precio nuevo.", enviados, rellenados);
+}

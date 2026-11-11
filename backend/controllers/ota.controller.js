@@ -14,13 +14,28 @@ export async function otaInbound(req, res) {
     return res.status(401).json({ ok: false, message: "Token inválido" });
   }
 
-  const { from = "", subject = "", body = "" } = req.body || {};
+  const { from = "", subject = "", body = "", backfill = false } = req.body || {};
   const parsed = parseOtaEmail({ from, subject, body });
   if (!parsed) {
     return res.json({ ok: true, ignored: true }); // no es una reserva OTA reconocible
   }
 
   try {
+    // Relleno de precios (correos viejos re-enviados por `rellenarPrecios` del
+    // Apps Script): SOLO completa el precio de reservas que ya existen. Nunca
+    // crea, cancela ni notifica.
+    if (backfill) {
+      if (parsed.kind !== "confirmation" || parsed.net == null) {
+        return res.json({ ok: true, action: "backfill-skip", ref: parsed.externalRef });
+      }
+      const u = await pool.query(
+        `UPDATE bookings SET ota_gross = $2, ota_net = $3, updated_at = now()
+         WHERE external_ref = $1 AND ota_net IS NULL`,
+        [parsed.externalRef, parsed.gross, parsed.net],
+      );
+      return res.json({ ok: true, action: u.rowCount ? "price-filled" : "backfill-skip", ref: parsed.externalRef });
+    }
+
     if (parsed.kind === "cancellation") {
       const q = await pool.query(
         `UPDATE bookings
@@ -51,18 +66,19 @@ export async function otaInbound(req, res) {
       `INSERT INTO bookings
          (tour_id, tour_date, start_time, adults, children, babies,
           status, source, manual_name, manual_phone, manual_paid, expires_at, external_ref,
-          cancelled_at)
+          cancelled_at, ota_gross, ota_net)
        VALUES ($1,$2::date,$3::time,$4,$5,$6,
                CASE WHEN $11 THEN 'cancelled' ELSE 'paid' END,
                $7,$8,$9,0,NULL,$10,
-               CASE WHEN $11 THEN now() ELSE NULL END)
+               CASE WHEN $11 THEN now() ELSE NULL END,
+               $12,$13)
        ON CONFLICT (external_ref) WHERE external_ref IS NOT NULL DO NOTHING
        RETURNING id`,
       [
         parsed.tourId, parsed.date, parsed.time,
         parsed.adults, parsed.children, parsed.babies,
         parsed.provider, parsed.name, parsed.phone, parsed.externalRef,
-        preCancelled,
+        preCancelled, parsed.gross, parsed.net,
       ],
     );
     if (q.rowCount && !preCancelled) { notifyBooking(q.rows[0].id, "new"); pushBookingToAdmins(q.rows[0].id, "new"); }

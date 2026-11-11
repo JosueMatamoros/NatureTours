@@ -14,6 +14,28 @@ const MONTHS_ES = {
 
 const pad = (n) => String(n).padStart(2, "0");
 
+// Comisión de GetYourGuide: el correo trae lo que pagó el cliente y GYG se
+// queda con el 30 % (verificado con la factura de octubre 2026: 11 adultos ×
+// $70 = $770 → pagaron $539). Viator ya manda el neto ("Net Rate").
+export const GYG_COMMISSION = 0.3;
+
+// "170.80", "1,170.80" (EE.UU.) o "140,00", "1.050,00" (europeo) → número.
+export function parseMoney(raw) {
+  if (!raw) return null;
+  let s = String(raw).replace(/[^\d.,]/g, "");
+  if (!s) return null;
+  const lastComma = s.lastIndexOf(",");
+  const lastDot = s.lastIndexOf(".");
+  if (lastComma > lastDot) {
+    // coma decimal: los puntos son de miles
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else {
+    s = s.replace(/,/g, "");
+  }
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
+}
+
 function normTime(h, m) {
   return `${pad(Number(h))}:${pad(Number(m))}`;
 }
@@ -97,6 +119,9 @@ function parseViator({ from, subject, body }) {
   const travM = text.match(/Travelers:\s*(.+?)\s*(?:Product Code:|Tour Grade|Tour Language|Location:)/i);
   const phoneM = text.match(/Phone:\s*(?:\(Alternate Phone\))?\s*([A-Za-z]{0,3}[+\d][\d()\s+-]{5,20})/i);
   const tourM = text.match(/Tour Name:\s*(.+?)\s*(?:Travel Date:|Booking Reference:)/i);
+  // "Net Rate: USD $170.80" = lo que Viator le paga al negocio.
+  const netM = text.match(/Net Rate:\s*(?:[A-Z]{3})?\s*\$?\s*([\d.,]+)/i);
+  const net = parseMoney(netM ? netM[1] : null);
 
   if (!dateM || !timeM) return null;
   const month = MONTHS_EN[dateM[1].slice(0, 3).toLowerCase()];
@@ -116,6 +141,8 @@ function parseViator({ from, subject, body }) {
     time: normTime(h, m),
     name: nameM ? nameM[1].replace(/[\s|]+$/, "").trim() : "Cliente Viator",
     phone: cleanPhone(phoneM ? phoneM[1] : ""),
+    gross: null,
+    net,
     ...pax,
   };
 }
@@ -169,6 +196,10 @@ function parseGyg({ subject, body }) {
     /(?:reserva de última hora:|Se ha reservado tu producto)\s*(.+?)\s*(?:N[uú]mero de referencia|\||\n)/i,
   );
   const tourName = tourM ? tourM[1].trim() : "GetYourGuide";
+  // "Precio 140,00 $" = lo que pagó el cliente; al negocio le queda el 70 %.
+  const priceM = text.match(/Precio\s*(?:US\$|USD|\$)?\s*([\d.,]+)/i);
+  const gross = parseMoney(priceM ? priceM[1] : null);
+  const net = gross != null ? Math.round(gross * (1 - GYG_COMMISSION) * 100) / 100 : null;
 
   return {
     provider: "gyg",
@@ -180,6 +211,8 @@ function parseGyg({ subject, body }) {
     time,
     name: nameM ? nameM[1].trim() : "Cliente GetYourGuide",
     phone: cleanPhone(phoneM ? phoneM[1] : ""),
+    gross,
+    net,
     ...pax,
   };
 }
