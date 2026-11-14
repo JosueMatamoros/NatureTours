@@ -77,11 +77,6 @@ function shiftMonth(month, delta) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 }
 
-function monthLabel(month) {
-  const [y, m] = month.split("-").map(Number);
-  return `${MONTHS[m - 1]} ${y}`;
-}
-
 function dateLabel(ymd) {
   if (!ymd) return "Elegir fecha";
   const [y, m, d] = ymd.split("-").map(Number);
@@ -166,15 +161,29 @@ function DateButton({ value, onChange }) {
         <FiChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <>
-          <button
-            type="button"
-            aria-hidden
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-20 cursor-default"
-          />
-          <div className="absolute left-0 top-full z-30 mt-2 rounded-2xl border border-gray-200 bg-white p-2 shadow-xl">
+        // Centrado sobre la pantalla (no debajo del campo): en el celular no se corta.
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Elegir fecha del pago"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+          onClick={() => setOpen(false)}
+          onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl bg-white p-3 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1 flex items-center justify-between px-2 pt-1">
+              <p className="text-sm font-bold text-gray-800">Fecha del pago</p>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="min-h-11 rounded-xl px-3 text-sm font-semibold text-gray-500 hover:bg-gray-100 cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
             <CalendarPicker
               selected={value || undefined}
               bare
@@ -187,7 +196,7 @@ function DateButton({ value, onChange }) {
               }}
             />
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -586,26 +595,29 @@ export default function FinanzasPage() {
           <FiArrowLeft /> Volver
         </button>
 
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-black">Finanzas</h1>
+        {/* Título + filtro del mes (arriba a la derecha) */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-black leading-tight">Finanzas</h1>
             <p className="text-sm text-gray-500">Control de fin de mes.</p>
           </div>
-          <div className="flex items-center gap-1 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-gray-200">
+          <div className="flex shrink-0 items-center rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
             <button
               type="button"
               onClick={() => setMonth((m) => shiftMonth(m, -1))}
               aria-label="Mes anterior"
-              className="grid h-11 w-11 place-items-center rounded-xl text-gray-500 hover:bg-gray-100 cursor-pointer"
+              className="grid h-11 w-10 place-items-center rounded-l-2xl text-gray-500 hover:bg-gray-100 cursor-pointer"
             >
               <FiChevronLeft className="h-5 w-5" />
             </button>
-            <span className="min-w-36 text-center text-sm font-bold capitalize">{monthLabel(month)}</span>
+            <span className="min-w-[4.75rem] text-center text-sm font-bold capitalize tabular-nums">
+              {MONTHS_SHORT[Number(month.split("-")[1]) - 1]} {month.split("-")[0]}
+            </span>
             <button
               type="button"
               onClick={() => setMonth((m) => shiftMonth(m, 1))}
               aria-label="Mes siguiente"
-              className="grid h-11 w-11 place-items-center rounded-xl text-gray-500 hover:bg-gray-100 cursor-pointer"
+              className="grid h-11 w-10 place-items-center rounded-r-2xl text-gray-500 hover:bg-gray-100 cursor-pointer"
             >
               <FiChevronRight className="h-5 w-5" />
             </button>
