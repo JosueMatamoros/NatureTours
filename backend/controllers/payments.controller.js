@@ -133,7 +133,11 @@ export async function createPayment(req, res) {
       [bookingId],
     );
 
-    const nextBookingStatus = mode === "full" ? "paid" : "pending";
+    // Con el depósito la reserva ya queda CONFIRMADA ('paid'): el saldo se cobra
+    // al llegar y se calcula desde los pagos (modo 'deposit'). Antes quedaba en
+    // 'pending' y, al vencer su plazo, pasaba a 'expired' y liberaba el cupo
+    // aunque el cliente ya había pagado.
+    const nextBookingStatus = "paid";
 
     await client.query(
       `

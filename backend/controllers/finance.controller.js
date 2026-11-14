@@ -28,12 +28,35 @@ function toAmount(v) {
 
 const num = (v) => (v == null ? null : Number(v));
 
+// Viator paga cada lunes lo de los tours de la semana anterior (lunes a
+// domingo). Verificado: pago del lun 2 nov 2026 = $387.35 = tours del 26 al
+// 31 oct. Devuelve el próximo pago estimado (hoy, si hoy es lunes).
+async function viatorNextPayment() {
+  const q = await pool.query(
+    `WITH hoy AS (SELECT (now() AT TIME ZONE 'America/Costa_Rica')::date AS d),
+          pago AS (SELECT d + ((8 - extract(isodow FROM d)::int) % 7) AS lunes FROM hoy)
+     SELECT to_char(pago.lunes, 'YYYY-MM-DD') AS pay_date,
+            to_char(pago.lunes - 7, 'YYYY-MM-DD') AS from_date,
+            to_char(pago.lunes - 1, 'YYYY-MM-DD') AS to_date,
+            COALESCE(SUM(b.ota_net), 0)::float AS amount,
+            COUNT(b.id)::int AS bookings,
+            COUNT(b.id) FILTER (WHERE b.ota_net IS NULL)::int AS missing
+     FROM pago
+     LEFT JOIN bookings b
+       ON b.source = 'viator' AND b.status <> 'cancelled'
+      AND b.tour_date >= pago.lunes - 7 AND b.tour_date < pago.lunes
+     GROUP BY pago.lunes`,
+  );
+  const r = q.rows[0];
+  return r ? { payDate: r.pay_date, from: r.from_date, to: r.to_date, amount: Math.round(r.amount * 100) / 100, bookings: r.bookings, missing: r.missing } : null;
+}
+
 // GET /api/finance?month=YYYY-MM
 export async function getFinanceMonth(req, res) {
   const range = monthRange(req.query.month);
   if (!range) return res.status(400).json({ ok: false, message: "Mes inválido (YYYY-MM)" });
   try {
-    const [generated, monthQ, payQ] = await Promise.all([
+    const [generated, monthQ, payQ, viatorNext] = await Promise.all([
       revenueBetween(range.from, range.to),
       pool.query(`SELECT * FROM finance_months WHERE month = $1::date`, [range.from]),
       pool.query(
@@ -43,6 +66,7 @@ export async function getFinanceMonth(req, res) {
          ORDER BY paid_at, created_at`,
         [range.from, range.to],
       ),
+      viatorNextPayment(),
     ]);
     const m = monthQ.rows[0];
     const payments = payQ.rows.map((p) => ({
@@ -63,6 +87,7 @@ export async function getFinanceMonth(req, res) {
       },
       payments,
       received,
+      viatorNext,
     });
   } catch (err) {
     console.error("getFinanceMonth error:", err);

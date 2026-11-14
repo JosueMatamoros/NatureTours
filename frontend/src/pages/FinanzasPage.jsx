@@ -38,7 +38,7 @@ const PROVIDERS = {
   viator: {
     name: "Viator",
     short: "Viator",
-    when: "Paga cada lunes",
+    when: "Paga cada lunes la semana anterior",
     accent: "text-sky-700",
     panel: "bg-sky-50/60 ring-sky-100",
     chip: "bg-sky-100 text-sky-700",
@@ -75,6 +75,19 @@ function shiftMonth(month, delta) {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(y, m - 1 + delta, 1);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+
+// "2026-11-16" → "lun 16 nov"
+function weekdayLabel(ymd) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const wd = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"][new Date(y, m - 1, d).getDay()];
+  return `${wd} ${d} ${MONTHS_SHORT[m - 1]}`;
+}
+
+// "2026-11-09" → "9 nov"
+function shortDay(ymd) {
+  const [, m, d] = ymd.split("-").map(Number);
+  return `${d} ${MONTHS_SHORT[m - 1]}`;
 }
 
 function dateLabel(ymd) {
@@ -418,7 +431,7 @@ function BalancesCard({ month, balances, onSaved }) {
 }
 
 // ─── 3. Registro de pagos de las OTAs ───────────────────────────────────────
-function OtaPaymentsCard({ month, generated, payments, received, onChanged }) {
+function OtaPaymentsCard({ month, generated, payments, received, viatorNext, onChanged }) {
   const defaultDate = todayYmd().startsWith(month) ? todayYmd() : `${month}-01`;
   const [provider, setProvider] = useState("viator");
   const [amount, setAmount] = useState("");
@@ -484,6 +497,21 @@ function OtaPaymentsCard({ month, generated, payments, received, onChanged }) {
                 <p className="text-xl font-black tabular-nums text-gray-700">{money(generated?.bySource?.[p])}</p>
               </div>
             </div>
+            {p === "viator" && viatorNext && (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/80 px-3 py-2.5 ring-1 ring-sky-100">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-sky-700/80">
+                    Próximo pago · {weekdayLabel(viatorNext.payDate)}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {viatorNext.bookings
+                      ? `${viatorNext.bookings} reserva${viatorNext.bookings === 1 ? "" : "s"} del ${shortDay(viatorNext.from)} al ${shortDay(viatorNext.to)}`
+                      : `Sin tours del ${shortDay(viatorNext.from)} al ${shortDay(viatorNext.to)}`}
+                  </p>
+                </div>
+                <p className="shrink-0 text-lg font-black tabular-nums text-sky-700">≈ {money(viatorNext.amount)}</p>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -674,6 +702,7 @@ export default function FinanzasPage() {
               generated={data.generated}
               payments={data.payments}
               received={data.received}
+              viatorNext={data.viatorNext}
               onChanged={() => load(month, { quiet: true })}
             />
           </>
