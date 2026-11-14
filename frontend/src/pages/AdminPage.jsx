@@ -3,7 +3,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import InstallAppCard from "../components/ui/InstallAppCard";
 import NotificationsCard from "../components/ui/NotificationsCard";
-import { FiCalendar, FiSliders, FiUsers, FiUserCheck, FiCompass, FiLink, FiArrowLeft } from "react-icons/fi";
+import { FiCalendar, FiSliders, FiUsers, FiUserCheck, FiCompass, FiLink, FiArrowLeft, FiDollarSign } from "react-icons/fi";
 
 const CARDS = [
   {
@@ -65,6 +65,16 @@ const CARDS = [
     card: "border-teal-300/20 bg-linear-to-br from-teal-500 to-cyan-700 shadow-[0_18px_40px_rgba(20,184,166,0.25)] hover:shadow-[0_24px_60px_rgba(20,184,166,0.35)] focus:ring-teal-300/30",
     eyebrowColor: "text-teal-50/80",
     descColor: "text-teal-50/90",
+  },
+  {
+    to: "/matamoros/finanzas",
+    eyebrow: "Cierre del mes",
+    title: "Finanzas",
+    desc: "Lo generado, saldos de BAC y PayPal, y pagos de Viator y GetYourGuide.",
+    icon: FiDollarSign,
+    card: "border-slate-300/20 bg-linear-to-br from-slate-700 to-slate-900 shadow-[0_18px_40px_rgba(15,23,42,0.25)] hover:shadow-[0_24px_60px_rgba(15,23,42,0.35)] focus:ring-slate-300/30",
+    eyebrowColor: "text-slate-200/80",
+    descColor: "text-slate-200/90",
   },
 ];
 

@@ -31,6 +31,7 @@ const ResellersAdminPage = lazy(() => import("./pages/ResellersAdminPage"));
 const SpecialLinkPage = lazy(() => import("./pages/SpecialLinkPage"));
 const CustomPaymentPage = lazy(() => import("./pages/CustomPaymentPage"));
 const SpecialLinksAdminPage = lazy(() => import("./pages/SpecialLinksAdminPage"));
+const FinanzasPage = lazy(() => import("./pages/FinanzasPage"));
 
 function PageLoader() {
   return (
@@ -232,6 +233,14 @@ const router = createBrowserRouter([
             element: (
               <LazyPage>
                 <SpecialLinksAdminPage />
+              </LazyPage>
+            ),
+          },
+          {
+            path: "/matamoros/finanzas",
+            element: (
+              <LazyPage>
+                <FinanzasPage />
               </LazyPage>
             ),
           },

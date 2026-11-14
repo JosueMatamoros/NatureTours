@@ -3,6 +3,7 @@
 // de horarios que no son suyos.
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
+import { computeRevenue } from "../utils/revenue.js";
 import { pushAssignmentToGuide } from "../utils/push.js";
 import { verifyPassword } from "../utils/password.js";
 import { z } from "zod";
@@ -89,28 +90,6 @@ function mapReservation(row) {
       phone: row.source === "web" ? row.customer_phone : row.manual_phone,
     },
   };
-}
-
-// Total generado en el día (lo que le queda al negocio), por origen:
-//   directo (web/manual/Localbird) → precio del tour (subtotal, sin la
-//     comisión de PayPal que paga el cliente)
-//   Viator → "Net Rate" del correo
-//   GetYourGuide → precio del correo − 30 % de comisión
-// Las reservas OTA sin precio guardado se cuentan aparte en `missing`.
-const OTA_SOURCES = new Set(["viator", "gyg"]);
-function dayRevenue(rows) {
-  const bySource = {};
-  let total = 0;
-  let missing = 0;
-  for (const r of rows) {
-    const amount = OTA_SOURCES.has(r.source) ? r.ota_net : r.subtotal;
-    if (amount == null) { missing += 1; continue; }
-    const n = Number(amount) || 0;
-    const key = OTA_SOURCES.has(r.source) ? r.source : r.source === "localbird" ? "localbird" : "direct";
-    bySource[key] = Math.round(((bySource[key] || 0) + n) * 100) / 100;
-    total += n;
-  }
-  return { total: Math.round(total * 100) / 100, bySource, missing };
 }
 
 // Cédula corta (x-xxx-xxx, 7 dígitos) → formato completo de 9 dígitos
@@ -269,7 +248,7 @@ export async function guideMyDay(req, res) {
       }));
       await attachSlotGuides(supSlots, date);
       // El dinero del día SOLO lo ven supervisores (ni guías ni solo lectura).
-      const revenue = req.guide.isSupervisor ? dayRevenue(q.rows) : undefined;
+      const revenue = req.guide.isSupervisor ? computeRevenue(q.rows) : undefined;
       return res.json({ ok: true, date, slots: supSlots, supervisor: true, revenue });
     }
 

@@ -22,6 +22,7 @@ import specialLinksRoutes from "./routes/special-links.routes.js";
 import customPaymentsRoutes from "./routes/custom-payments.routes.js";
 import pushRoutes from "./routes/push.routes.js";
 import gastosRoutes from "./gastos/routes.js";
+import financeRoutes from "./routes/finance.routes.js";
 import { migrarGastos } from "./gastos/esquema.js";
 import { pool } from "./db.js";
 
@@ -78,6 +79,7 @@ app.use("/api/special-links", specialLinksRoutes);
 app.use("/api/custom-payments", customPaymentsRoutes);
 app.use("/api/push", pushRoutes);
 app.use("/api/gastos", gastosRoutes);
+app.use("/api/finance", financeRoutes);
 
 const port = process.env.PORT || 4000;
 
