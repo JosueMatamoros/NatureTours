@@ -154,7 +154,12 @@ const SEL_GUIAS_ESTADO = `
   LEFT JOIN ${S}.movimientos m ON m.id = p.movimiento_id AND NOT m.eliminado
   WHERE sg.tour_date >= '${GUIAS_DESDE}'`;
 
-async function listaGuias(grupoId, mes) {
+// Con mes: todos los de ese mes. Sin mes: los que faltan por pagar hasta hoy (los más viejos primero).
+async function listaGuias(grupoId, mes = null) {
+  const filtro = mes
+    ? `to_char(sg.tour_date, 'YYYY-MM') = $2 ORDER BY sg.tour_date DESC, sg.start_time DESC`
+    : `m.id IS NULL AND NOT coalesce(p.no_aplica, false) AND sg.tour_date <= (now() AT TIME ZONE '${TZ}')::date
+       ORDER BY sg.tour_date, sg.start_time`;
   const q = await pool.query(
     `SELECT sg.id, to_char(sg.tour_date, 'YYYY-MM-DD') AS fecha, to_char(sg.start_time, 'HH24:MI') AS hora,
             t.name AS tour, g.name AS guia, coalesce(p.no_aplica, false) AS "noAplica",
@@ -164,8 +169,7 @@ async function listaGuias(grupoId, mes) {
      JOIN public.guides g ON g.id = sg.guide_id
      LEFT JOIN ${S}.pagos_guia p ON p.slot_id = sg.id AND p.grupo_id = $1
      LEFT JOIN ${S}.movimientos m ON m.id = p.movimiento_id AND NOT m.eliminado
-     WHERE sg.tour_date >= '${GUIAS_DESDE}' AND to_char(sg.tour_date, 'YYYY-MM') = $2
-     ORDER BY sg.tour_date DESC, sg.start_time DESC`, [grupoId, mes]);
+     WHERE sg.tour_date >= '${GUIAS_DESDE}' AND ${filtro}`, mes ? [grupoId, mes] : [grupoId]);
   return q.rows.map((r) => ({ ...r, pagadoPor: r.pagadoPor || null, monto: r.monto ?? PRECIO_GUIA }));
 }
 
@@ -347,6 +351,16 @@ router.patch("/movimientos/:id/categoria", h(async (req, res) => {
 }));
 
 // Mandar un gasto a un grupo (o devolverlo a personal con grupoId = null).
+// Editar descripción y monto de un gasto agregado a mano (incluye los pagos de guías)
+router.patch("/movimientos/:id", h(async (req, res) => {
+  const id = validar(uuid, req.params.id);
+  const b = validar(z.object({ comercio: nuevoMov.shape.comercio, monto: nuevoMov.shape.monto }), req.body);
+  const m = await movimientoPermitido(pool, id, req.usuario.id);
+  if (m.origen !== "manual") throw err("Los gastos que vienen del banco no se pueden editar");
+  await pool.query(`UPDATE ${S}.movimientos SET comercio = $2, monto = $3, monto_original = $3 WHERE id = $1`, [id, b.comercio, b.monto]);
+  res.json({ ok: true, ...(await datos(req.usuario.id)) });
+}));
+
 router.post("/movimientos/:id/mover", h(async (req, res) => {
   const id = validar(uuid, req.params.id);
   const { grupoId } = validar(z.object({ grupoId: uuid.nullable() }), req.body);
@@ -427,7 +441,7 @@ const mesValido = z.string().regex(/^\d{4}-\d{2}$/, "Mes inválido");
 
 router.get("/grupos/:id/guias", h(async (req, res) => {
   const grupoId = validar(uuid, req.params.id);
-  const mes = validar(mesValido, req.query.mes);
+  const mes = req.query.mes ? validar(mesValido, req.query.mes) : null;
   await grupoConGuias(grupoId, req.usuario.id);
   res.json({ ok: true, precio: PRECIO_GUIA, guias: await listaGuias(grupoId, mes) });
 }));
@@ -437,7 +451,7 @@ router.get("/grupos/:id/guias", h(async (req, res) => {
 router.put("/grupos/:id/guias/:slotId", h(async (req, res) => {
   const grupoId = validar(uuid, req.params.id);
   const slotId = validar(uuid, req.params.slotId);
-  const b = validar(z.object({ pagadoPor: uuid.nullable(), noAplica: z.boolean().optional(), mes: mesValido }), req.body);
+  const b = validar(z.object({ pagadoPor: uuid.nullable(), noAplica: z.boolean().optional(), mes: mesValido.optional() }), req.body);
   const uid = req.usuario.id;
   await grupoConGuias(grupoId, uid);
   if (b.pagadoPor && !(await esMiembro(pool, grupoId, b.pagadoPor))) throw err("Esa persona no es del grupo");
@@ -482,7 +496,7 @@ router.put("/grupos/:id/guias/:slotId", h(async (req, res) => {
        ON CONFLICT (grupo_id, slot_id) DO UPDATE SET movimiento_id = $3, no_aplica = $4, actualizado_por = $5, actualizado = now()`,
       [slotId, grupoId, movId, !b.pagadoPor && Boolean(b.noAplica), uid]);
   });
-  res.json({ ok: true, precio: PRECIO_GUIA, guias: await listaGuias(grupoId, b.mes), ...(await datos(uid)) });
+  res.json({ ok: true, precio: PRECIO_GUIA, guias: await listaGuias(grupoId, b.mes || null), ...(await datos(uid)) });
 }));
 
 // ── Grupos ──

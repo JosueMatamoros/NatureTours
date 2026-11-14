@@ -92,6 +92,14 @@ try {
     ok(r.grupos[0].movimientos.filter((m) => m.comercio.startsWith('Guía ')).length === 1, 'volver a marcarlo funciona');
     r = await call('PUT', `/grupos/${g.id}/guias/${slot.id}`, { pagadoPor: null, noAplica: true, mes: slot.mes }, M);
     ok(r.guias.find((x) => x.id === slot.id).noAplica && !r.grupos[0].movimientos.some((m) => m.comercio.startsWith('Guía ')), '"no aplica" quita el gasto');
+    r = await call('GET', `/grupos/${g.id}/guias`, null, J);
+    ok(!r.guias.some((x) => x.id === slot.id) && r.guias.every((x) => !x.pagadoPor && !x.noAplica), 'pendientes: no incluye los ya resueltos');
+    r = await call('PUT', `/grupos/${g.id}/guias/${slot.id}`, { pagadoPor: mario.id }, J);
+    mov = r.grupos[0].movimientos.find((m) => m.comercio.startsWith('Guía '));
+    ok(!r.guias.some((x) => x.id === slot.id), 'al pagar sale de la lista de pendientes');
+    r = await call('PATCH', `/movimientos/${mov.id}`, { comercio: 'Guía Andy (medio día)', monto: 12500 }, M);
+    ok(r.grupos[0].movimientos.some((m) => m.id === mov.id && m.monto === 12500 && m.comercio === 'Guía Andy (medio día)'), 'editar monto y descripción del pago');
+    ok((await call('PATCH', `/movimientos/${auto.id}`, { comercio: 'x', monto: 1 }, J)).st === 400, 'gastos del banco no se editan');
     ok((await pool.query('SELECT count(*)::int n FROM public.slot_guides')).rows[0].n === antes, 'la asignación de guías del negocio no cambia');
   } else ok(true, '(sin guías asignados desde noviembre: se salta la prueba de guías)');
   // Token de gastos no sirve como admin del negocio
