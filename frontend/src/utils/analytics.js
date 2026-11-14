@@ -1,6 +1,10 @@
-// Eventos de Google Analytics 4 (gtag ya está en index.html: G-KD2MG9FDHZ).
-// El evento `purchase` es la conversión que se importa en Google Ads
-// (GA4 vinculado a Google Ads → Conversiones → Importar → purchase).
+// Eventos de Google Analytics 4 y Google Ads (gtag en index.html:
+// G-KD2MG9FDHZ y AW-18019046305).
+// - GA4 `purchase`: estadística en Analytics.
+// - Google Ads `conversion` "Reserva pagada (web)": la conversión principal que
+//   usan las campañas (con conversiones mejoradas: email del cliente, Google lo
+//   cifra con SHA-256 antes de enviarlo).
+const ADS_CONVERSION = "AW-18019046305/fU2uCL3clrgdEKGnk5BD";
 
 function gtagSafe(...args) {
   if (typeof window === "undefined" || typeof window.gtag !== "function") return false;
@@ -35,6 +39,17 @@ export function trackPurchase(paymentId, receipt) {
       },
     ],
   });
+  // Google Ads: conversión con el mismo valor y el ID de pago (evita duplicados).
+  if (receipt.customerEmail) {
+    gtagSafe("set", "user_data", { email: String(receipt.customerEmail).trim().toLowerCase() });
+  }
+  gtagSafe("event", "conversion", {
+    send_to: ADS_CONVERSION,
+    value,
+    currency: "USD",
+    transaction_id: String(paymentId),
+  });
+
   if (sent) {
     try { localStorage.setItem(key, "1"); } catch { /* nada */ }
   }
