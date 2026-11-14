@@ -134,12 +134,17 @@ const SEL_MOV = `
   JOIN ${S}.usuarios u ON u.id = m.usuario_id
   LEFT JOIN ${S}.categorias c ON c.id = m.categoria_id`;
 
+async function soloGrupos(uid) {
+  const r = await pool.query(`SELECT solo_grupos FROM ${S}.usuarios WHERE id = $1`, [uid]);
+  return Boolean(r.rows[0]?.solo_grupos);
+}
+
 const SEL_CAT = `SELECT id, nombre, icono, color FROM ${S}.categorias`;
 
 /** Todo lo que la app necesita para pintar: personal + cada grupo. */
 async function datos(uid) {
   const [usuario, usuarios, personalCats, personalMovs, grupos] = await Promise.all([
-    pool.query(`SELECT id, nombre FROM ${S}.usuarios WHERE id = $1`, [uid]),
+    pool.query(`SELECT id, nombre, solo_grupos AS "soloGrupos" FROM ${S}.usuarios WHERE id = $1`, [uid]),
     pool.query(`SELECT id, nombre FROM ${S}.usuarios ORDER BY nombre`),
     pool.query(`${SEL_CAT} WHERE usuario_id = $1 ORDER BY orden, nombre`, [uid]),
     pool.query(`${SEL_MOV} WHERE m.usuario_id = $1 AND m.grupo_id IS NULL AND NOT m.eliminado ORDER BY m.fecha DESC`, [uid]),
@@ -257,6 +262,7 @@ router.post("/movimientos", h(async (req, res) => {
   const b = validar(nuevoMov, req.body);
   const uid = req.usuario.id;
   if (b.grupoId && !(await esMiembro(pool, b.grupoId, uid))) throw err("No eres parte de ese grupo", 403);
+  if (!b.grupoId && (await soloGrupos(uid))) throw err("Tu cuenta solo maneja gastos de grupos", 403);
   await categoriaDelAmbito(pool, b.categoriaId, { uid, grupoId: b.grupoId || null });
   const fecha = b.fecha ? new Date(b.fecha) : new Date();
   if (isNaN(fecha)) throw err("Fecha inválida");
@@ -309,6 +315,7 @@ router.post("/movimientos/:id/mover", h(async (req, res) => {
   const m = await movimientoPermitido(pool, id, uid);
   if (m.usuario_id !== uid) throw err("Solo quien hizo el gasto lo puede mover", 403);
   if (grupoId && !(await esMiembro(pool, grupoId, uid))) throw err("No eres parte de ese grupo", 403);
+  if (!grupoId && (await soloGrupos(uid))) throw err("Tu cuenta solo maneja gastos de grupos", 403);
   const categoriaId = await categorizar(pool, { usuarioId: uid, grupoId }, m.texto_categoria || m.comercio);
   await pool.query(`UPDATE ${S}.movimientos SET grupo_id = $2, categoria_id = $3, manual = false WHERE id = $1`, [id, grupoId, categoriaId]);
   res.json({ ok: true, ...(await datos(uid)) });
@@ -384,6 +391,7 @@ router.post("/grupos", h(async (req, res) => {
     miembros: z.array(uuid).max(20).optional(),
   }), req.body);
   const uid = req.usuario.id;
+  if (await soloGrupos(uid)) throw err("Tu cuenta no puede crear grupos", 403);
   await enTransaccion(async (db) => {
     const g = await db.query(
       `INSERT INTO ${S}.grupos (nombre, icono, color, creado_por) VALUES ($1, $2, $3, $4) RETURNING id`,
