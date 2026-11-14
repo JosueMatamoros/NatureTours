@@ -2,13 +2,13 @@ import { FaTripadvisor, FaGoogle, FaStar } from "react-icons/fa";
 import { FiArrowUpRight } from "react-icons/fi";
 
 // ── Reseñas por plataforma ───────────────────────────────────────────────────
-// Datos reales confirmados (ago 2026). Actualizá aquí cuando cambien.
+// Datos reales confirmados (nov 2026). Actualizá aquí cuando cambien.
 const PLATFORMS = [
   {
     id: "getyourguide",
     label: "GetYourGuide",
     rating: 5.0,
-    reviews: 114,
+    reviews: 84,
     url: "https://www.getyourguide.com/es-es/san-ramon-costa-rica-l269637/la-fortuna-paseo-a-caballo-con-cruce-del-rio-t1246580/",
   },
   {
@@ -22,7 +22,7 @@ const PLATFORMS = [
     id: "google",
     label: "Google",
     rating: 5.0,
-    reviews: 184,
+    reviews: 252,
     url: "https://maps.app.goo.gl/4tou36QDncguSgq96",
   },
 ];
