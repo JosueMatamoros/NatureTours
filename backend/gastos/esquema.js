@@ -129,6 +129,14 @@ export async function migrarGastos() {
        actualizado timestamptz NOT NULL DEFAULT now(),
        PRIMARY KEY (grupo_id, slot_id)
      )`,
+    // El turno del pago (para pasarlo al guía final si cambian la asignación)
+    `ALTER TABLE ${S}.pagos_guia ADD COLUMN IF NOT EXISTS tour_id integer`,
+    `ALTER TABLE ${S}.pagos_guia ADD COLUMN IF NOT EXISTS tour_date date`,
+    `ALTER TABLE ${S}.pagos_guia ADD COLUMN IF NOT EXISTS start_time time`,
+    `UPDATE ${S}.pagos_guia p SET tour_id = sg.tour_id, tour_date = sg.tour_date, start_time = sg.start_time
+     FROM public.slot_guides sg WHERE sg.id = p.slot_id AND p.tour_id IS NULL`,
+    // Gastos que pagó la empresa (caja chica) en vez de una persona
+    `ALTER TABLE ${S}.movimientos ADD COLUMN IF NOT EXISTS caja boolean NOT NULL DEFAULT false`,
   ];
   for (const q of sql) await pool.query(q);
 }

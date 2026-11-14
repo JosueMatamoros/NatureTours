@@ -103,6 +103,30 @@ try {
     r = await call('PATCH', `/movimientos/${mov.id}`, { pagadoPor: d.usuario.id }, M);
     ok(r.grupos[0].movimientos.find((m) => m.id === mov.id)?.quien === 'Josué', 'cambiar quién pagó el guía');
     ok((await call('PATCH', `/movimientos/${mov.id}`, { pagadoPor: '00000000-0000-4000-8000-000000000000' }, M)).st === 400, 'no deja poner a alguien fuera del grupo');
+    // Caja chica
+    r = await call('PATCH', `/movimientos/${mov.id}`, { pagadoPor: 'caja' }, J);
+    ok(r.grupos[0].movimientos.find((m) => m.id === mov.id)?.quien === 'Caja chica', 'el pago del guía lo puede pagar la caja chica');
+    r = await call('POST', '/movimientos', { grupoId: g.id, comercio: 'Pago Marlon', monto: 150000, pagadoPor: 'caja' }, J);
+    ok(r.grupos[0].movimientos.some((m) => m.comercio === 'Pago Marlon' && m.caja && m.quien === 'Caja chica'), 'gasto nuevo pagado por la caja chica');
+    r = await call('POST', '/movimientos', { grupoId: g.id, comercio: 'Pagó Mario', monto: 1000, pagadoPor: mario.id }, J);
+    ok(r.grupos[0].movimientos.some((m) => m.comercio === 'Pagó Mario' && m.quien === 'Mario Andrés'), 'Josué anota un gasto que pagó Mario');
+    // Cambio de guía en el sistema de tours → el pago pasa al guía final (con un turno de prueba en el pasado)
+    const t = (await pool.query(`SELECT sg.tour_id, g2.id AS otro FROM public.slot_guides sg, public.guides g2 WHERE sg.id = $1 AND g2.id <> sg.guide_id AND g2.active LIMIT 1`, [slot.id])).rows[0];
+    const [A, Bg] = (await pool.query(`SELECT id FROM public.guides WHERE active ORDER BY name LIMIT 2`)).rows.map((x) => x.id);
+    const sA = (await pool.query(`INSERT INTO public.slot_guides (tour_id, tour_date, start_time, guide_id) VALUES ($1, '2026-11-02', '05:17', $2) RETURNING id`, [t.tour_id, A])).rows[0].id;
+    try {
+      r = await call('PUT', `/grupos/${g.id}/guias/${sA}`, { pagadoPor: mario.id }, J);
+      await pool.query(`DELETE FROM public.slot_guides WHERE id = $1`, [sA]);
+      const sB = (await pool.query(`INSERT INTO public.slot_guides (tour_id, tour_date, start_time, guide_id) VALUES ($1, '2026-11-02', '05:17', $2) RETURNING id`, [t.tour_id, Bg])).rows[0].id;
+      const nombreB = (await pool.query(`SELECT name FROM public.guides WHERE id = $1`, [Bg])).rows[0].name;
+      r = await call('GET', `/grupos/${g.id}/guias?mes=2026-11`, null, J);
+      const f2 = r.guias.find((x) => x.id === sB);
+      d = await call('GET', '/datos', null, J);
+      const m2 = d.grupos[0].movimientos.find((m) => m.comercio.includes('05:17'));
+      ok(f2?.pagadoPor === mario.id && m2?.comercio.startsWith('Guía ' + nombreB) && d.grupos[0].movimientos.filter((m) => m.comercio.includes('05:17')).length === 1, 'si cambian el guía, el pago pasa al guía final');
+    } finally {
+      await pool.query(`DELETE FROM public.slot_guides WHERE tour_date = '2026-11-02' AND start_time = '05:17'`);
+    }
     ok((await pool.query('SELECT count(*)::int n FROM public.slot_guides')).rows[0].n === antes, 'la asignación de guías del negocio no cambia');
   } else ok(true, '(sin guías asignados desde noviembre: se salta la prueba de guías)');
   // Token de gastos no sirve como admin del negocio

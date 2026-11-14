@@ -22,6 +22,8 @@ const validar = (schema, data) => {
 };
 
 const uuid = z.string().uuid();
+const CAJA = "caja"; // "quién pagó" = la empresa (caja chica)
+const pagador = z.union([uuid, z.literal(CAJA)]);
 const icono = z.string().regex(/^[A-Za-z0-9]{2,40}$/, "Ícono inválido");
 const color = z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Color inválido");
 const nombreCat = z.string().trim().min(1, "Escribe un nombre").max(30, "El nombre es muy largo (máximo 30 letras)")
@@ -129,7 +131,8 @@ const SEL_MOV = `
   SELECT m.id, to_char(m.fecha AT TIME ZONE '${TZ}', 'YYYY-MM-DD"T"HH24:MI:SS') AS fecha,
          m.banco, m.tipo, m.comercio, m.monto::float AS monto, m.moneda, m.monto_original::float AS "montoOriginal",
          m.categoria_id AS "categoriaId", coalesce(c.nombre, '') AS categoria, m.origen, m.nota,
-         m.usuario_id AS "usuarioId", u.nombre AS quien, m.grupo_id AS "grupoId"
+         m.usuario_id AS "usuarioId", CASE WHEN m.caja THEN 'Caja chica' ELSE u.nombre END AS quien,
+         m.caja, m.grupo_id AS "grupoId"
   FROM ${S}.movimientos m
   JOIN ${S}.usuarios u ON u.id = m.usuario_id
   LEFT JOIN ${S}.categorias c ON c.id = m.categoria_id`;
@@ -154,6 +157,36 @@ const SEL_GUIAS_ESTADO = `
   LEFT JOIN ${S}.movimientos m ON m.id = p.movimiento_id AND NOT m.eliminado
   WHERE sg.tour_date >= '${GUIAS_DESDE}'`;
 
+/**
+ * Si en el sistema de tours cambian el guía de un turno (quitan a uno y ponen a otro),
+ * el pago ya marcado pasa al guía que quedó. Así cuenta siempre la asignación final del día.
+ */
+async function reconciliarGuias(grupoId) {
+  const huerfanos = await pool.query(
+    `SELECT p.slot_id, p.tour_id, p.tour_date::text AS tour_date, p.start_time::text AS start_time, p.movimiento_id FROM ${S}.pagos_guia p
+     WHERE p.grupo_id = $1 AND p.tour_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM public.slot_guides sg WHERE sg.id = p.slot_id)`, [grupoId]);
+  for (const h of huerfanos.rows) {
+    const c = await pool.query(
+      `SELECT sg.id, g.name AS guia, t.name AS tour, to_char(sg.start_time, 'HH24:MI') AS hora
+       FROM public.slot_guides sg JOIN public.guides g ON g.id = sg.guide_id JOIN public.tours t ON t.id = sg.tour_id
+       WHERE sg.tour_id = $1 AND sg.tour_date = $2::date AND sg.start_time = $3::time
+         AND NOT EXISTS (SELECT 1 FROM ${S}.pagos_guia p WHERE p.grupo_id = $4 AND p.slot_id = sg.id)
+       ORDER BY sg.created_at LIMIT 1`, [h.tour_id, h.tour_date, h.start_time, grupoId]);
+    const nuevo = c.rows[0];
+    if (!nuevo) continue; // el turno quedó sin guía: el gasto se deja como está
+    await enTransaccion(async (db) => {
+      await db.query(`UPDATE ${S}.pagos_guia SET slot_id = $3, actualizado = now() WHERE grupo_id = $1 AND slot_id = $2`, [grupoId, h.slot_id, nuevo.id]);
+      if (h.movimiento_id) {
+        await db.query(
+          `UPDATE ${S}.movimientos SET ref_externa = $2,
+             comercio = CASE WHEN comercio LIKE 'Guía %' THEN $3 ELSE comercio END WHERE id = $1`,
+          [h.movimiento_id, "guia:" + nuevo.id, `Guía ${nuevo.guia} · ${nuevo.tour} ${nuevo.hora}`]);
+      }
+    }).catch((e) => console.error("Mis Gastos: no se pudo pasar el pago de guía", e.message));
+  }
+}
+
 // Con mes: todos los de ese mes. Sin mes: los que faltan por pagar de tours que ya empezaron (los más viejos primero).
 async function listaGuias(grupoId, mes = null) {
   const filtro = mes
@@ -163,7 +196,7 @@ async function listaGuias(grupoId, mes = null) {
   const q = await pool.query(
     `SELECT sg.id, to_char(sg.tour_date, 'YYYY-MM-DD') AS fecha, to_char(sg.start_time, 'HH24:MI') AS hora,
             t.name AS tour, g.name AS guia, coalesce(p.no_aplica, false) AS "noAplica",
-            m.usuario_id AS "pagadoPor", m.id AS "movimientoId", m.monto::float AS monto
+            CASE WHEN m.caja THEN '${CAJA}' ELSE m.usuario_id::text END AS "pagadoPor", m.id AS "movimientoId", m.monto::float AS monto
      FROM public.slot_guides sg
      JOIN public.tours t ON t.id = sg.tour_id
      JOIN public.guides g ON g.id = sg.guide_id
@@ -192,6 +225,7 @@ async function datos(uid) {
   ]);
   const ids = grupos.rows.map((g) => g.id);
   const conGuias = grupos.rows.filter((g) => g.pagosGuias).map((g) => g.id);
+  for (const gid of conGuias) await reconciliarGuias(gid);
   const [miembros, cats, movs, guias] = ids.length ? await Promise.all([
     pool.query(`SELECT gm.grupo_id, u.id, u.nombre FROM ${S}.grupo_miembros gm JOIN ${S}.usuarios u ON u.id = gm.usuario_id WHERE gm.grupo_id = ANY($1) ORDER BY gm.unido`, [ids]),
     pool.query(`SELECT grupo_id, id, nombre, icono, color FROM ${S}.categorias WHERE grupo_id = ANY($1) ORDER BY orden, nombre`, [ids]),
@@ -299,6 +333,7 @@ const nuevoMov = z.object({
   monto: z.number().positive("El monto debe ser mayor a 0").max(1e10),
   categoriaId: uuid.nullish(),
   nota: z.string().max(300).nullish(),
+  pagadoPor: pagador.optional(), // solo en grupos: otra persona del grupo o la caja chica
 });
 
 router.post("/movimientos", h(async (req, res) => {
@@ -309,10 +344,16 @@ router.post("/movimientos", h(async (req, res) => {
   await categoriaDelAmbito(pool, b.categoriaId, { uid, grupoId: b.grupoId || null });
   const fecha = b.fecha ? new Date(b.fecha) : new Date();
   if (isNaN(fecha)) throw err("Fecha inválida");
+  const caja = Boolean(b.grupoId) && b.pagadoPor === CAJA;
+  let dueño = uid;
+  if (b.grupoId && b.pagadoPor && !caja) {
+    if (!(await esMiembro(pool, b.grupoId, b.pagadoPor))) throw err("Esa persona no es del grupo");
+    dueño = b.pagadoPor;
+  }
   await pool.query(
-    `INSERT INTO ${S}.movimientos (usuario_id, grupo_id, origen, fecha, tipo, comercio, monto, moneda, monto_original, categoria_id, manual, nota)
-     VALUES ($1, $2, 'manual', $3, 'Manual', $4, $5, 'CRC', $5, $6, true, $7)`,
-    [uid, b.grupoId || null, fecha, b.comercio, b.monto, b.categoriaId || null, b.nota || null]
+    `INSERT INTO ${S}.movimientos (usuario_id, grupo_id, origen, fecha, tipo, comercio, monto, moneda, monto_original, categoria_id, manual, nota, caja)
+     VALUES ($1, $2, 'manual', $3, 'Manual', $4, $5, 'CRC', $5, $6, true, $7, $8)`,
+    [dueño, b.grupoId || null, fecha, b.comercio, b.monto, b.categoriaId || null, b.nota || null, caja]
   );
   res.json({ ok: true, ...(await datos(uid)) });
 }));
@@ -357,21 +398,21 @@ router.patch("/movimientos/:id", h(async (req, res) => {
   const b = validar(z.object({
     comercio: nuevoMov.shape.comercio.optional(),
     monto: nuevoMov.shape.monto.optional(),
-    pagadoPor: uuid.optional(),
+    pagadoPor: pagador.optional(),
   }), req.body);
   const m = await movimientoPermitido(pool, id, req.usuario.id);
   if (m.origen !== "manual") throw err("Los gastos que vienen del banco no se pueden editar");
-  if (b.pagadoPor && b.pagadoPor !== m.usuario_id) {
-    if (!m.grupo_id) throw err("Solo en gastos de grupo se puede cambiar quién pagó");
-    if (!(await esMiembro(pool, m.grupo_id, b.pagadoPor))) throw err("Esa persona no es del grupo");
-  }
+  const caja = b.pagadoPor === undefined ? null : b.pagadoPor === CAJA;
+  const persona = b.pagadoPor && !caja ? b.pagadoPor : null;
+  if (b.pagadoPor && !m.grupo_id) throw err("Solo en gastos de grupo se puede cambiar quién pagó");
+  if (persona && persona !== m.usuario_id && !(await esMiembro(pool, m.grupo_id, persona))) throw err("Esa persona no es del grupo");
   await enTransaccion(async (db) => {
-    if (b.pagadoPor && m.ref_externa) // evita chocar con un gasto eliminado de la misma referencia
-      await db.query(`DELETE FROM ${S}.movimientos WHERE usuario_id = $1 AND ref_externa = $2 AND eliminado AND id <> $3`, [b.pagadoPor, m.ref_externa, id]);
+    if (persona && m.ref_externa) // evita chocar con un gasto eliminado de la misma referencia
+      await db.query(`DELETE FROM ${S}.movimientos WHERE usuario_id = $1 AND ref_externa = $2 AND eliminado AND id <> $3`, [persona, m.ref_externa, id]);
     await db.query(
       `UPDATE ${S}.movimientos SET comercio = coalesce($2, comercio), monto = coalesce($3, monto),
-         monto_original = coalesce($3, monto_original), usuario_id = coalesce($4, usuario_id) WHERE id = $1`,
-      [id, b.comercio ?? null, b.monto ?? null, b.pagadoPor ?? null]);
+         monto_original = coalesce($3, monto_original), usuario_id = coalesce($4, usuario_id), caja = coalesce($5, caja) WHERE id = $1`,
+      [id, b.comercio ?? null, b.monto ?? null, persona, caja]);
   });
   res.json({ ok: true, ...(await datos(req.usuario.id)) });
 }));
@@ -458,6 +499,7 @@ router.get("/grupos/:id/guias", h(async (req, res) => {
   const grupoId = validar(uuid, req.params.id);
   const mes = req.query.mes ? validar(mesValido, req.query.mes) : null;
   await grupoConGuias(grupoId, req.usuario.id);
+  await reconciliarGuias(grupoId);
   res.json({ ok: true, precio: PRECIO_GUIA, guias: await listaGuias(grupoId, mes) });
 }));
 
@@ -466,15 +508,17 @@ router.get("/grupos/:id/guias", h(async (req, res) => {
 router.put("/grupos/:id/guias/:slotId", h(async (req, res) => {
   const grupoId = validar(uuid, req.params.id);
   const slotId = validar(uuid, req.params.slotId);
-  const b = validar(z.object({ pagadoPor: uuid.nullable(), noAplica: z.boolean().optional(), mes: mesValido.optional() }), req.body);
+  const b = validar(z.object({ pagadoPor: pagador.nullable(), noAplica: z.boolean().optional(), mes: mesValido.optional() }), req.body);
   const uid = req.usuario.id;
   await grupoConGuias(grupoId, uid);
-  if (b.pagadoPor && !(await esMiembro(pool, grupoId, b.pagadoPor))) throw err("Esa persona no es del grupo");
+  const caja = b.pagadoPor === CAJA;
+  const persona = caja ? uid : b.pagadoPor; // en caja chica queda registrado por quien lo marcó
+  if (b.pagadoPor && !caja && !(await esMiembro(pool, grupoId, b.pagadoPor))) throw err("Esa persona no es del grupo");
   const ref = "guia:" + slotId;
 
   await enTransaccion(async (db) => {
     const s = await db.query(
-      `SELECT sg.id, sg.tour_date, to_char(sg.tour_date, 'YYYY-MM-DD') AS fecha, to_char(sg.start_time, 'HH24:MI') AS hora,
+      `SELECT sg.id, sg.tour_id, sg.tour_date, sg.start_time, to_char(sg.tour_date, 'YYYY-MM-DD') AS fecha, to_char(sg.start_time, 'HH24:MI') AS hora,
               t.name AS tour, g.name AS guia
        FROM public.slot_guides sg JOIN public.tours t ON t.id = sg.tour_id JOIN public.guides g ON g.id = sg.guide_id
        WHERE sg.id = $1 AND sg.tour_date >= '${GUIAS_DESDE}'`, [slotId]);
@@ -488,17 +532,17 @@ router.put("/grupos/:id/guias/:slotId", h(async (req, res) => {
 
     if (b.pagadoPor) {
       if (movId) {
-        await db.query(`UPDATE ${S}.movimientos SET usuario_id = $2 WHERE id = $1`, [movId, b.pagadoPor]);
+        await db.query(`UPDATE ${S}.movimientos SET usuario_id = $2, caja = $3 WHERE id = $1`, [movId, persona, caja]);
       } else {
         // Limpia gastos de guía eliminados de este tour para no chocar con la referencia única
         await db.query(`DELETE FROM ${S}.movimientos WHERE grupo_id = $1 AND ref_externa = $2 AND eliminado`, [grupoId, ref]);
         const cat = await db.query(
           `SELECT id FROM ${S}.categorias WHERE grupo_id = $1 AND lower(nombre) IN ('guías', 'guias', 'guía', 'guia') LIMIT 1`, [grupoId]);
         const ins = await db.query(
-          `INSERT INTO ${S}.movimientos (usuario_id, grupo_id, origen, ref_externa, fecha, tipo, comercio, monto, moneda, monto_original, categoria_id, manual)
-           VALUES ($1, $2, 'manual', $3, ($4::date + $5::time) AT TIME ZONE '${TZ}', 'Guía', $6, $7, 'CRC', $7, $8, true)
+          `INSERT INTO ${S}.movimientos (usuario_id, grupo_id, origen, ref_externa, fecha, tipo, comercio, monto, moneda, monto_original, categoria_id, manual, caja)
+           VALUES ($1, $2, 'manual', $3, ($4::date + $5::time) AT TIME ZONE '${TZ}', 'Guía', $6, $7, 'CRC', $7, $8, true, $9)
            RETURNING id`,
-          [b.pagadoPor, grupoId, ref, slot.fecha, slot.hora, `Guía ${slot.guia} · ${slot.tour} ${slot.hora}`, PRECIO_GUIA, cat.rows[0]?.id || null]);
+          [persona, grupoId, ref, slot.fecha, slot.hora, `Guía ${slot.guia} · ${slot.tour} ${slot.hora}`, PRECIO_GUIA, cat.rows[0]?.id || null, caja]);
         movId = ins.rows[0].id;
       }
     } else {
@@ -506,10 +550,11 @@ router.put("/grupos/:id/guias/:slotId", h(async (req, res) => {
       movId = null;
     }
     await db.query(
-      `INSERT INTO ${S}.pagos_guia (slot_id, grupo_id, movimiento_id, no_aplica, actualizado_por)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (grupo_id, slot_id) DO UPDATE SET movimiento_id = $3, no_aplica = $4, actualizado_por = $5, actualizado = now()`,
-      [slotId, grupoId, movId, !b.pagadoPor && Boolean(b.noAplica), uid]);
+      `INSERT INTO ${S}.pagos_guia (slot_id, grupo_id, movimiento_id, no_aplica, actualizado_por, tour_id, tour_date, start_time)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (grupo_id, slot_id) DO UPDATE SET movimiento_id = $3, no_aplica = $4, actualizado_por = $5, actualizado = now(),
+         tour_id = $6, tour_date = $7, start_time = $8`,
+      [slotId, grupoId, movId, !b.pagadoPor && Boolean(b.noAplica), uid, slot.tour_id, slot.fecha, slot.hora]);
   });
   res.json({ ok: true, precio: PRECIO_GUIA, guias: await listaGuias(grupoId, b.mes || null), ...(await datos(uid)) });
 }));
