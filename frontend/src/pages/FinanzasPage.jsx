@@ -61,6 +61,10 @@ const PROVIDERS = {
 
 const pad = (n) => String(n).padStart(2, "0");
 
+// Desde aquí el sistema lleva el control completo (saldos y pagos). Antes solo
+// se muestra lo generado por el sistema.
+const CONTROL_START = "2026-11";
+
 function currentMonth() {
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
@@ -354,10 +358,28 @@ function BalanceTile({ label, value, tone, emptyTone }) {
   );
 }
 
+function TotalTile({ balances }) {
+  const vals = [balances?.paypal, balances?.bac, balances?.pettyCash];
+  const anotados = vals.filter((v) => v != null);
+  const total = anotados.reduce((t, v) => t + Number(v), 0);
+  return (
+    <div className="rounded-2xl bg-gray-900 p-4 text-white ring-1 ring-gray-900">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">Total en cuentas</p>
+      <p className={`mt-1 font-black leading-none tabular-nums tracking-tight ${anotados.length ? "text-2xl" : "text-lg text-white/50"}`}>
+        {anotados.length ? money(total) : "Sin anotar"}
+      </p>
+      <p className="mt-1.5 text-xs font-medium text-white/70">
+        {anotados.length === 3 ? "PayPal + BAC + caja chica" : anotados.length ? `Faltan ${3 - anotados.length} por anotar` : "Anotalos abajo"}
+      </p>
+    </div>
+  );
+}
+
 // ─── 2. Saldos al cierre (BAC + PayPal, siempre en dólares) ─────────────────
 function BalancesCard({ month, balances, onSaved }) {
   const [bac, setBac] = useState(toInput(balances?.bac));
   const [paypal, setPaypal] = useState(toInput(balances?.paypal));
+  const [petty, setPetty] = useState(toInput(balances?.pettyCash));
   const [notes, setNotes] = useState(balances?.notes || "");
   const [state, setState] = useState("idle"); // idle | saving | saved | error
   const [error, setError] = useState("");
@@ -365,7 +387,8 @@ function BalancesCard({ month, balances, onSaved }) {
   async function handleSave() {
     const bacN = parseAmount(bac);
     const paypalN = parseAmount(paypal);
-    if (Number.isNaN(bacN) || Number.isNaN(paypalN)) {
+    const pettyN = parseAmount(petty);
+    if (Number.isNaN(bacN) || Number.isNaN(paypalN) || Number.isNaN(pettyN)) {
       setError("Revisá los montos: solo números (ej. 1,250.50).");
       setState("error");
       return;
@@ -373,7 +396,7 @@ function BalancesCard({ month, balances, onSaved }) {
     setState("saving");
     setError("");
     try {
-      await saveFinanceMonth(month, { bac: bacN, paypal: paypalN, notes });
+      await saveFinanceMonth(month, { bac: bacN, paypal: paypalN, pettyCash: pettyN, notes });
       setState("saved");
       onSaved?.();
       setTimeout(() => setState((s) => (s === "saved" ? "idle" : s)), 2500);
@@ -394,6 +417,10 @@ function BalancesCard({ month, balances, onSaved }) {
           <div>
             <label htmlFor="paypal" className="mb-1.5 block text-sm font-bold text-gray-800">PayPal</label>
             <MoneyInput id="paypal" label="Saldo PayPal en dólares" value={paypal} onChange={setPaypal} />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="petty" className="mb-1.5 block text-sm font-bold text-gray-800">Caja chica</label>
+            <MoneyInput id="petty" label="Saldo de caja chica en dólares" value={petty} onChange={setPetty} />
           </div>
         </div>
 
@@ -671,6 +698,7 @@ export default function FinanzasPage() {
             {/* 1. Resumen */}
             <section aria-label="Resumen del mes" className="space-y-3">
               <GeneratedCard generated={data.generated} month={month} />
+              {month >= CONTROL_START && (
               <div className="grid grid-cols-2 gap-3">
                 <BalanceTile
                   label="PayPal"
@@ -684,9 +712,22 @@ export default function FinanzasPage() {
                   tone="bg-red-50 text-red-900 ring-red-200"
                   emptyTone="bg-white text-gray-400 ring-gray-200"
                 />
+                <BalanceTile
+                  label="Caja chica"
+                  value={data.balances?.pettyCash}
+                  tone="bg-amber-50 text-amber-900 ring-amber-200"
+                  emptyTone="bg-white text-gray-400 ring-gray-200"
+                />
+                <TotalTile balances={data.balances} />
               </div>
+              )}
             </section>
 
+            {month < CONTROL_START ? (
+              <p className="rounded-2xl bg-white px-4 py-3 text-sm text-gray-500 ring-1 ring-gray-200">
+                El control de saldos y pagos empieza en <strong className="text-gray-700">noviembre 2026</strong>. De los meses anteriores solo se muestra lo generado por el sistema.
+              </p>
+            ) : (<>
             {/* 2. Saldos */}
             <BalancesCard
               key={`bal-${month}`}
@@ -705,6 +746,7 @@ export default function FinanzasPage() {
               viatorNext={data.viatorNext}
               onChanged={() => load(month, { quiet: true })}
             />
+            </>)}
           </>
         )}
       </div>

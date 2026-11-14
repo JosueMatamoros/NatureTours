@@ -7,6 +7,9 @@ import { revenueBetween } from "../utils/revenue.js";
 
 const MONTH_RE = /^(\d{4})-(0[1-9]|1[0-2])$/;
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+// El sistema lleva el control completo desde noviembre 2026 (saldos y pagos).
+// Antes de eso solo se muestra lo generado por el sistema.
+const FINANCE_START = "2026-11-01";
 
 function monthRange(month) {
   const m = MONTH_RE.exec(month || "");
@@ -82,6 +85,7 @@ export async function getFinanceMonth(req, res) {
       balances: {
         bac: num(m?.bac_balance),
         paypal: num(m?.paypal_balance),
+        pettyCash: num(m?.petty_cash),
         notes: m?.notes || "",
         updatedAt: m?.updated_at || null,
       },
@@ -95,28 +99,33 @@ export async function getFinanceMonth(req, res) {
   }
 }
 
-// PUT /api/finance/:month   { bac, bacCurrency, paypal, notes }
+// PUT /api/finance/:month   { bac, paypal, pettyCash, notes }
 export async function saveFinanceMonth(req, res) {
   const range = monthRange(req.params.month);
   if (!range) return res.status(400).json({ ok: false, message: "Mes inválido (YYYY-MM)" });
   const bac = toAmount(req.body?.bac);
   const paypal = toAmount(req.body?.paypal);
+  const pettyCash = toAmount(req.body?.pettyCash);
   const bacCurrency = "USD"; // BAC y PayPal se anotan siempre en dólares
   const notes = typeof req.body?.notes === "string" ? req.body.notes.slice(0, 1000) : null;
-  if (Number.isNaN(bac) || Number.isNaN(paypal)) {
+  if (range.from < FINANCE_START) {
+    return res.status(400).json({ ok: false, message: "El control de saldos empieza en noviembre 2026" });
+  }
+  if (Number.isNaN(bac) || Number.isNaN(paypal) || Number.isNaN(pettyCash)) {
     return res.status(400).json({ ok: false, message: "Monto inválido" });
   }
   try {
     await pool.query(
-      `INSERT INTO finance_months (month, bac_balance, bac_currency, paypal_balance, notes, updated_at)
-       VALUES ($1::date, $2, $3, $4, $5, now())
+      `INSERT INTO finance_months (month, bac_balance, bac_currency, paypal_balance, petty_cash, notes, updated_at)
+       VALUES ($1::date, $2, $3, $4, $5, $6, now())
        ON CONFLICT (month) DO UPDATE SET
          bac_balance = EXCLUDED.bac_balance,
          bac_currency = EXCLUDED.bac_currency,
          paypal_balance = EXCLUDED.paypal_balance,
+         petty_cash = EXCLUDED.petty_cash,
          notes = EXCLUDED.notes,
          updated_at = now()`,
-      [range.from, bac, bacCurrency, paypal, notes],
+      [range.from, bac, bacCurrency, paypal, pettyCash, notes],
     );
     return res.json({ ok: true });
   } catch (err) {
