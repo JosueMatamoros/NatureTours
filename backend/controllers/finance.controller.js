@@ -7,9 +7,9 @@ import { revenueBetween } from "../utils/revenue.js";
 
 const MONTH_RE = /^(\d{4})-(0[1-9]|1[0-2])$/;
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
-// El sistema lleva el control completo desde noviembre 2026 (saldos y pagos).
+// Saldos: desde el cierre de octubre 2026 (punto de partida del control).
 // Antes de eso solo se muestra lo generado por el sistema.
-const FINANCE_START = "2026-11-01";
+const FINANCE_START = "2026-10-01";
 
 function monthRange(month) {
   const m = MONTH_RE.exec(month || "");
@@ -109,7 +109,7 @@ export async function saveFinanceMonth(req, res) {
   const bacCurrency = "USD"; // BAC y PayPal se anotan siempre en dólares
   const notes = typeof req.body?.notes === "string" ? req.body.notes.slice(0, 1000) : null;
   if (range.from < FINANCE_START) {
-    return res.status(400).json({ ok: false, message: "El control de saldos empieza en noviembre 2026" });
+    return res.status(400).json({ ok: false, message: "El control de saldos empieza con el cierre de octubre 2026" });
   }
   if (Number.isNaN(bac) || Number.isNaN(paypal) || Number.isNaN(pettyCash)) {
     return res.status(400).json({ ok: false, message: "Monto inválido" });

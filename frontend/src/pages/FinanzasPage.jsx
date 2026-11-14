@@ -61,9 +61,10 @@ const PROVIDERS = {
 
 const pad = (n) => String(n).padStart(2, "0");
 
-// Desde aquí el sistema lleva el control completo (saldos y pagos). Antes solo
-// se muestra lo generado por el sistema.
-const CONTROL_START = "2026-11";
+// Saldos: desde el cierre de octubre 2026 (punto de partida). Pagos de las
+// OTAs: desde noviembre 2026. Antes de eso solo se muestra lo generado.
+const CONTROL_START = "2026-10";
+const PAYMENTS_START = "2026-11";
 
 function currentMonth() {
   const d = new Date();
@@ -736,7 +737,7 @@ export default function FinanzasPage() {
 
             {month < CONTROL_START ? (
               <p className="rounded-2xl bg-white px-4 py-3 text-sm text-gray-500 ring-1 ring-gray-200">
-                El control de saldos y pagos empieza en <strong className="text-gray-700">noviembre 2026</strong>. De los meses anteriores solo se muestra lo generado por el sistema.
+                El control de saldos empieza con el <strong className="text-gray-700">cierre de octubre 2026</strong>. De los meses anteriores solo se muestra lo generado por el sistema.
               </p>
             ) : (<>
             {/* 2. Saldos */}
@@ -747,6 +748,7 @@ export default function FinanzasPage() {
               onSaved={() => load(month, { quiet: true })}
             />
 
+            {month >= PAYMENTS_START && (<>
             {/* 3. Pagos OTAs */}
             <OtaPaymentsCard
               key={`ota-${month}`}
@@ -757,6 +759,7 @@ export default function FinanzasPage() {
               viatorNext={data.viatorNext}
               onChanged={() => load(month, { quiet: true })}
             />
+            </>)}
             </>)}
           </>
         )}
