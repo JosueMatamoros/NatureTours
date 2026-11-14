@@ -1,6 +1,12 @@
 import React from "react";
 import TourVideo from "../components/tour/TourVideo";
-import HorsebackGuide from "../components/tour/HorsebackGuide";
+import {
+  HorsebackIntro,
+  HorsebackStory,
+  HorsebackRoutes,
+  HorsebackKids,
+  HorsebackVisit,
+} from "../components/tour/HorsebackGuide";
 import LocalFlavors from "../components/tour/LocalFlavors";
 import Navbar from "../components/home/Navbar";
 import Footer from "../components/home/Footer";
@@ -9,6 +15,10 @@ import WhatToBring from "../components/tour/WhatToBring";
 import StickyBookingBar from "../components/tour/StickyBookingBar";
 import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
 
+// Página de la cabalgata, contada como un recorrido: video + datos clave →
+// capítulos con fotos → sabores locales → galería → estilos de ruta → niños →
+// qué llevar → cómo llegar, preguntas y reserva. Las fotos van repartidas
+// entre las secciones, no amontonadas al final.
 export default function ToursPage() {
   useSEO(SEO_CONFIG.horseback);
 
@@ -16,7 +26,10 @@ export default function ToursPage() {
     <div>
       <Navbar variant="solid" />
       <TourVideo />
-      <HorsebackGuide />
+      <HorsebackIntro />
+      <HorsebackStory />
+      <LocalFlavors />
+
       <TourImagesBento
         images={[
           "/tours/bento/image1.webp",
@@ -27,8 +40,11 @@ export default function ToursPage() {
           "/tours/bento/image6.webp",
         ]}
       />
-      <LocalFlavors />
+
+      <HorsebackRoutes />
+      <HorsebackKids />
       <WhatToBring />
+      <HorsebackVisit />
       <Footer />
 
       <StickyBookingBar tourId={2} />

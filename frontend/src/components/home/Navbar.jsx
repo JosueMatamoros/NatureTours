@@ -101,7 +101,7 @@ export default function Navbar({ variant = "overlay" }) {
           </Link>
 
           {/* Desktop links */}
-          <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-1">
+          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center gap-0.5 xl:gap-1 whitespace-nowrap">
             {LINKS.map((item) => {
               const isLocation = item.to === "/#location";
 
@@ -111,9 +111,9 @@ export default function Navbar({ variant = "overlay" }) {
                     key={item.to}
                     to={item.to}
                     onClick={(e) => handleLinkClick(e, item.to)}
-                    className={isOverlay
-                      ? "inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1.5 text-sm font-500 text-emerald-300 transition-colors duration-200 hover:bg-emerald-500/20 hover:text-emerald-200"
-                      : "inline-flex items-center gap-1.5 rounded-full border border-emerald-600/30 bg-emerald-50 px-3.5 py-1.5 text-sm font-500 text-emerald-700 transition-colors duration-200 hover:bg-emerald-100 hover:text-emerald-800"
+                    className={"hidden xl:inline-flex " + (isOverlay
+                      ? "items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1.5 text-sm font-500 text-emerald-300 transition-colors duration-200 hover:bg-emerald-500/20 hover:text-emerald-200"
+                      : "items-center gap-1.5 rounded-full border border-emerald-600/30 bg-emerald-50 px-3.5 py-1.5 text-sm font-500 text-emerald-700 transition-colors duration-200 hover:bg-emerald-100 hover:text-emerald-800")
                     }
                     style={{ fontFamily: "'Montserrat', sans-serif" }}
                   >
@@ -129,7 +129,7 @@ export default function Navbar({ variant = "overlay" }) {
                   to={item.to}
                   onClick={(e) => handleLinkClick(e, item.to)}
                   className={({ isActive }) => [
-                    "relative px-3.5 py-2 text-sm rounded-xl transition-colors duration-200",
+                    "relative whitespace-nowrap px-2.5 xl:px-3.5 py-2 text-sm rounded-xl transition-colors duration-200",
                     isOverlay
                       ? isActive ? "text-white" : "text-white/60 hover:text-white"
                       : isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-900",
@@ -156,7 +156,7 @@ export default function Navbar({ variant = "overlay" }) {
           {/* Right actions */}
           <div className="flex items-center gap-2">
             {/* CTA */}
-            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} className="hidden md:block">
+            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} className="hidden lg:block">
               <NavLink
                 to={PATHS.tours}
                 className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-5 py-2 text-sm font-700 text-black shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition-colors"
@@ -175,7 +175,7 @@ export default function Navbar({ variant = "overlay" }) {
               onClick={() => setOpen((v) => !v)}
               aria-label="Toggle menu"
               aria-expanded={open}
-              className={["md:hidden h-10 w-10 rounded-xl border flex items-center justify-center transition-colors",
+              className={["lg:hidden h-10 w-10 rounded-xl border flex items-center justify-center transition-colors",
                 isOverlay
                   ? "bg-white/8 hover:bg-white/14 border-white/10 text-white/80"
                   : "bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-600"

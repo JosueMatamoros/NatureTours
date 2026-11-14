@@ -36,8 +36,9 @@ export default function HeroSection() {
               La Fortuna
             </span>
           </p>
-          <h1 className="mt-3 text-base font-semibold text-white/90" style={{ textShadow: "0 1px 12px rgba(0,0,0,0.8)" }}>
-            Horseback Riding Tours in La Fortuna, Costa Rica
+          <h1 className="mt-4 text-[13px] font-semibold uppercase leading-relaxed tracking-[0.18em] text-white/90" style={{ textShadow: "0 1px 12px rgba(0,0,0,0.8)" }}>
+            <span className="block">Horseback Riding Tours</span>
+            <span className="block text-emerald-300">in La Fortuna, Costa Rica</span>
           </h1>
         </div>
 
@@ -74,8 +75,8 @@ export default function HeroSection() {
               La Fortuna
             </span>
           </p>
-          <p className="mt-4 text-xl lg:text-2xl font-semibold text-white/90" style={{ textShadow: "0 1px 12px rgba(0,0,0,0.8)" }}>
-            Horseback Riding Tours in La Fortuna, Costa Rica
+          <p className="mt-5 text-sm lg:text-base font-semibold uppercase tracking-[0.22em] text-white/90" style={{ textShadow: "0 1px 12px rgba(0,0,0,0.8)" }}>
+            Horseback Riding Tours <span className="text-emerald-300">in La Fortuna, Costa Rica</span>
           </p>
         </div>
 
