@@ -242,19 +242,42 @@ function SectionCard({ icon, iconClass, title, hint, right, children }) {
 
 // ─── 1. Resumen: lo generado y dónde está ───────────────────────────────────
 const WHERE = [
-  { key: "paypal", label: "Ya está en PayPal", hint: "Pagos en línea (completo o depósito)", dot: "bg-sky-300" },
-  { key: "cash", label: "Se cobra al llegar", hint: "Saldo de reservas directas con depósito", dot: "bg-amber-300" },
-  { key: "otas", label: "Lo pagan las OTAs", hint: "Viator, GetYourGuide y Localbird", dot: "bg-white/80" },
+  { key: "paypal", label: "PayPal Directo", hint: "Pagos en línea desde la web", dot: "bg-sky-300" },
+  { key: "cash", label: "Cobrado en efectivo", hint: "Saldo de reservas directas, se cobra al llegar", dot: "bg-amber-300" },
+  { key: "otas", label: "OTA's", hint: "Viator, GetYourGuide y Localbird", dot: "bg-white/80" },
 ];
+const OTA_KEYS = ["viator", "gyg", "localbird"];
 
 function GeneratedCard({ generated, month }) {
-  const [showSources, setShowSources] = useState(false);
+  const [showOtas, setShowOtas] = useState(false);
   const total = Number(generated?.total) || 0;
   const where = generated?.where || {};
-  const pct = (v) => (total > 0 ? Math.round(((Number(v) || 0) / total) * 100) : 0);
-  const sources = SOURCES.filter((s) => generated?.bySource?.[s.key] != null)
+  const pct = (v, base = total) => (base > 0 ? Math.round(((Number(v) || 0) / base) * 100) : 0);
+  const otaTotal = Number(where.otas) || 0;
+  const otas = SOURCES.filter((s) => OTA_KEYS.includes(s.key) && generated?.bySource?.[s.key] != null)
     .map((s) => ({ ...s, amount: Number(generated.bySource[s.key]) || 0 }))
     .sort((a, b) => b.amount - a.amount);
+
+  const Row = ({ w }) => (
+    <>
+      <span className="flex min-w-0 items-start gap-2.5">
+        <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${w.dot}`} />
+        <span className="min-w-0">
+          <span className="flex items-center gap-1.5 text-sm font-bold">
+            {w.label}
+            {w.key === "otas" && otas.length > 0 && (
+              <FiChevronDown className={`h-4 w-4 transition-transform duration-300 ${showOtas ? "rotate-180" : ""}`} />
+            )}
+          </span>
+          <span className="block text-xs text-emerald-100/75">{w.hint}</span>
+        </span>
+      </span>
+      <span className="shrink-0 text-right tabular-nums">
+        <span className="block text-base font-black">{money(where[w.key])}</span>
+        <span className="block text-xs font-medium text-emerald-100/70">{pct(where[w.key])}%</span>
+      </span>
+    </>
+  );
 
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 p-5 text-white shadow-lg shadow-emerald-900/20 sm:p-6">
@@ -277,61 +300,49 @@ function GeneratedCard({ generated, month }) {
           ))}
         </div>
 
-        <ul className="mt-4 space-y-2.5">
-          {WHERE.map((w) => (
-            <li key={w.key} className="flex items-center justify-between gap-3">
-              <span className="flex min-w-0 items-start gap-2.5">
-                <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${w.dot}`} />
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold">{w.label}</span>
-                  <span className="block text-xs text-emerald-100/75">{w.hint}</span>
-                </span>
-              </span>
-              <span className="shrink-0 text-right tabular-nums">
-                <span className="block text-base font-black">{money(where[w.key])}</span>
-                <span className="block text-xs font-medium text-emerald-100/70">{pct(where[w.key])}%</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {/* Por origen (desplegable) */}
-        {sources.length > 0 && (
-          <>
-            <button
-              type="button"
-              onClick={() => setShowSources((o) => !o)}
-              aria-expanded={showSources}
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-between rounded-xl bg-white/10 px-4 text-sm font-bold ring-1 ring-white/15 transition hover:bg-white/15 cursor-pointer"
-            >
-              Ver por origen (Directo, Viator, GYG…)
-              <FiChevronDown className={`h-4 w-4 transition-transform duration-300 ${showSources ? "rotate-180" : ""}`} />
-            </button>
-            <div className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${showSources ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
-              <div className="overflow-hidden">
-                <div className="mt-2 space-y-3 rounded-2xl bg-black/15 p-4 ring-1 ring-white/10">
-                  {sources.map((r) => (
-                    <div key={r.key}>
-                      <div className="flex items-center justify-between gap-3 text-sm">
-                        <span className="inline-flex items-center gap-2 font-semibold text-white/90">
-                          <span className={`h-2.5 w-2.5 rounded-full ${r.dot}`} />
-                          {r.label}
-                        </span>
-                        <span className="flex items-baseline gap-2 tabular-nums">
-                          <span className="text-xs text-emerald-100/70">{pct(r.amount)}%</span>
-                          <span className="font-bold">{money(r.amount)}</span>
-                        </span>
-                      </div>
-                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
-                        <div className={`h-full rounded-full ${r.dot}`} style={{ width: `${pct(r.amount)}%` }} />
-                      </div>
+        <ul className="mt-4 space-y-1">
+          {WHERE.map((w) =>
+            w.key === "otas" && otas.length > 0 ? (
+              <li key={w.key}>
+                <button
+                  type="button"
+                  onClick={() => setShowOtas((o) => !o)}
+                  aria-expanded={showOtas}
+                  className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-white/10 cursor-pointer"
+                >
+                  <Row w={w} />
+                </button>
+                <div className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${showOtas ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                  <div className="overflow-hidden">
+                    <div className="mb-1 mt-1 space-y-3 rounded-2xl bg-black/15 p-4 ring-1 ring-white/10">
+                      {otas.map((r) => (
+                        <div key={r.key}>
+                          <div className="flex items-center justify-between gap-3 text-sm">
+                            <span className="inline-flex items-center gap-2 font-semibold text-white/90">
+                              <span className={`h-2.5 w-2.5 rounded-full ${r.dot}`} />
+                              {r.label}
+                            </span>
+                            <span className="flex items-baseline gap-2 tabular-nums">
+                              <span className="text-xs text-emerald-100/70">{pct(r.amount, otaTotal)}%</span>
+                              <span className="font-bold">{money(r.amount)}</span>
+                            </span>
+                          </div>
+                          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                            <div className={`h-full rounded-full ${r.dot}`} style={{ width: `${pct(r.amount, otaTotal)}%` }} />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
-            </div>
-          </>
-        )}
+              </li>
+            ) : (
+              <li key={w.key} className="flex min-h-11 items-center justify-between gap-3 py-1.5">
+                <Row w={w} />
+              </li>
+            ),
+          )}
+        </ul>
 
         {generated?.missing > 0 && (
           <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-emerald-50/80">
