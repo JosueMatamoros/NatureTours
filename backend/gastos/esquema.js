@@ -118,6 +118,17 @@ export async function migrarGastos() {
        creado timestamptz NOT NULL DEFAULT now(),
        ultimo_ok timestamptz
      )`,
+    // Pago de guías por tour: lee public.slot_guides (solo lectura, sin FK para no tocar el negocio)
+    `ALTER TABLE ${S}.grupos ADD COLUMN IF NOT EXISTS pagos_guias boolean NOT NULL DEFAULT false`,
+    `CREATE TABLE IF NOT EXISTS ${S}.pagos_guia (
+       slot_id uuid NOT NULL,               -- public.slot_guides.id
+       grupo_id uuid NOT NULL REFERENCES ${S}.grupos(id) ON DELETE CASCADE,
+       movimiento_id uuid REFERENCES ${S}.movimientos(id) ON DELETE SET NULL,
+       no_aplica boolean NOT NULL DEFAULT false,
+       actualizado_por uuid REFERENCES ${S}.usuarios(id) ON DELETE SET NULL,
+       actualizado timestamptz NOT NULL DEFAULT now(),
+       PRIMARY KEY (grupo_id, slot_id)
+     )`,
   ];
   for (const q of sql) await pool.query(q);
 }

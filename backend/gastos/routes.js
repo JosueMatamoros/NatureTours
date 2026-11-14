@@ -142,6 +142,39 @@ async function soloGrupos(uid) {
 const SEL_CAT = `SELECT id, nombre, icono, color FROM ${S}.categorias`;
 
 /** Todo lo que la app necesita para pintar: personal + cada grupo. */
+// ── Guías por tour (lee la asignación de guías del sistema de tours) ──
+const PRECIO_GUIA = Number(process.env.GASTOS_PRECIO_GUIA) || 10000;
+const GUIAS_DESDE = "2026-11-01";
+// Para usar dentro de un LATERAL con gr.id = grupo
+const SEL_GUIAS_ESTADO = `
+  SELECT sg.tour_date AS fecha,
+         CASE WHEN m.id IS NOT NULL THEN 'pagado' WHEN p.no_aplica THEN 'no_aplica' ELSE 'pendiente' END AS estado
+  FROM public.slot_guides sg
+  LEFT JOIN ${S}.pagos_guia p ON p.slot_id = sg.id AND p.grupo_id = gr.id
+  LEFT JOIN ${S}.movimientos m ON m.id = p.movimiento_id AND NOT m.eliminado
+  WHERE sg.tour_date >= '${GUIAS_DESDE}'`;
+
+async function listaGuias(grupoId, mes) {
+  const q = await pool.query(
+    `SELECT sg.id, to_char(sg.tour_date, 'YYYY-MM-DD') AS fecha, to_char(sg.start_time, 'HH24:MI') AS hora,
+            t.name AS tour, g.name AS guia, coalesce(p.no_aplica, false) AS "noAplica",
+            m.usuario_id AS "pagadoPor", m.id AS "movimientoId", m.monto::float AS monto
+     FROM public.slot_guides sg
+     JOIN public.tours t ON t.id = sg.tour_id
+     JOIN public.guides g ON g.id = sg.guide_id
+     LEFT JOIN ${S}.pagos_guia p ON p.slot_id = sg.id AND p.grupo_id = $1
+     LEFT JOIN ${S}.movimientos m ON m.id = p.movimiento_id AND NOT m.eliminado
+     WHERE sg.tour_date >= '${GUIAS_DESDE}' AND to_char(sg.tour_date, 'YYYY-MM') = $2
+     ORDER BY sg.tour_date DESC, sg.start_time DESC`, [grupoId, mes]);
+  return q.rows.map((r) => ({ ...r, pagadoPor: r.pagadoPor || null, monto: r.monto ?? PRECIO_GUIA }));
+}
+
+async function grupoConGuias(grupoId, uid) {
+  if (!(await esMiembro(pool, grupoId, uid))) throw err("No eres parte de ese grupo", 403);
+  const g = await pool.query(`SELECT pagos_guias FROM ${S}.grupos WHERE id = $1`, [grupoId]);
+  if (!g.rows[0]?.pagos_guias) throw err("Este grupo no lleva pagos de guías", 404);
+}
+
 async function datos(uid) {
   const [usuario, usuarios, personalCats, personalMovs, grupos] = await Promise.all([
     pool.query(`SELECT id, nombre, solo_grupos AS "soloGrupos" FROM ${S}.usuarios WHERE id = $1`, [uid]),
@@ -149,16 +182,21 @@ async function datos(uid) {
     pool.query(`${SEL_CAT} WHERE usuario_id = $1 ORDER BY orden, nombre`, [uid]),
     pool.query(`${SEL_MOV} WHERE m.usuario_id = $1 AND m.grupo_id IS NULL AND NOT m.eliminado ORDER BY m.fecha DESC`, [uid]),
     pool.query(
-      `SELECT g.id, g.nombre, g.icono, g.color, g.tour_id AS "tourId", g.creado_por AS "creadoPor"
+      `SELECT g.id, g.nombre, g.icono, g.color, g.tour_id AS "tourId", g.creado_por AS "creadoPor", g.pagos_guias AS "pagosGuias"
        FROM ${S}.grupos g JOIN ${S}.grupo_miembros gm ON gm.grupo_id = g.id
        WHERE gm.usuario_id = $1 ORDER BY g.creado`, [uid]),
   ]);
   const ids = grupos.rows.map((g) => g.id);
-  const [miembros, cats, movs] = ids.length ? await Promise.all([
+  const conGuias = grupos.rows.filter((g) => g.pagosGuias).map((g) => g.id);
+  const [miembros, cats, movs, guias] = ids.length ? await Promise.all([
     pool.query(`SELECT gm.grupo_id, u.id, u.nombre FROM ${S}.grupo_miembros gm JOIN ${S}.usuarios u ON u.id = gm.usuario_id WHERE gm.grupo_id = ANY($1) ORDER BY gm.unido`, [ids]),
     pool.query(`SELECT grupo_id, id, nombre, icono, color FROM ${S}.categorias WHERE grupo_id = ANY($1) ORDER BY orden, nombre`, [ids]),
     pool.query(`${SEL_MOV} WHERE m.grupo_id = ANY($1) AND NOT m.eliminado ORDER BY m.fecha DESC`, [ids]),
-  ]) : [{ rows: [] }, { rows: [] }, { rows: [] }];
+    conGuias.length ? pool.query(
+      `SELECT gr.id AS grupo_id, count(*) FILTER (WHERE l.estado = 'pendiente')::int AS pendientes
+       FROM unnest($1::uuid[]) AS gr(id) CROSS JOIN LATERAL (${SEL_GUIAS_ESTADO}) l
+       WHERE l.fecha <= (now() AT TIME ZONE '${TZ}')::date GROUP BY gr.id`, [conGuias]) : { rows: [] },
+  ]) : [{ rows: [] }, { rows: [] }, { rows: [] }, { rows: [] }];
   const de = (rows, gid) => rows.filter((r) => r.grupo_id === gid).map(({ grupo_id: _g, ...r }) => r); // eslint-disable-line no-unused-vars
   return {
     usuario: usuario.rows[0],
@@ -169,6 +207,7 @@ async function datos(uid) {
       miembros: de(miembros.rows, g.id),
       categorias: de(cats.rows, g.id),
       movimientos: movs.rows.filter((m) => m.grupoId === g.id),
+      ...(g.pagosGuias ? { guiasPendientes: guias.rows.find((r) => r.grupo_id === g.id)?.pendientes || 0 } : {}),
     })),
   };
 }
@@ -380,6 +419,70 @@ router.delete("/categorias/:id", h(async (req, res) => {
     return r.rowCount;
   });
   res.json({ ok: true, movidos, ...(await datos(req.usuario.id)) });
+}));
+
+// ── Guías por tour ──
+
+const mesValido = z.string().regex(/^\d{4}-\d{2}$/, "Mes inválido");
+
+router.get("/grupos/:id/guias", h(async (req, res) => {
+  const grupoId = validar(uuid, req.params.id);
+  const mes = validar(mesValido, req.query.mes);
+  await grupoConGuias(grupoId, req.usuario.id);
+  res.json({ ok: true, precio: PRECIO_GUIA, guias: await listaGuias(grupoId, mes) });
+}));
+
+// Marca quién pagó el guía de un tour (o que no aplica / pendiente).
+// Pagado = un gasto del grupo en "Guías" a nombre de quien pagó.
+router.put("/grupos/:id/guias/:slotId", h(async (req, res) => {
+  const grupoId = validar(uuid, req.params.id);
+  const slotId = validar(uuid, req.params.slotId);
+  const b = validar(z.object({ pagadoPor: uuid.nullable(), noAplica: z.boolean().optional(), mes: mesValido }), req.body);
+  const uid = req.usuario.id;
+  await grupoConGuias(grupoId, uid);
+  if (b.pagadoPor && !(await esMiembro(pool, grupoId, b.pagadoPor))) throw err("Esa persona no es del grupo");
+  const ref = "guia:" + slotId;
+
+  await enTransaccion(async (db) => {
+    const s = await db.query(
+      `SELECT sg.id, sg.tour_date, to_char(sg.tour_date, 'YYYY-MM-DD') AS fecha, to_char(sg.start_time, 'HH24:MI') AS hora,
+              t.name AS tour, g.name AS guia
+       FROM public.slot_guides sg JOIN public.tours t ON t.id = sg.tour_id JOIN public.guides g ON g.id = sg.guide_id
+       WHERE sg.id = $1 AND sg.tour_date >= '${GUIAS_DESDE}'`, [slotId]);
+    const slot = s.rows[0];
+    if (!slot) throw err("Ese tour ya no tiene ese guía asignado", 404);
+    await db.query(`SELECT 1 FROM ${S}.grupos WHERE id = $1 FOR UPDATE`, [grupoId]); // serializa cambios del grupo
+    const prev = await db.query(
+      `SELECT m.id FROM ${S}.pagos_guia p JOIN ${S}.movimientos m ON m.id = p.movimiento_id AND NOT m.eliminado
+       WHERE p.grupo_id = $1 AND p.slot_id = $2`, [grupoId, slotId]);
+    let movId = prev.rows[0]?.id || null;
+
+    if (b.pagadoPor) {
+      if (movId) {
+        await db.query(`UPDATE ${S}.movimientos SET usuario_id = $2 WHERE id = $1`, [movId, b.pagadoPor]);
+      } else {
+        // Limpia gastos de guía eliminados de este tour para no chocar con la referencia única
+        await db.query(`DELETE FROM ${S}.movimientos WHERE grupo_id = $1 AND ref_externa = $2 AND eliminado`, [grupoId, ref]);
+        const cat = await db.query(
+          `SELECT id FROM ${S}.categorias WHERE grupo_id = $1 AND lower(nombre) IN ('guías', 'guias', 'guía', 'guia') LIMIT 1`, [grupoId]);
+        const ins = await db.query(
+          `INSERT INTO ${S}.movimientos (usuario_id, grupo_id, origen, ref_externa, fecha, tipo, comercio, monto, moneda, monto_original, categoria_id, manual)
+           VALUES ($1, $2, 'manual', $3, ($4::date + $5::time) AT TIME ZONE '${TZ}', 'Guía', $6, $7, 'CRC', $7, $8, true)
+           RETURNING id`,
+          [b.pagadoPor, grupoId, ref, slot.fecha, slot.hora, `Guía ${slot.guia} · ${slot.tour} ${slot.hora}`, PRECIO_GUIA, cat.rows[0]?.id || null]);
+        movId = ins.rows[0].id;
+      }
+    } else {
+      if (movId) await db.query(`DELETE FROM ${S}.movimientos WHERE id = $1`, [movId]);
+      movId = null;
+    }
+    await db.query(
+      `INSERT INTO ${S}.pagos_guia (slot_id, grupo_id, movimiento_id, no_aplica, actualizado_por)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (grupo_id, slot_id) DO UPDATE SET movimiento_id = $3, no_aplica = $4, actualizado_por = $5, actualizado = now()`,
+      [slotId, grupoId, movId, !b.pagadoPor && Boolean(b.noAplica), uid]);
+  });
+  res.json({ ok: true, precio: PRECIO_GUIA, guias: await listaGuias(grupoId, b.mes), ...(await datos(uid)) });
 }));
 
 // ── Grupos ──

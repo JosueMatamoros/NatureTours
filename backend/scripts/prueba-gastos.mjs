@@ -69,6 +69,31 @@ try {
   r = await call('POST', `/movimientos/${auto.id}/restaurar`, null, J); ok(r.personal.movimientos.some((m) => m.id === auto.id), 'deshacer eliminar');
   // Borrar categoría
   r = await call('DELETE', `/categorias/${ropa.id}`, null, J); ok(r.movidos === 2 && r.personal.movimientos.filter((m) => m.comercio === 'SHEIN').every((m) => m.categoria === ''), 'borrar Ropa → sus 2 gastos quedan por clasificar');
+  // Guías por tour (lee public.slot_guides sin modificarlo)
+  const slot = (await pool.query(`SELECT id, to_char(tour_date,'YYYY-MM') mes FROM public.slot_guides WHERE tour_date >= '2026-11-01' ORDER BY tour_date LIMIT 1`)).rows[0];
+  if (slot) {
+    const antes = (await pool.query('SELECT count(*)::int n FROM public.slot_guides')).rows[0].n;
+    ok((await call('GET', `/grupos/${g.id}/guias?mes=${slot.mes}`, null, J)).st === 404, 'grupo sin pagos de guías → 404');
+    await pool.query(`UPDATE ${S}.grupos SET pagos_guias = true WHERE id = $1`, [g.id]);
+    await call('POST', '/categorias', { grupoId: g.id, nombre: 'Guías', icono: 'Compass', color: '#8FB573' }, J);
+    r = await call('GET', `/grupos/${g.id}/guias?mes=${slot.mes}`, null, M);
+    const fila = r.guias.find((x) => x.id === slot.id);
+    ok(fila && !fila.pagadoPor && r.precio === 10000, 'Mario ve los guías del mes, pendientes');
+    r = await call('PUT', `/grupos/${g.id}/guias/${slot.id}`, { pagadoPor: mario.id, mes: slot.mes }, J);
+    let mov = r.grupos[0].movimientos.find((m) => m.comercio.startsWith('Guía '));
+    ok(r.guias.find((x) => x.id === slot.id).pagadoPor === mario.id && mov?.monto === 10000 && mov.categoria === 'Guías' && mov.quien === 'Mario Andrés', 'Josué marca que Mario pagó → gasto ₡10.000 en Guías a nombre de Mario');
+    r = await call('PUT', `/grupos/${g.id}/guias/${slot.id}`, { pagadoPor: r.usuario.id, mes: slot.mes }, J);
+    ok(r.grupos[0].movimientos.filter((m) => m.comercio.startsWith('Guía ')).length === 1 && r.grupos[0].movimientos.find((m) => m.comercio.startsWith('Guía ')).quien === 'Josué', 'cambiar a Josué no duplica el gasto');
+    mov = r.grupos[0].movimientos.find((m) => m.comercio.startsWith('Guía '));
+    await call('DELETE', `/movimientos/${mov.id}`, null, M);
+    r = await call('GET', `/grupos/${g.id}/guias?mes=${slot.mes}`, null, J);
+    ok(!r.guias.find((x) => x.id === slot.id).pagadoPor, 'si se elimina el gasto, el guía vuelve a pendiente');
+    r = await call('PUT', `/grupos/${g.id}/guias/${slot.id}`, { pagadoPor: mario.id, mes: slot.mes }, M);
+    ok(r.grupos[0].movimientos.filter((m) => m.comercio.startsWith('Guía ')).length === 1, 'volver a marcarlo funciona');
+    r = await call('PUT', `/grupos/${g.id}/guias/${slot.id}`, { pagadoPor: null, noAplica: true, mes: slot.mes }, M);
+    ok(r.guias.find((x) => x.id === slot.id).noAplica && !r.grupos[0].movimientos.some((m) => m.comercio.startsWith('Guía ')), '"no aplica" quita el gasto');
+    ok((await pool.query('SELECT count(*)::int n FROM public.slot_guides')).rows[0].n === antes, 'la asignación de guías del negocio no cambia');
+  } else ok(true, '(sin guías asignados desde noviembre: se salta la prueba de guías)');
   // Token de gastos no sirve como admin del negocio
   const jwt = (await import('jsonwebtoken')).default;
   let adminOk = true; try { jwt.verify(J, process.env.JWT_SECRET); } catch { adminOk = false; }
