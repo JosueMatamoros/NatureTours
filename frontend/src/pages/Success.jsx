@@ -14,6 +14,7 @@ import {
   FiTag,
 } from "react-icons/fi";
 import ReceiptPDF from "../components/payment/ReceiptPDF";
+import { trackPurchase } from "../utils/analytics";
 
 export default function Success() {
   const { paymentId } = useParams();
@@ -55,6 +56,11 @@ export default function Success() {
       cancelled = true;
     };
   }, [paymentId]);
+
+  // Conversión para Google Analytics / Google Ads (una vez por pago).
+  useEffect(() => {
+    if (receipt) trackPurchase(paymentId, receipt);
+  }, [receipt, paymentId]);
 
   // Enviar email automáticamente cuando se cargue el receipt
   useEffect(() => {
