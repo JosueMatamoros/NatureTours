@@ -100,6 +100,9 @@ try {
     r = await call('PATCH', `/movimientos/${mov.id}`, { comercio: 'Guía Andy (medio día)', monto: 12500 }, M);
     ok(r.grupos[0].movimientos.some((m) => m.id === mov.id && m.monto === 12500 && m.comercio === 'Guía Andy (medio día)'), 'editar monto y descripción del pago');
     ok((await call('PATCH', `/movimientos/${auto.id}`, { comercio: 'x', monto: 1 }, J)).st === 400, 'gastos del banco no se editan');
+    r = await call('PATCH', `/movimientos/${mov.id}`, { pagadoPor: d.usuario.id }, M);
+    ok(r.grupos[0].movimientos.find((m) => m.id === mov.id)?.quien === 'Josué', 'cambiar quién pagó el guía');
+    ok((await call('PATCH', `/movimientos/${mov.id}`, { pagadoPor: '00000000-0000-4000-8000-000000000000' }, M)).st === 400, 'no deja poner a alguien fuera del grupo');
     ok((await pool.query('SELECT count(*)::int n FROM public.slot_guides')).rows[0].n === antes, 'la asignación de guías del negocio no cambia');
   } else ok(true, '(sin guías asignados desde noviembre: se salta la prueba de guías)');
   // Token de gastos no sirve como admin del negocio

@@ -351,13 +351,28 @@ router.patch("/movimientos/:id/categoria", h(async (req, res) => {
 }));
 
 // Mandar un gasto a un grupo (o devolverlo a personal con grupoId = null).
-// Editar descripción y monto de un gasto agregado a mano (incluye los pagos de guías)
+// Editar un gasto agregado a mano (incluye pagos de guías): descripción, monto y, en grupos, quién pagó
 router.patch("/movimientos/:id", h(async (req, res) => {
   const id = validar(uuid, req.params.id);
-  const b = validar(z.object({ comercio: nuevoMov.shape.comercio, monto: nuevoMov.shape.monto }), req.body);
+  const b = validar(z.object({
+    comercio: nuevoMov.shape.comercio.optional(),
+    monto: nuevoMov.shape.monto.optional(),
+    pagadoPor: uuid.optional(),
+  }), req.body);
   const m = await movimientoPermitido(pool, id, req.usuario.id);
   if (m.origen !== "manual") throw err("Los gastos que vienen del banco no se pueden editar");
-  await pool.query(`UPDATE ${S}.movimientos SET comercio = $2, monto = $3, monto_original = $3 WHERE id = $1`, [id, b.comercio, b.monto]);
+  if (b.pagadoPor && b.pagadoPor !== m.usuario_id) {
+    if (!m.grupo_id) throw err("Solo en gastos de grupo se puede cambiar quién pagó");
+    if (!(await esMiembro(pool, m.grupo_id, b.pagadoPor))) throw err("Esa persona no es del grupo");
+  }
+  await enTransaccion(async (db) => {
+    if (b.pagadoPor && m.ref_externa) // evita chocar con un gasto eliminado de la misma referencia
+      await db.query(`DELETE FROM ${S}.movimientos WHERE usuario_id = $1 AND ref_externa = $2 AND eliminado AND id <> $3`, [b.pagadoPor, m.ref_externa, id]);
+    await db.query(
+      `UPDATE ${S}.movimientos SET comercio = coalesce($2, comercio), monto = coalesce($3, monto),
+         monto_original = coalesce($3, monto_original), usuario_id = coalesce($4, usuario_id) WHERE id = $1`,
+      [id, b.comercio ?? null, b.monto ?? null, b.pagadoPor ?? null]);
+  });
   res.json({ ok: true, ...(await datos(req.usuario.id)) });
 }));
 
