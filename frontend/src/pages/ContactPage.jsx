@@ -17,8 +17,8 @@ export default function ContactPage() {
         <div className="grid gap-6 lg:grid-cols-2 items-stretch">
           <div className="h-full">
             <ContactInfoPanel
-              phoneDisplay="+506 8989 3335"
-              phoneE164="50689893335"
+              phoneDisplay="+506 8182 4352"
+              phoneE164="50681824352"
               servicesHref="/services"
               policiesHref="/policies"
               whatsappMessage="Hello, I would like more information about the tour."
