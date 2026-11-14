@@ -147,18 +147,18 @@ const PRECIO_GUIA = Number(process.env.GASTOS_PRECIO_GUIA) || 10000;
 const GUIAS_DESDE = "2026-11-01";
 // Para usar dentro de un LATERAL con gr.id = grupo
 const SEL_GUIAS_ESTADO = `
-  SELECT sg.tour_date AS fecha,
+  SELECT sg.tour_date AS fecha, (sg.tour_date + sg.start_time) AS inicio,
          CASE WHEN m.id IS NOT NULL THEN 'pagado' WHEN p.no_aplica THEN 'no_aplica' ELSE 'pendiente' END AS estado
   FROM public.slot_guides sg
   LEFT JOIN ${S}.pagos_guia p ON p.slot_id = sg.id AND p.grupo_id = gr.id
   LEFT JOIN ${S}.movimientos m ON m.id = p.movimiento_id AND NOT m.eliminado
   WHERE sg.tour_date >= '${GUIAS_DESDE}'`;
 
-// Con mes: todos los de ese mes. Sin mes: los que faltan por pagar hasta hoy (los más viejos primero).
+// Con mes: todos los de ese mes. Sin mes: los que faltan por pagar de tours que ya empezaron (los más viejos primero).
 async function listaGuias(grupoId, mes = null) {
   const filtro = mes
     ? `to_char(sg.tour_date, 'YYYY-MM') = $2 ORDER BY sg.tour_date DESC, sg.start_time DESC`
-    : `m.id IS NULL AND NOT coalesce(p.no_aplica, false) AND sg.tour_date <= (now() AT TIME ZONE '${TZ}')::date
+    : `m.id IS NULL AND NOT coalesce(p.no_aplica, false) AND (sg.tour_date + sg.start_time) <= (now() AT TIME ZONE '${TZ}')
        ORDER BY sg.tour_date, sg.start_time`;
   const q = await pool.query(
     `SELECT sg.id, to_char(sg.tour_date, 'YYYY-MM-DD') AS fecha, to_char(sg.start_time, 'HH24:MI') AS hora,
@@ -199,7 +199,7 @@ async function datos(uid) {
     conGuias.length ? pool.query(
       `SELECT gr.id AS grupo_id, count(*) FILTER (WHERE l.estado = 'pendiente')::int AS pendientes
        FROM unnest($1::uuid[]) AS gr(id) CROSS JOIN LATERAL (${SEL_GUIAS_ESTADO}) l
-       WHERE l.fecha <= (now() AT TIME ZONE '${TZ}')::date GROUP BY gr.id`, [conGuias]) : { rows: [] },
+       WHERE l.inicio <= (now() AT TIME ZONE '${TZ}') GROUP BY gr.id`, [conGuias]) : { rows: [] },
   ]) : [{ rows: [] }, { rows: [] }, { rows: [] }, { rows: [] }];
   const de = (rows, gid) => rows.filter((r) => r.grupo_id === gid).map(({ grupo_id: _g, ...r }) => r); // eslint-disable-line no-unused-vars
   return {
