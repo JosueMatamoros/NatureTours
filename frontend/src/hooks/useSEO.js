@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { PAGES, SITE_URL, absUrl, NIGHT_WALK_LIVE } from "../seo/seoData";
 
 /**
  * Hook to handle dynamic SEO per page
@@ -19,6 +20,7 @@ export function useSEO({
   canonical = "https://naturetourslafortuna.com/",
   image = "https://naturetourslafortuna.com/og-image.webp",
   type = "website",
+  robots = "index, follow",
 }) {
   useEffect(() => {
     // Actualizar título
@@ -45,6 +47,8 @@ export function useSEO({
     // Meta tags básicos
     updateMeta('meta[name="description"]', "content", description);
     updateMeta('meta[name="keywords"]', "content", keywords);
+    updateMeta('meta[name="robots"]', "content", robots);
+    updateMeta('meta[name="googlebot"]', "content", robots);
 
     // Open Graph
     updateMeta('meta[property="og:title"]', "content", title);
@@ -69,61 +73,34 @@ export function useSEO({
       canonicalLink.setAttribute("href", canonical);
       document.head.appendChild(canonicalLink);
     }
-  }, [title, description, keywords, canonical, image, type]);
+  }, [title, description, keywords, canonical, image, type, robots]);
 }
 
-// SEO configurations per page
+// SEO por página: sale de src/seo/seoData.js (misma fuente que el prerender
+// y el sitemap).
+function fromPage(page) {
+  return {
+    title: page.title,
+    description: page.description,
+    canonical: absUrl(page.path),
+    image: `${SITE_URL}${page.image}`,
+  };
+}
+
 export const SEO_CONFIG = {
-  home: {
-    title: "Nature Tours La Fortuna | Horseback Riding Tours in Costa Rica",
-    description:
-      "Experience the best horseback riding tours in La Fortuna, Costa Rica. Explore lush rainforest trails, river crossings, and stunning tropical nature. Book your adventure today!",
-    keywords:
-      "horseback riding la fortuna, horse tours costa rica, arenal volcano tours, la fortuna tours, things to do in la fortuna, la fortuna activities, best tours la fortuna, family tours costa rica, adventure tours la fortuna, sunset horseback riding costa rica",
-    canonical: "https://naturetourslafortuna.com/",
-    image: "https://naturetourslafortuna.com/og-image.webp",
-  },
-  tours: {
-    title: "Horseback Riding Tours in La Fortuna | Nature Tours Costa Rica",
-    description:
-      "Explore La Fortuna on horseback through breathtaking rainforest scenery. Sunset rides, river crossings, mountain trails, and unforgettable experiences with well-trained horses. Perfect for families!",
-    keywords:
-      "horseback riding la fortuna, horse tours arenal, costa rica horseback tours, sunset horse ride la fortuna, horse riding tour costa rica, trail riding arenal volcano, family horse tours, private horseback tour",
-    canonical: "https://naturetourslafortuna.com/tours",
-    image: "https://naturetourslafortuna.com/tours/bento/image1.webp",
-  },
-  about: {
-    title: "About Us | Nature Tours La Fortuna - Family Owned Horse Tours",
-    description:
-      "Meet the family behind Nature Tours La Fortuna. We are passionate about sharing authentic Costa Rican experiences with well-trained horses and personalized service near Arenal Volcano.",
-    keywords:
-      "nature tours la fortuna, family horse tours costa rica, about nature tours, la fortuna horses, local tour guides arenal, authentic costa rica experience",
-    canonical: "https://naturetourslafortuna.com/about",
-    image: "https://naturetourslafortuna.com/aboutUs/about-main.webp",
-  },
-  services: {
-    title: "Services & Accommodation | Nature Tours La Fortuna Costa Rica",
-    description:
-      "Rural lodging, villas and houses near Arenal Volcano. Combine your horseback riding tour with an unforgettable stay surrounded by nature in La Fortuna.",
-    keywords:
-      "la fortuna accommodation, arenal villas, rural lodging costa rica, nature lodge la fortuna, eco accommodation arenal, vacation rental la fortuna",
-    canonical: "https://naturetourslafortuna.com/services",
-    image: "https://naturetourslafortuna.com/houses/villaAurora/villa1.webp",
-  },
-  contact: {
-    title: "Contact Us | Nature Tours La Fortuna - Book Your Tour Today",
-    description:
-      "Contact us to book your horseback riding tour in La Fortuna. WhatsApp available for quick responses. We're here to help you plan your Costa Rica adventure!",
-    keywords:
-      "contact nature tours, book tour la fortuna, la fortuna tours booking, whatsapp tours costa rica, reserve horse tour arenal",
-    canonical: "https://naturetourslafortuna.com/contact",
-  },
+  home: fromPage(PAGES.home),
+  horseback: fromPage(PAGES.horseback),
+  tours: fromPage(PAGES.tours),
+  nightWalk: { ...fromPage(PAGES.nightWalk), robots: NIGHT_WALK_LIVE ? "index, follow" : "noindex, follow" },
+  about: fromPage(PAGES.about),
+  services: fromPage(PAGES.services),
+  contact: fromPage(PAGES.contact),
+  // Páginas de reserva: no se indexan (son pasos del pago, no contenido).
   checkout: {
-    title: "Book Your Horseback Tour | Nature Tours La Fortuna",
-    description:
-      "Book your horseback riding tour in La Fortuna online. Select your date, group size and confirm your adventure near Arenal Volcano. Instant confirmation!",
-    keywords: "book tour la fortuna, arenal tours booking, horseback riding reservation, online booking costa rica tours",
-    canonical: "https://naturetourslafortuna.com/checkout",
+    title: "Book Your Tour | Nature Tours La Fortuna",
+    description: "Select your date and group size to book your tour in La Fortuna.",
+    canonical: `${SITE_URL}/checkout`,
+    robots: "noindex, follow",
   },
 };
 

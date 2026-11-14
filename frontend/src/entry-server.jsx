@@ -5,6 +5,9 @@ import ScrollToTop from './ScrollToTop'
 
 import Home from './pages/HomePage'
 import ToursPage from './pages/ToursPage'
+import SelecTourPage from './pages/SelecTourPage'
+import NightWalkPage from './pages/NightWalkPage'
+import { PATHS } from './seo/seoData'
 import AboutUs from './pages/AboutUs'
 import ServicesPage from './pages/ServicesPage'
 import ContactPage from './pages/ContactPage'
@@ -25,7 +28,9 @@ const routes = [
     element: <RootLayout />,
     children: [
       { path: '/', element: <Home /> },
-      { path: '/tours', element: <ToursPage /> },
+      { path: PATHS.horseback, element: <ToursPage /> },
+      { path: PATHS.tours, element: <SelecTourPage /> },
+      { path: PATHS.nightWalk, element: <NightWalkPage /> },
       { path: '/about', element: <AboutUs /> },
       { path: '/services', element: <ServicesPage /> },
       { path: '/contact', element: <ContactPage /> },

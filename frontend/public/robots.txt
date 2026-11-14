@@ -1,34 +1,20 @@
-# robots.txt for Nature Tours La Fortuna
-# https://naturetourslafortuna.com
+# robots.txt — Nature Tours La Fortuna (https://naturetourslafortuna.com)
+# Un solo bloque para todos los bots: Google ignora los bloques genéricos si
+# encuentra uno propio, así que no se separan.
 
-# Allow all bots
 User-agent: *
 Allow: /
 
-# Pages we don't want indexed (payment/transaction/admin pages)
+# Pagos, reservas, enlaces privados y app interna (no son contenido)
+Disallow: /checkout
 Disallow: /payment/
 Disallow: /success/
 Disallow: /link/
 Disallow: /custom-payment
+Disallow: /reseller/
+Disallow: /asistencia
 Disallow: /matamoros
 Disallow: /login
-Disallow: /reseller/
+Disallow: /app/
 
-# Sitemap location
 Sitemap: https://naturetourslafortuna.com/sitemap.xml
-
-# Crawl-delay to be friendly to the server
-Crawl-delay: 1
-
-# Google specific bots
-User-agent: Googlebot
-Allow: /
-Disallow: /payment/
-Disallow: /success/
-Disallow: /matamoros
-Disallow: /login
-Disallow: /reseller/
-
-# Image bots
-User-agent: Googlebot-Image
-Allow: /

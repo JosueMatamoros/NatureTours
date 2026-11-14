@@ -3,6 +3,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import './index.css'
 import router from './router.jsx'
+import { PRERENDERED_PATHS } from './seo/seoData'
 
 // Android/Chrome: guardar el aviso de instalación de la app (PWA) para que el
 // botón "Instalar app" del portal lo pueda disparar cuando el usuario quiera.
@@ -23,7 +24,7 @@ const app = (
 // En rutas no prerenderizadas (ej. /reseller/:id) el servidor devuelve el
 // home prerenderizado: se descarta ese markup y se renderiza desde cero
 // (index.html lo mantiene oculto con la clase spa-boot hasta el montaje).
-const PRERENDERED = ['/', '/tours', '/about', '/services', '/contact']
+const PRERENDERED = PRERENDERED_PATHS
 const path = location.pathname.replace(/\/+$/, '') || '/'
 const isPrerenderedRoute = PRERENDERED.includes(path)
 

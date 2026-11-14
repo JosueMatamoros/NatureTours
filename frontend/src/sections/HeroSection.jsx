@@ -1,9 +1,8 @@
 import { HiOutlineSparkles } from "react-icons/hi2";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { PATHS } from "../seo/seoData";
 
 export default function HeroSection() {
-  const navigate = useNavigate();
-
   return (
     <section
       className="
@@ -31,29 +30,32 @@ export default function HeroSection() {
       {/* MOBILE layout: title top, center free, buttons near bottom */}
       <div className="md:hidden absolute inset-0 z-20 flex flex-col px-6 pt-24 pb-28">
         <div className="text-center">
-          <h1 className="text-5xl font-black tracking-tight" style={{ filter: "drop-shadow(0 2px 20px rgba(0,0,0,0.85))" }}>
+          <p className="text-5xl font-black tracking-tight" style={{ filter: "drop-shadow(0 2px 20px rgba(0,0,0,0.85))" }}>
             <span className="block text-white">Nature Tours</span>
             <span className="block mt-1 bg-gradient-to-r from-green-300 via-emerald-400 to-green-500 bg-clip-text text-transparent">
               La Fortuna
             </span>
+          </p>
+          <h1 className="mt-3 text-base font-semibold text-white/90" style={{ textShadow: "0 1px 12px rgba(0,0,0,0.8)" }}>
+            Horseback Riding Tours in La Fortuna, Costa Rica
           </h1>
         </div>
 
         <div className="flex-1" />
 
         <div className="flex items-center justify-center gap-3">
-          <button
+          <Link
+            to={PATHS.tours}
             className="rounded-full bg-gradient-to-r from-green-400 to-emerald-500 px-8 py-3.5 text-sm font-bold text-black shadow-lg shadow-green-500/30 transition-all hover:scale-105"
-            onClick={() => navigate("/SelecTour")}
           >
             Book Now
-          </button>
-          <button
+          </Link>
+          <Link
+            to={PATHS.horseback}
             className="rounded-full bg-black/40 px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-md border border-white/25 transition-all hover:scale-105 hover:bg-black/50"
-            onClick={() => navigate("/tours")}
           >
-            View Tours
-          </button>
+            View the Tour
+          </Link>
         </div>
       </div>
 
@@ -64,31 +66,34 @@ export default function HeroSection() {
             <HiOutlineSparkles className="h-4 w-4" />
             Eco tours • Wildlife • Adventure
           </p>
-          <h1 className="text-7xl lg:text-8xl font-black tracking-tight" style={{ filter: "drop-shadow(0 2px 20px rgba(0,0,0,0.85))" }}>
+          <p className="text-7xl lg:text-8xl font-black tracking-tight" style={{ filter: "drop-shadow(0 2px 20px rgba(0,0,0,0.85))" }}>
             <span className="block text-white">
               Nature Tours
             </span>
             <span className="block mt-2 bg-gradient-to-r from-green-300 via-emerald-400 to-green-500 bg-clip-text text-transparent">
               La Fortuna
             </span>
-          </h1>
+          </p>
+          <p className="mt-4 text-xl lg:text-2xl font-semibold text-white/90" style={{ textShadow: "0 1px 12px rgba(0,0,0,0.8)" }}>
+            Horseback Riding Tours in La Fortuna, Costa Rica
+          </p>
         </div>
 
         <div className="flex-1" />
 
         <div className="flex items-center justify-center gap-3">
-          <button
+          <Link
+            to={PATHS.tours}
             className="rounded-full bg-gradient-to-r from-green-400 to-emerald-500 px-8 py-3.5 text-sm font-bold text-black shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all hover:scale-105"
-            onClick={() => navigate("/SelecTour")}
           >
             Book Now
-          </button>
-          <button
+          </Link>
+          <Link
+            to={PATHS.horseback}
             className="rounded-full bg-white/10 px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-md border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.35)] transition-all hover:scale-105 hover:bg-white/20"
-            onClick={() => navigate("/tours")}
           >
-            View Tours
-          </button>
+            View the Tour
+          </Link>
         </div>
       </div>
 

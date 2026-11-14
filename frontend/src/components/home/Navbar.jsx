@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { HiOutlineLocationMarker } from "react-icons/hi";
+import { PATHS } from "../../seo/seoData";
 
 const LINKS = [
   { label: "Home",     to: "/" },
-  { label: "Tours",    to: "/SelecTour" },
+  { label: "Horseback Riding", to: PATHS.horseback },
   { label: "About Us", to: "/about" },
   { label: "Services", to: "/services" },
   { label: "Contact",  to: "/contact" },
@@ -157,7 +158,7 @@ export default function Navbar({ variant = "overlay" }) {
             {/* CTA */}
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} className="hidden md:block">
               <NavLink
-                to="/SelecTour"
+                to={PATHS.tours}
                 className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-5 py-2 text-sm font-700 text-black shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition-colors"
                 style={{ fontFamily: "'Montserrat', sans-serif" }}
               >
@@ -250,7 +251,7 @@ export default function Navbar({ variant = "overlay" }) {
                   className="mt-2"
                 >
                   <NavLink
-                    to="/SelecTour"
+                    to={PATHS.tours}
                     onClick={() => setOpen(false)}
                     className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-700 text-black transition-colors hover:bg-emerald-400"
                     style={{ fontFamily: "'Montserrat', sans-serif" }}

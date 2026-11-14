@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/home/Navbar";
 import Footer from "../components/home/Footer";
 import PartnerToursSection from "../components/tour/PartnerToursSection";
+import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
+import { PATHS, NIGHT_WALK_LIVE } from "../seo/seoData";
 
 const TOURS = [
   {
@@ -19,7 +21,7 @@ const TOURS = [
     objectPosition: "object-[center_65%]",
     available: true,
     cta: "Select date",
-    infoHref: "/tours", // página con el detalle completo del tour
+    infoHref: PATHS.horseback, // página con el detalle completo del tour
   },
   {
     id: 1,
@@ -33,11 +35,13 @@ const TOURS = [
     available: false,
     cta: "Coming soon",
     badge: "Coming Soon",
+    infoHref: NIGHT_WALK_LIVE ? PATHS.nightWalk : null,
   },
 ];
 
 export default function SelecTour() {
   const navigate = useNavigate();
+  useSEO(SEO_CONFIG.tours);
 
   return (
     <div>
@@ -46,12 +50,14 @@ export default function SelecTour() {
       <main className="mx-auto max-w-6xl px-4 ">
         {/* HEADER */}
         <header className=" mb-6 md:mb-16  text-center">
-          <h2 className="mt-6 text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
-            Our tours
-          </h2>
+          <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-[#2B241D] sm:text-5xl lg:text-6xl">
+            Tours in La Fortuna
+          </h1>
 
           <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-emerald-900/70 sm:text-lg">
-            Discover the magic of nature through our guided experiences, designed to create unforgettable memories.
+            Guided experiences by a local family near Arenal Volcano: horseback riding with
+            river crossings through forest and farms, and a night walk to discover the
+            rainforest after dark.
           </p>
 
           <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-emerald-900/20" />

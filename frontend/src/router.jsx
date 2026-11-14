@@ -1,12 +1,14 @@
 import { lazy, Suspense, useEffect } from "react";
 import {
   createBrowserRouter,
+  Navigate,
   Outlet,
   ScrollRestoration,
 } from "react-router-dom";
 import ScrollToTop from "./ScrollToTop";
 import AdminGuard from "./router/AdminGuard";
 import { useAppShell } from "./hooks/useAppShell";
+import { PATHS } from "./seo/seoData";
 
 import Home from "./pages/HomePage";
 import NotFound from "./pages/NotFound";
@@ -19,6 +21,7 @@ const AboutUs = lazy(() => import("./pages/AboutUs"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const ServicesPage = lazy(() => import("./pages/ServicesPage"));
 const ToursPage = lazy(() => import("./pages/ToursPage"));
+const NightWalkPage = lazy(() => import("./pages/NightWalkPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ReservacionesPage = lazy(() => import("./pages/ReservacionesPage"));
 const AsistenciaPage = lazy(() => import("./pages/AsistenciaPage"));
@@ -111,13 +114,16 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "/SelecTour",
+        path: PATHS.tours,
         element: (
           <LazyPage>
             <SelecTour />
           </LazyPage>
         ),
       },
+      // URLs viejas → nuevas (Cloudflare además responde 301 vía public/_redirects)
+      { path: "/SelecTour", element: <Navigate to={PATHS.tours} replace /> },
+      { path: "/tours", element: <Navigate to={PATHS.horseback} replace /> },
       {
         path: "/success/:paymentId",
         element: (
@@ -151,10 +157,18 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "/tours",
+        path: PATHS.horseback,
         element: (
           <LazyPage>
             <ToursPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: PATHS.nightWalk,
+        element: (
+          <LazyPage>
+            <NightWalkPage />
           </LazyPage>
         ),
       },

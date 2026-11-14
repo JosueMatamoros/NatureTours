@@ -1,5 +1,6 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { PATHS } from "../seo/seoData";
 import { FiArrowRight } from "react-icons/fi";
 import Navbar from "../components/home/Navbar";
 import Footer from "../components/home/Footer";
@@ -39,14 +40,13 @@ export default function Home() {
         ]}
       />
       <div className="w-full  flex justify-center sm:-mt-8">
-        <button
-          type="button"
-          onClick={() => navigate("/tours")}
+        <Link
+          to={PATHS.horseback}
           className="it rounded-xl border border-emerald-700 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition-all duration-300 hover:bg-emerald-50 hover:scale-105 inline-flex items-center gap-2"
         >
-          Know more about the tour
+          More about our horseback riding tour
           <FiArrowRight className="h-4 w-4" />
-        </button>
+        </Link>
       </div>
       <AboutUsSection />
       <HorsesSection limit={3} />

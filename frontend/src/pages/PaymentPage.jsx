@@ -27,7 +27,7 @@ export default function PaymentPage() {
   const location = useLocation();
   // A dónde volver al salir: el carrito de donde vino (normal o de reseller).
   // Sin ese estado (ej. entrada directa al link), se cae al listado de tours.
-  const backTo = location.state?.backTo ?? "/tours";
+  const backTo = location.state?.backTo ?? "/horseback-riding-la-fortuna";
 
   const [booking, setBooking] = useState(null);
   const [loadingBooking, setLoadingBooking] = useState(true);
@@ -279,7 +279,7 @@ export default function PaymentPage() {
         open={showTimeout}
         onClose={() => {
           setShowTimeout(false);
-          navigate("/tours", { replace: true });
+          navigate("/horseback-riding-la-fortuna", { replace: true });
         }}
         onHelp={() => {
           setShowTimeout(false);

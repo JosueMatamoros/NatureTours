@@ -7,43 +7,33 @@ const root = path.resolve(__dirname, '..')
 const distPath = path.resolve(root, 'dist')
 const ssrPath = path.resolve(distPath, '.ssr')
 
-const ROUTES = ['/', '/tours', '/about', '/services', '/contact']
+import { PRERENDERED_PAGES, PRERENDERED_PATHS, SITE_URL, absUrl } from '../src/seo/seoData.js'
 
-const SEO_PER_ROUTE = {
-  '/': {
-    title: 'Nature Tours La Fortuna | Horseback Riding Tours in Costa Rica',
-    description: 'Experience the best horseback riding tours in La Fortuna, Costa Rica. Explore lush rainforest trails, river crossings, and stunning tropical nature. Book your adventure today!',
-    canonical: 'https://naturetourslafortuna.com/',
-    ogUrl: 'https://naturetourslafortuna.com/',
-  },
-  '/tours': {
-    title: 'Horseback Riding Tours in La Fortuna | Nature Tours Costa Rica',
-    description: 'Explore La Fortuna on horseback through breathtaking rainforest scenery. Sunset rides, river crossings, mountain trails, and unforgettable experiences with well-trained horses. Perfect for families!',
-    canonical: 'https://naturetourslafortuna.com/tours',
-    ogUrl: 'https://naturetourslafortuna.com/tours',
-  },
-  '/about': {
-    title: 'About Us | Nature Tours La Fortuna - Family Owned Horse Tours',
-    description: 'Meet the family behind Nature Tours La Fortuna. We are passionate about sharing authentic Costa Rican experiences with well-trained horses and personalized service near Arenal Volcano.',
-    canonical: 'https://naturetourslafortuna.com/about',
-    ogUrl: 'https://naturetourslafortuna.com/about',
-  },
-  '/services': {
-    title: 'Services & Accommodation | Nature Tours La Fortuna Costa Rica',
-    description: 'Rural lodging, villas and houses near Arenal Volcano. Combine your horseback riding tour with an unforgettable stay surrounded by nature in La Fortuna.',
-    canonical: 'https://naturetourslafortuna.com/services',
-    ogUrl: 'https://naturetourslafortuna.com/services',
-  },
-  '/contact': {
-    title: 'Contact Us | Nature Tours La Fortuna - Book Your Tour Today',
-    description: 'Contact us to book your horseback riding tour in La Fortuna. WhatsApp available for quick responses. We\'re here to help you plan your Costa Rica adventure!',
-    canonical: 'https://naturetourslafortuna.com/contact',
-    ogUrl: 'https://naturetourslafortuna.com/contact',
-  },
-}
+// Páginas, títulos y descripciones salen de src/seo/seoData.js (misma fuente
+// que el sitio y el sitemap).
+const ROUTES = PRERENDERED_PATHS
+const SEO_PER_ROUTE = Object.fromEntries(
+  PRERENDERED_PAGES.map((p) => [
+    p.path,
+    {
+      title: p.title,
+      description: p.description,
+      canonical: absUrl(p.path),
+      ogUrl: absUrl(p.path),
+      image: `${SITE_URL}${p.image}`,
+    },
+  ]),
+)
+
+const escapeHtml = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
 
 function patchMeta(html, seo) {
   let out = html
+  seo = Object.fromEntries(Object.entries(seo).map(([k, v]) => [k, escapeHtml(v)]))
+  if (seo.image) {
+    out = out.replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${seo.image}$2`)
+    out = out.replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${seo.image}$2`)
+  }
   if (seo.title) {
     out = out.replace(/<title>[^<]*<\/title>/, `<title>${seo.title}</title>`)
     out = out.replace(/(<meta property="og:title" content=")[^"]*(")/,  `$1${seo.title}$2`)
@@ -68,7 +58,10 @@ function patchMeta(html, seo) {
 const { render } = await import(path.join(ssrPath, 'entry-server.js'))
 
 // Base HTML template from client build
-const template = await fs.readFile(path.join(distPath, 'index.html'), 'utf-8')
+const template = (await fs.readFile(path.join(distPath, 'index.html'), 'utf-8')).replace(
+  /var prerendered = \[[^\]]*\];/,
+  `var prerendered = ${JSON.stringify(PRERENDERED_PATHS)};`,
+)
 
 for (const url of ROUTES) {
   process.stdout.write(`Rendering ${url} ...`)
@@ -85,17 +78,34 @@ for (const url of ROUTES) {
   const seo = SEO_PER_ROUTE[url]
   if (seo) html = patchMeta(html, seo)
 
-  // Write to dist/[route]/index.html
-  const routeDir =
+  // dist/index.html para el inicio y dist/<ruta>.html para el resto: así
+  // Cloudflare sirve /<ruta> directo (200) sin redirigir a /<ruta>/, y la URL
+  // coincide con el canonical y el sitemap.
+  const file =
     url === '/'
-      ? distPath
-      : path.join(distPath, ...url.split('/').filter(Boolean))
+      ? path.join(distPath, 'index.html')
+      : path.join(distPath, ...url.split('/').filter(Boolean)) + '.html'
+  await fs.mkdir(path.dirname(file), { recursive: true })
+  await fs.writeFile(file, html)
 
-  await fs.mkdir(routeDir, { recursive: true })
-  await fs.writeFile(path.join(routeDir, 'index.html'), html)
-
-  console.log(` done → dist${url === '/' ? '/index.html' : url + '/index.html'}`)
+  console.log(` done → ${path.relative(root, file)}`)
 }
+
+// Sitemap generado en cada build (fecha de hoy, solo páginas indexables).
+const today = new Date().toISOString().slice(0, 10)
+const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${PRERENDERED_PAGES.map((p) => `  <url>
+    <loc>${absUrl(p.path)}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+    <image:image><image:loc>${SITE_URL}${p.image}</image:loc></image:image>
+  </url>`).join('\n')}
+</urlset>
+`
+await fs.writeFile(path.join(distPath, 'sitemap.xml'), sitemap)
+console.log(`sitemap.xml → ${PRERENDERED_PAGES.length} URLs`)
 
 // Remove SSR artifacts (not needed in deployment)
 await fs.rm(ssrPath, { recursive: true, force: true })

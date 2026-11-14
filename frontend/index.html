@@ -78,6 +78,12 @@
       @keyframes spa-boot-spin { to { transform: rotate(360deg); } }
     </style>
     <script>
+      // Copia del sitio en *.pages.dev → dominio real (evita contenido duplicado).
+      if (/\.pages\.dev$/.test(location.hostname)) {
+        location.replace("https://naturetourslafortuna.com" + location.pathname + location.search + location.hash);
+      }
+    </script>
+    <script>
       (function () {
         var path = location.pathname.replace(/\/+$/, "") || "/";
         var prerendered = ["/", "/tours", "/about", "/services", "/contact"];
@@ -87,29 +93,34 @@
       })();
     </script>
 
-    <!-- Structured Data - For rich Google search results -->
+    <!-- Datos estructurados del negocio (uno solo, coherente con Google Maps) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "TouristAttraction",
+      "@type": "LocalBusiness",
+      "@id": "https://naturetourslafortuna.com/#business",
       "name": "Nature Tours La Fortuna",
-      "description": "Horseback riding tours and nature experiences in La Fortuna, Costa Rica through lush rainforest trails",
-      "url": "https://naturetourslafortuna.com",
+      "description": "Family-owned horseback riding tours in La Fortuna, Costa Rica, near Arenal Volcano: forest trails, local farms and river crossings.",
+      "url": "https://naturetourslafortuna.com/",
       "logo": "https://naturetourslafortuna.com/logo.webp",
+      "image": "https://naturetourslafortuna.com/og-image.webp",
       "telephone": "+506-8989-3335",
+      "priceRange": "$35–$50",
+      "currenciesAccepted": "USD",
       "address": {
         "@type": "PostalAddress",
-        "addressLocality": "La Fortuna, San Carlos",
+        "streetAddress": "Ruta 702, San Ramón",
+        "addressLocality": "La Fortuna",
         "addressRegion": "Alajuela",
+        "postalCode": "21007",
         "addressCountry": "CR"
       },
       "geo": {
         "@type": "GeoCoordinates",
-        "latitude": "10.4064881",
-        "longitude": "-84.5804251"
+        "latitude": 10.4064881,
+        "longitude": -84.5804251
       },
-      "image": "https://naturetourslafortuna.com/og-image.webp",
-      "priceRange": "$$",
+      "hasMap": "https://maps.app.goo.gl/4tou36QDncguSgq96",
       "openingHoursSpecification": {
         "@type": "OpeningHoursSpecification",
         "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
@@ -117,32 +128,10 @@
         "closes": "18:00"
       },
       "sameAs": [
-        "https://www.instagram.com/nature_tours_la_fortuna/"
-      ]
-    }
-    </script>
-
-    <!-- Organization Schema - For Google to show your logo in searches -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "Nature Tours La Fortuna",
-      "url": "https://naturetourslafortuna.com",
-      "logo": "https://naturetourslafortuna.com/logo.webp",
-      "image": "https://naturetourslafortuna.com/logo.webp",
-      "description": "Horseback riding tours and nature experiences in La Fortuna, Costa Rica",
-      "telephone": "+506-8989-3335",
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "La Fortuna",
-        "addressLocality": "San Carlos",
-        "addressRegion": "Alajuela",
-        "postalCode": "21007",
-        "addressCountry": "CR"
-      },
-      "sameAs": [
-        "https://www.instagram.com/nature_tours_la_fortuna/"
+        "https://www.instagram.com/nature_tours_la_fortuna/",
+        "https://maps.app.goo.gl/4tou36QDncguSgq96",
+        "https://www.tripadvisor.com/AttractionProductReview-g17484635-d34402371-Horseback_Riding_Adventure_in_La_Fortuna_with_River_Crossings-La_Fortuna_La_Fort.html",
+        "https://www.getyourguide.com/es-es/san-ramon-costa-rica-l269637/la-fortuna-paseo-a-caballo-con-cruce-del-rio-t1246580/"
       ]
     }
     </script>

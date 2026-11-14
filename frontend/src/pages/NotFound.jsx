@@ -97,7 +97,7 @@ export default function NotFound() {
 
             <button
               type="button"
-              onClick={() => navigate("/tours")}
+              onClick={() => navigate("/horseback-riding-la-fortuna")}
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-400/30 bg-white/5 px-8 py-3 text-base font-semibold text-white backdrop-blur-sm transition hover:bg-emerald-500/10 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
             >
               <FiMap className="h-5 w-5" />

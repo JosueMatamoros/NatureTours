@@ -1,5 +1,6 @@
 import React from "react";
 import TourVideo from "../components/tour/TourVideo";
+import HorsebackGuide from "../components/tour/HorsebackGuide";
 import LocalFlavors from "../components/tour/LocalFlavors";
 import Navbar from "../components/home/Navbar";
 import Footer from "../components/home/Footer";
@@ -9,12 +10,13 @@ import StickyBookingBar from "../components/tour/StickyBookingBar";
 import { useSEO, SEO_CONFIG } from "../hooks/useSEO";
 
 export default function ToursPage() {
-  useSEO(SEO_CONFIG.tours);
+  useSEO(SEO_CONFIG.horseback);
 
   return (
     <div>
       <Navbar variant="solid" />
       <TourVideo />
+      <HorsebackGuide />
       <TourImagesBento
         images={[
           "/tours/bento/image1.webp",

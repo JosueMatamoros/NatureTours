@@ -1,0 +1,6 @@
+# Cloudflare Pages — redirecciones permanentes (301)
+# URLs viejas → páginas nuevas pensadas para búsquedas
+/tours                 /horseback-riding-la-fortuna   301
+/tours/                /horseback-riding-la-fortuna   301
+/SelecTour             /la-fortuna-tours              301
+/SelecTour/            /la-fortuna-tours              301

@@ -46,7 +46,7 @@ export default function ToursSection() {
             search: "?tourType=2",
           })
         }
-        onMoreInfo={() => navigate("/tours")}
+        onMoreInfo={() => navigate("/horseback-riding-la-fortuna")}
         reverse
       />
     </div>

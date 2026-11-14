@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { HiOutlineQuestionMarkCircle } from "react-icons/hi2";
 import FAQModal from "../ui/FAQModal";
+import { PATHS } from "../../seo/seoData";
 
 const LINKS = [
   { label: "Home", to: "/" },
-  { label: "Tours", to: "/SelecTour" },
+  { label: "Horseback Riding in La Fortuna", to: PATHS.horseback },
+  { label: "La Fortuna Tours", to: PATHS.tours },
   { label: "About Us", to: "/about" },
   { label: "Contact", to: "/contact" },
   { label: "Services", to: "/services" },

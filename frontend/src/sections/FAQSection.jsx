@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { HiPlus, HiMinus } from "react-icons/hi2";
 
-const FAQS = [
+export const FAQS = [
   {
     question: "Is prior horseback riding experience required?",
     answer:

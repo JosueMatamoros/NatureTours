@@ -22,7 +22,7 @@ export default function Checkout() {
   }, [isValidTour, tourType]);
 
   if (!isValidTour) {
-    return <Navigate to="/tours" replace />;
+    return <Navigate to="/horseback-riding-la-fortuna" replace />;
   }
 
   return (
