@@ -29,15 +29,39 @@ export function computeRevenue(rows) {
 
 // Reservas que cuentan: no canceladas y, si son web, con un pago completado
 // (mismo criterio que la vista del día).
+//
+// Además separa DÓNDE está lo generado:
+//   paypal → lo que el cliente ya pagó en línea (pago completo = precio del
+//            tour; depósito = el depósito). La comisión de PayPal no cuenta.
+//   cash   → el resto de las reservas directas: se cobra al llegar.
+//   otas   → Viator, GetYourGuide y Localbird: lo pagan las plataformas.
 export async function revenueBetween(fromYmd, toYmdExclusive) {
   const q = await pool.query(
-    `SELECT b.source, b.subtotal, b.ota_net
+    `SELECT b.source, b.subtotal, b.ota_net,
+            COALESCE(pay.online, 0) AS paid_online
      FROM bookings b
+     LEFT JOIN LATERAL (
+       SELECT SUM(CASE WHEN p.mode = 'full' THEN b.subtotal ELSE p.amount END) AS online
+       FROM payments p
+       WHERE p.booking_id = b.id AND p.status = 'completed'
+     ) pay ON true
      WHERE b.tour_date >= $1::date AND b.tour_date < $2::date
        AND b.status <> 'cancelled'
-       AND (b.source <> 'web' OR EXISTS (
-             SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'completed'))`,
+       AND (b.source <> 'web' OR pay.online IS NOT NULL)`,
     [fromYmd, toYmdExclusive],
   );
-  return { ...computeRevenue(q.rows), bookings: q.rowCount };
+  const where = { paypal: 0, cash: 0, otas: 0 };
+  for (const r of q.rows) {
+    if (OTA_SOURCES.has(r.source) || r.source === "localbird") {
+      const v = OTA_SOURCES.has(r.source) ? r.ota_net : r.subtotal;
+      if (v != null) where.otas += Number(v) || 0;
+      continue;
+    }
+    const sub = Number(r.subtotal) || 0;
+    const online = Math.min(sub, Number(r.paid_online) || 0);
+    where.paypal += online;
+    where.cash += sub - online;
+  }
+  for (const k of Object.keys(where)) where[k] = Math.round(where[k] * 100) / 100;
+  return { ...computeRevenue(q.rows), where, bookings: q.rowCount };
 }

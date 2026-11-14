@@ -57,7 +57,6 @@ export async function getFinanceMonth(req, res) {
       generated,
       balances: {
         bac: num(m?.bac_balance),
-        bacCurrency: m?.bac_currency || "USD",
         paypal: num(m?.paypal_balance),
         notes: m?.notes || "",
         updatedAt: m?.updated_at || null,
@@ -77,7 +76,7 @@ export async function saveFinanceMonth(req, res) {
   if (!range) return res.status(400).json({ ok: false, message: "Mes inválido (YYYY-MM)" });
   const bac = toAmount(req.body?.bac);
   const paypal = toAmount(req.body?.paypal);
-  const bacCurrency = req.body?.bacCurrency === "CRC" ? "CRC" : "USD";
+  const bacCurrency = "USD"; // BAC y PayPal se anotan siempre en dólares
   const notes = typeof req.body?.notes === "string" ? req.body.notes.slice(0, 1000) : null;
   if (Number.isNaN(bac) || Number.isNaN(paypal)) {
     return res.status(400).json({ ok: false, message: "Monto inválido" });

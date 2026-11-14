@@ -36,20 +36,24 @@ const SOURCES = [
 
 const PROVIDERS = {
   viator: {
-    icon: "bg-sky-100 text-sky-700",
-    title: "Pagos de Viator",
-    hint: "Viator paga cada semana (los lunes).",
+    name: "Viator",
+    short: "Viator",
+    when: "Paga cada lunes",
     accent: "text-sky-700",
+    panel: "bg-sky-50/60 ring-sky-100",
     chip: "bg-sky-100 text-sky-700",
+    selected: "bg-sky-600 text-white shadow-sm",
     ring: "focus:ring-sky-500/30 focus:border-sky-500",
     button: "bg-sky-600 hover:bg-sky-700",
   },
   gyg: {
-    icon: "bg-rose-100 text-rose-700",
-    title: "Pagos de GetYourGuide",
-    hint: "GetYourGuide paga una vez al mes, a inicios del mes siguiente.",
+    name: "GetYourGuide",
+    short: "GYG",
+    when: "Paga a inicio del mes siguiente",
     accent: "text-rose-700",
+    panel: "bg-rose-50/60 ring-rose-100",
     chip: "bg-rose-100 text-rose-700",
+    selected: "bg-rose-600 text-white shadow-sm",
     ring: "focus:ring-rose-500/30 focus:border-rose-500",
     button: "bg-rose-600 hover:bg-rose-700",
   },
@@ -84,10 +88,9 @@ function dateLabel(ymd) {
   return `${d} ${MONTHS_SHORT[m - 1]} ${y}`;
 }
 
-function money(n, currency = "USD") {
+function money(n) {
   const v = Number(n) || 0;
-  const sym = currency === "CRC" ? "₡" : "$";
-  return `${sym}${v.toLocaleString("en-US", {
+  return `$${v.toLocaleString("en-US", {
     minimumFractionDigits: v % 1 ? 2 : 0,
     maximumFractionDigits: 2,
   })}`;
@@ -211,120 +214,127 @@ function SectionCard({ icon, iconClass, title, hint, right, children }) {
   );
 }
 
-// ─── Resumen del cierre (lo primero que se ve) ──────────────────────────────
-function SummaryTile({ label, value, sub, tone }) {
-  return (
-    <div className={`rounded-2xl p-4 ring-1 ${tone}`}>
-      <p className="text-[11px] font-bold uppercase tracking-wide opacity-70">{label}</p>
-      <p className="mt-1 text-2xl font-black leading-none tabular-nums tracking-tight">{value}</p>
-      {sub && <p className="mt-1.5 text-xs font-medium opacity-70">{sub}</p>}
-    </div>
-  );
-}
+// ─── 1. Resumen: lo generado y dónde está ───────────────────────────────────
+const WHERE = [
+  { key: "paypal", label: "Ya está en PayPal", hint: "Pagos en línea (completo o depósito)", dot: "bg-sky-300" },
+  { key: "cash", label: "Se cobra al llegar", hint: "Saldo de reservas directas con depósito", dot: "bg-amber-300" },
+  { key: "otas", label: "Lo pagan las OTAs", hint: "Viator, GetYourGuide y Localbird", dot: "bg-white/80" },
+];
 
-function SummaryGrid({ data, month }) {
-  const b = data.balances || {};
-  const otas = (Number(data.received?.viator) || 0) + (Number(data.received?.gyg) || 0);
-  const empty = "Sin anotar";
-  return (
-    <section aria-label="Resumen del cierre">
-      <p className="mb-2 text-sm font-bold text-gray-700">
-        Resumen de <span className="capitalize">{monthLabel(month)}</span>
-      </p>
-      <div className="grid grid-cols-2 gap-3">
-        <SummaryTile
-          label="Generado"
-          value={money(data.generated?.total)}
-          sub="Calculado por la app"
-          tone="bg-emerald-50 text-emerald-900 ring-emerald-200"
-        />
-        <SummaryTile
-          label="BAC San José"
-          value={b.bac == null ? empty : money(b.bac, b.bacCurrency)}
-          sub={b.bac == null ? "Anotalo abajo" : b.bacCurrency === "CRC" ? "Colones" : "Dólares"}
-          tone={b.bac == null ? "bg-white text-gray-400 ring-gray-200" : "bg-red-50 text-red-900 ring-red-200"}
-        />
-        <SummaryTile
-          label="PayPal"
-          value={b.paypal == null ? empty : money(b.paypal)}
-          sub={b.paypal == null ? "Anotalo abajo" : "Dólares"}
-          tone={b.paypal == null ? "bg-white text-gray-400 ring-gray-200" : "bg-blue-50 text-blue-900 ring-blue-200"}
-        />
-        <SummaryTile
-          label="Pagos OTAs"
-          value={money(otas)}
-          sub={`Viator ${money(data.received?.viator)} · GYG ${money(data.received?.gyg)}`}
-          tone="bg-gray-900 text-white ring-gray-900"
-        />
-      </div>
-    </section>
-  );
-}
-
-// ─── Generado según la app ──────────────────────────────────────────────────
-function GeneratedCard({ generated }) {
+function GeneratedCard({ generated, month }) {
+  const [showSources, setShowSources] = useState(false);
   const total = Number(generated?.total) || 0;
-  const rows = SOURCES.filter((s) => generated?.bySource?.[s.key] != null)
+  const where = generated?.where || {};
+  const pct = (v) => (total > 0 ? Math.round(((Number(v) || 0) / total) * 100) : 0);
+  const sources = SOURCES.filter((s) => generated?.bySource?.[s.key] != null)
     .map((s) => ({ ...s, amount: Number(generated.bySource[s.key]) || 0 }))
     .sort((a, b) => b.amount - a.amount);
+
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 p-5 text-white shadow-lg shadow-emerald-900/20 sm:p-6">
       <span aria-hidden className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-white/10 blur-2xl" />
       <span aria-hidden className="pointer-events-none absolute -bottom-16 -left-8 h-40 w-40 rounded-full bg-teal-300/20 blur-2xl" />
-      <div className="relative flex items-center gap-3">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20">
-          <FiDollarSign className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-100/90">
-            De dónde vino lo generado
-          </p>
-          <p className="mt-0.5 text-4xl font-black leading-none tabular-nums tracking-tight">{money(total)}</p>
-          <p className="mt-1 text-xs text-emerald-100/80">
-            {generated?.bookings || 0} reserva{generated?.bookings === 1 ? "" : "s"} con tour en el mes
-          </p>
-        </div>
-      </div>
 
-      {rows.length > 0 && (
-        <div className="relative mt-5 space-y-3 rounded-2xl bg-black/15 p-4 ring-1 ring-white/10">
-          {rows.map((r) => {
-            const pct = total > 0 ? Math.round((r.amount / total) * 100) : 0;
-            return (
-              <div key={r.key}>
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="inline-flex min-w-0 items-center gap-2 font-semibold text-white/90">
-                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${r.dot}`} />
-                    <span className="truncate">{r.label}</span>
-                  </span>
-                  <span className="flex items-baseline gap-2 tabular-nums">
-                    <span className="text-xs font-medium text-emerald-100/70">{pct}%</span>
-                    <span className="font-bold">{money(r.amount)}</span>
-                  </span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
-                  <div className={`h-full rounded-full ${r.dot}`} style={{ width: `${pct}%` }} />
+      <div className="relative">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-100/90">
+          Generado en {MONTHS[Number(month.split("-")[1]) - 1]}
+        </p>
+        <p className="mt-1 text-4xl font-black leading-none tabular-nums tracking-tight">{money(total)}</p>
+        <p className="mt-1.5 text-xs text-emerald-100/80">
+          {generated?.bookings || 0} reserva{generated?.bookings === 1 ? "" : "s"} · calculado por la app
+        </p>
+
+        {/* Barra: dónde está la plata */}
+        <div className="mt-5 flex h-3 overflow-hidden rounded-full bg-white/10" aria-hidden>
+          {WHERE.map((w) => (
+            <div key={w.key} className={`h-full ${w.dot}`} style={{ width: `${pct(where[w.key])}%` }} />
+          ))}
+        </div>
+
+        <ul className="mt-4 space-y-2.5">
+          {WHERE.map((w) => (
+            <li key={w.key} className="flex items-center justify-between gap-3">
+              <span className="flex min-w-0 items-start gap-2.5">
+                <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${w.dot}`} />
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold">{w.label}</span>
+                  <span className="block text-xs text-emerald-100/75">{w.hint}</span>
+                </span>
+              </span>
+              <span className="shrink-0 text-right tabular-nums">
+                <span className="block text-base font-black">{money(where[w.key])}</span>
+                <span className="block text-xs font-medium text-emerald-100/70">{pct(where[w.key])}%</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        {/* Por origen (desplegable) */}
+        {sources.length > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowSources((o) => !o)}
+              aria-expanded={showSources}
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-between rounded-xl bg-white/10 px-4 text-sm font-bold ring-1 ring-white/15 transition hover:bg-white/15 cursor-pointer"
+            >
+              Ver por origen (Directo, Viator, GYG…)
+              <FiChevronDown className={`h-4 w-4 transition-transform duration-300 ${showSources ? "rotate-180" : ""}`} />
+            </button>
+            <div className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${showSources ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+              <div className="overflow-hidden">
+                <div className="mt-2 space-y-3 rounded-2xl bg-black/15 p-4 ring-1 ring-white/10">
+                  {sources.map((r) => (
+                    <div key={r.key}>
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span className="inline-flex items-center gap-2 font-semibold text-white/90">
+                          <span className={`h-2.5 w-2.5 rounded-full ${r.dot}`} />
+                          {r.label}
+                        </span>
+                        <span className="flex items-baseline gap-2 tabular-nums">
+                          <span className="text-xs text-emerald-100/70">{pct(r.amount)}%</span>
+                          <span className="font-bold">{money(r.amount)}</span>
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <div className={`h-full rounded-full ${r.dot}`} style={{ width: `${pct(r.amount)}%` }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            );
-          })}
-          {generated.missing > 0 && (
-            <p className="flex items-center gap-1.5 border-t border-white/10 pt-3 text-xs font-medium text-emerald-50/80">
-              <FiAlertCircle className="h-3.5 w-3.5 shrink-0" />
-              {generated.missing} reserva{generated.missing === 1 ? "" : "s"} OTA sin precio (no se suma
-              {generated.missing === 1 ? "" : "n"})
-            </p>
-          )}
-        </div>
-      )}
+            </div>
+          </>
+        )}
+
+        {generated?.missing > 0 && (
+          <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-emerald-50/80">
+            <FiAlertCircle className="h-3.5 w-3.5 shrink-0" />
+            {generated.missing} reserva{generated.missing === 1 ? "" : "s"} OTA sin precio (no se suma
+            {generated.missing === 1 ? "" : "n"})
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─── Saldos del mes (BAC + PayPal) ──────────────────────────────────────────
+function BalanceTile({ label, value, tone, emptyTone }) {
+  const empty = value == null;
+  return (
+    <div className={`rounded-2xl p-4 ring-1 ${empty ? emptyTone : tone}`}>
+      <p className="text-[11px] font-bold uppercase tracking-wide opacity-70">{label}</p>
+      <p className={`mt-1 font-black leading-none tabular-nums tracking-tight ${empty ? "text-lg" : "text-2xl"}`}>
+        {empty ? "Sin anotar" : money(value)}
+      </p>
+      <p className="mt-1.5 text-xs font-medium opacity-70">{empty ? "Anotalo abajo" : "Saldo al cierre"}</p>
+    </div>
+  );
+}
+
+// ─── 2. Saldos al cierre (BAC + PayPal, siempre en dólares) ─────────────────
 function BalancesCard({ month, balances, onSaved }) {
   const [bac, setBac] = useState(toInput(balances?.bac));
-  const [bacCurrency, setBacCurrency] = useState(balances?.bacCurrency || "USD");
   const [paypal, setPaypal] = useState(toInput(balances?.paypal));
   const [notes, setNotes] = useState(balances?.notes || "");
   const [state, setState] = useState("idle"); // idle | saving | saved | error
@@ -334,14 +344,14 @@ function BalancesCard({ month, balances, onSaved }) {
     const bacN = parseAmount(bac);
     const paypalN = parseAmount(paypal);
     if (Number.isNaN(bacN) || Number.isNaN(paypalN)) {
-      setError("Revisá los montos: solo números (ej. 1250.50).");
+      setError("Revisá los montos: solo números (ej. 1,250.50).");
       setState("error");
       return;
     }
     setState("saving");
     setError("");
     try {
-      await saveFinanceMonth(month, { bac: bacN, bacCurrency, paypal: paypalN, notes });
+      await saveFinanceMonth(month, { bac: bacN, paypal: paypalN, notes });
       setState("saved");
       onSaved?.();
       setTimeout(() => setState((s) => (s === "saved" ? "idle" : s)), 2500);
@@ -352,34 +362,17 @@ function BalancesCard({ month, balances, onSaved }) {
   }
 
   return (
-    <SectionCard icon={FiCreditCard} title="Saldos del mes" hint="Lo que tenés en cada cuenta al cierre del mes.">
+    <SectionCard icon={FiCreditCard} title="Saldos al cierre" hint="Cuánto tenés en cada cuenta a final de mes (en dólares).">
       <div className="space-y-4">
-        <div>
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <label htmlFor="bac" className="text-sm font-bold text-gray-800">BAC San José</label>
-            <div role="radiogroup" aria-label="Moneda BAC" className="inline-flex rounded-lg bg-gray-100 p-0.5">
-              {[["USD", "Dólares"], ["CRC", "Colones"]].map(([c, l]) => (
-                <button
-                  key={c}
-                  type="button"
-                  role="radio"
-                  aria-checked={bacCurrency === c}
-                  onClick={() => setBacCurrency(c)}
-                  className={`rounded-md px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
-                    bacCurrency === c ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="bac" className="mb-1.5 block text-sm font-bold text-gray-800">BAC San José</label>
+            <MoneyInput id="bac" label="Saldo BAC San José en dólares" value={bac} onChange={setBac} />
           </div>
-          <MoneyInput id="bac" label="Saldo BAC San José" value={bac} onChange={setBac} symbol={bacCurrency === "CRC" ? "₡" : "$"} />
-        </div>
-
-        <div>
-          <label htmlFor="paypal" className="mb-1.5 block text-sm font-bold text-gray-800">PayPal</label>
-          <MoneyInput id="paypal" label="Saldo PayPal" value={paypal} onChange={setPaypal} />
+          <div>
+            <label htmlFor="paypal" className="mb-1.5 block text-sm font-bold text-gray-800">PayPal</label>
+            <MoneyInput id="paypal" label="Saldo PayPal en dólares" value={paypal} onChange={setPaypal} />
+          </div>
         </div>
 
         <div>
@@ -406,7 +399,7 @@ function BalancesCard({ month, balances, onSaved }) {
           type="button"
           onClick={handleSave}
           disabled={state === "saving"}
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gray-900 text-sm font-bold text-white transition hover:bg-black disabled:opacity-50 cursor-pointer sm:w-auto sm:px-8"
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gray-900 text-sm font-bold text-white transition hover:bg-black disabled:opacity-50 cursor-pointer"
         >
           {state === "saving" ? "Guardando…" : state === "saved" ? (<><FiCheck className="h-4 w-4" /> Guardado</>) : "Guardar saldos"}
         </button>
@@ -415,18 +408,17 @@ function BalancesCard({ month, balances, onSaved }) {
   );
 }
 
-// ─── Pagos recibidos (Viator / GYG) ─────────────────────────────────────────
-function PaymentsCard({ provider, payments, received, month, onChanged }) {
-  const cfg = PROVIDERS[provider];
-  const list = payments.filter((p) => p.provider === provider);
+// ─── 3. Registro de pagos de las OTAs ───────────────────────────────────────
+function OtaPaymentsCard({ month, generated, payments, received, onChanged }) {
   const defaultDate = todayYmd().startsWith(month) ? todayYmd() : `${month}-01`;
+  const [provider, setProvider] = useState("viator");
   const [amount, setAmount] = useState("");
   const [paidAt, setPaidAt] = useState(defaultDate);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmId, setConfirmId] = useState(null);
-
-  useEffect(() => { setPaidAt(defaultDate); }, [defaultDate]);
+  const cfg = PROVIDERS[provider];
+  const list = [...payments].sort((a, b) => (a.paidAt < b.paidAt ? 1 : -1));
 
   async function handleAdd(e) {
     e.preventDefault();
@@ -464,32 +456,85 @@ function PaymentsCard({ provider, payments, received, month, onChanged }) {
   }
 
   return (
-    <SectionCard
-      icon={FiDollarSign}
-      iconClass={cfg.icon}
-      title={cfg.title}
-      hint={cfg.hint}
-      right={
-        <div className="text-right">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Recibido</p>
-          <p className={`text-xl font-black tabular-nums ${cfg.accent}`}>{money(received?.[provider])}</p>
+    <SectionCard icon={FiCalendar} title="Pagos de las OTAs" hint="Anotá cada pago que llega y su fecha, para saber cuándo pagan.">
+      {/* Estado por OTA */}
+      <div className="mb-5 grid gap-3 sm:grid-cols-2">
+        {["viator", "gyg"].map((p) => (
+          <div key={p} className={`rounded-2xl p-4 ring-1 ${PROVIDERS[p].panel}`}>
+            <div className="flex items-center justify-between gap-2">
+              <span className={`text-sm font-black ${PROVIDERS[p].accent}`}>{PROVIDERS[p].name}</span>
+              <span className="text-[11px] font-semibold text-gray-500">{PROVIDERS[p].when}</span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Recibido en el mes</p>
+                <p className={`text-xl font-black tabular-nums ${PROVIDERS[p].accent}`}>{money(received?.[p])}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Generado en el mes</p>
+                <p className="text-xl font-black tabular-nums text-gray-700">{money(generated?.bySource?.[p])}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Agregar pago */}
+      <form onSubmit={handleAdd} className="rounded-2xl bg-gray-50 p-3 ring-1 ring-gray-100 sm:p-4">
+        <p className="mb-2 text-sm font-bold text-gray-800">Anotar un pago</p>
+        <div role="radiogroup" aria-label="¿Quién pagó?" className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-white p-1 ring-1 ring-gray-200">
+          {["viator", "gyg"].map((p) => (
+            <button
+              key={p}
+              type="button"
+              role="radio"
+              aria-checked={provider === p}
+              onClick={() => setProvider(p)}
+              className={`min-h-11 rounded-lg text-sm font-bold transition cursor-pointer ${
+                provider === p ? PROVIDERS[p].selected : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              {PROVIDERS[p].name}
+            </button>
+          ))}
         </div>
-      }
-    >
+        <div className="grid gap-2 sm:grid-cols-2">
+          <MoneyInput label={`Monto del pago de ${cfg.name}`} value={amount} onChange={setAmount} ringClass={cfg.ring} />
+          <DateButton value={paidAt} onChange={setPaidAt} />
+        </div>
+        <button
+          type="submit"
+          disabled={busy}
+          className={`mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 cursor-pointer ${cfg.button}`}
+        >
+          <FiPlus className="h-4 w-4" /> {busy ? "Guardando…" : `Agregar pago de ${cfg.name}`}
+        </button>
+        {error && (
+          <p role="alert" className="mt-2 flex items-center gap-1.5 text-sm font-medium text-red-600">
+            <FiAlertCircle className="h-4 w-4 shrink-0" /> {error}
+          </p>
+        )}
+      </form>
+
+      {/* Historial del mes */}
+      <p className="mb-2 mt-5 text-sm font-bold text-gray-800">Pagos recibidos este mes</p>
       {list.length > 0 ? (
-        <ul className="mb-4 divide-y divide-gray-100 rounded-2xl border border-gray-100">
+        <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-100">
           {list.map((p) => (
-            <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">
-              <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-bold ${cfg.chip}`}>
-                <FiCalendar className="h-3.5 w-3.5" /> {dateLabel(p.paidAt)}
+            <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${PROVIDERS[p.provider].chip}`}>
+                  {PROVIDERS[p.provider].short}
+                </span>
+                <span className="text-sm font-semibold text-gray-600">{dateLabel(p.paidAt)}</span>
               </span>
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-1">
                 <span className="text-base font-bold tabular-nums text-gray-900">{money(p.amount)}</span>
                 <button
                   type="button"
                   onClick={() => handleDelete(p.id)}
                   aria-label={confirmId === p.id ? "Confirmar borrar pago" : "Borrar pago"}
-                  className={`inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-xl px-2 text-xs font-bold transition cursor-pointer ${
+                  className={`inline-flex h-11 min-w-11 items-center justify-center rounded-xl px-2 text-xs font-bold transition cursor-pointer ${
                     confirmId === p.id ? "bg-red-600 text-white" : "text-gray-400 hover:bg-red-50 hover:text-red-600"
                   }`}
                 >
@@ -500,25 +545,8 @@ function PaymentsCard({ provider, payments, received, month, onChanged }) {
           ))}
         </ul>
       ) : (
-        <p className="mb-4 rounded-2xl border border-dashed border-gray-200 py-5 text-center text-sm text-gray-400">
+        <p className="rounded-2xl border border-dashed border-gray-200 py-5 text-center text-sm text-gray-400">
           Todavía no anotaste pagos este mes.
-        </p>
-      )}
-
-      <form onSubmit={handleAdd} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-        <MoneyInput label={`Monto ${cfg.title}`} value={amount} onChange={setAmount} ringClass={cfg.ring} />
-        <DateButton value={paidAt} onChange={setPaidAt} />
-        <button
-          type="submit"
-          disabled={busy}
-          className={`inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold text-white transition disabled:opacity-50 cursor-pointer ${cfg.button}`}
-        >
-          <FiPlus className="h-4 w-4" /> {busy ? "Guardando…" : "Agregar pago"}
-        </button>
-      </form>
-      {error && (
-        <p role="alert" className="mt-2 flex items-center gap-1.5 text-sm font-medium text-red-600">
-          <FiAlertCircle className="h-4 w-4 shrink-0" /> {error}
         </p>
       )}
     </SectionCard>
@@ -561,7 +589,7 @@ export default function FinanzasPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black">Finanzas</h1>
-            <p className="text-sm text-gray-500">Cierre del mes: lo generado, tus cuentas y los pagos de las OTAs.</p>
+            <p className="text-sm text-gray-500">Control de fin de mes.</p>
           </div>
           <div className="flex items-center gap-1 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-gray-200">
             <button
@@ -592,29 +620,50 @@ export default function FinanzasPage() {
 
         {loading || !data ? (
           <div className="space-y-4">
-            <div className="h-48 animate-pulse rounded-3xl bg-emerald-100" />
-            <div className="h-64 animate-pulse rounded-3xl bg-gray-100" />
+            <div className="h-72 animate-pulse rounded-3xl bg-emerald-100" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-24 animate-pulse rounded-2xl bg-gray-100" />
+              <div className="h-24 animate-pulse rounded-2xl bg-gray-100" />
+            </div>
           </div>
         ) : (
           <>
-            <SummaryGrid data={data} month={month} />
-            <GeneratedCard generated={data.generated} />
+            {/* 1. Resumen */}
+            <section aria-label="Resumen del mes" className="space-y-3">
+              <GeneratedCard generated={data.generated} month={month} />
+              <div className="grid grid-cols-2 gap-3">
+                <BalanceTile
+                  label="PayPal"
+                  value={data.balances?.paypal}
+                  tone="bg-blue-50 text-blue-900 ring-blue-200"
+                  emptyTone="bg-white text-gray-400 ring-gray-200"
+                />
+                <BalanceTile
+                  label="BAC San José"
+                  value={data.balances?.bac}
+                  tone="bg-red-50 text-red-900 ring-red-200"
+                  emptyTone="bg-white text-gray-400 ring-gray-200"
+                />
+              </div>
+            </section>
+
+            {/* 2. Saldos */}
             <BalancesCard
               key={`bal-${month}`}
               month={month}
               balances={data.balances}
               onSaved={() => load(month, { quiet: true })}
             />
-            {["viator", "gyg"].map((p) => (
-              <PaymentsCard
-                key={`${p}-${month}`}
-                provider={p}
-                month={month}
-                payments={data.payments}
-                received={data.received}
-                onChanged={() => load(month, { quiet: true })}
-              />
-            ))}
+
+            {/* 3. Pagos OTAs */}
+            <OtaPaymentsCard
+              key={`ota-${month}`}
+              month={month}
+              generated={data.generated}
+              payments={data.payments}
+              received={data.received}
+              onChanged={() => load(month, { quiet: true })}
+            />
           </>
         )}
       </div>
