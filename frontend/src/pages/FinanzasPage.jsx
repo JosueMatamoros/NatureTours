@@ -36,6 +36,7 @@ const SOURCES = [
 
 const PROVIDERS = {
   viator: {
+    icon: "bg-sky-100 text-sky-700",
     title: "Pagos de Viator",
     hint: "Viator paga cada semana (los lunes).",
     accent: "text-sky-700",
@@ -44,6 +45,7 @@ const PROVIDERS = {
     button: "bg-sky-600 hover:bg-sky-700",
   },
   gyg: {
+    icon: "bg-rose-100 text-rose-700",
     title: "Pagos de GetYourGuide",
     hint: "GetYourGuide paga una vez al mes, a inicios del mes siguiente.",
     accent: "text-rose-700",
@@ -105,8 +107,17 @@ function parseAmount(s) {
   return Number.isFinite(n) ? n : NaN;
 }
 
+// 2450000 → "2,450,000" ; 812.4 → "812.40"
 function toInput(n) {
-  return n == null ? "" : String(n);
+  if (n == null || n === "") return "";
+  const v = Number(n);
+  if (!Number.isFinite(v)) return String(n);
+  return v.toLocaleString("en-US", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+}
+
+function prettify(s) {
+  const n = parseAmount(s);
+  return n == null || Number.isNaN(n) ? s : toInput(n);
 }
 
 // ─── Piezas ─────────────────────────────────────────────────────────────────
@@ -124,6 +135,7 @@ function MoneyInput({ value, onChange, symbol = "$", placeholder = "0.00", ringC
         autoComplete="off"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={() => onChange(prettify(value))}
         placeholder={placeholder}
         className={`h-12 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-4 text-base font-semibold tabular-nums text-gray-900 placeholder:font-normal placeholder:text-gray-300 focus:outline-none focus:ring-4 ${
           ringClass || "focus:border-emerald-500 focus:ring-emerald-500/20"
@@ -178,13 +190,13 @@ function DateButton({ value, onChange }) {
   );
 }
 
-function SectionCard({ icon, title, hint, right, children }) {
+function SectionCard({ icon, iconClass, title, hint, right, children }) {
   const Ico = { C: icon };
   return (
     <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gray-100 text-gray-700">
+          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${iconClass || "bg-gray-100 text-gray-700"}`}>
             <Ico.C className="h-5 w-5" />
           </span>
           <div>
@@ -199,8 +211,58 @@ function SectionCard({ icon, title, hint, right, children }) {
   );
 }
 
+// ─── Resumen del cierre (lo primero que se ve) ──────────────────────────────
+function SummaryTile({ label, value, sub, tone }) {
+  return (
+    <div className={`rounded-2xl p-4 ring-1 ${tone}`}>
+      <p className="text-[11px] font-bold uppercase tracking-wide opacity-70">{label}</p>
+      <p className="mt-1 text-2xl font-black leading-none tabular-nums tracking-tight">{value}</p>
+      {sub && <p className="mt-1.5 text-xs font-medium opacity-70">{sub}</p>}
+    </div>
+  );
+}
+
+function SummaryGrid({ data, month }) {
+  const b = data.balances || {};
+  const otas = (Number(data.received?.viator) || 0) + (Number(data.received?.gyg) || 0);
+  const empty = "Sin anotar";
+  return (
+    <section aria-label="Resumen del cierre">
+      <p className="mb-2 text-sm font-bold text-gray-700">
+        Resumen de <span className="capitalize">{monthLabel(month)}</span>
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <SummaryTile
+          label="Generado"
+          value={money(data.generated?.total)}
+          sub="Calculado por la app"
+          tone="bg-emerald-50 text-emerald-900 ring-emerald-200"
+        />
+        <SummaryTile
+          label="BAC San José"
+          value={b.bac == null ? empty : money(b.bac, b.bacCurrency)}
+          sub={b.bac == null ? "Anotalo abajo" : b.bacCurrency === "CRC" ? "Colones" : "Dólares"}
+          tone={b.bac == null ? "bg-white text-gray-400 ring-gray-200" : "bg-red-50 text-red-900 ring-red-200"}
+        />
+        <SummaryTile
+          label="PayPal"
+          value={b.paypal == null ? empty : money(b.paypal)}
+          sub={b.paypal == null ? "Anotalo abajo" : "Dólares"}
+          tone={b.paypal == null ? "bg-white text-gray-400 ring-gray-200" : "bg-blue-50 text-blue-900 ring-blue-200"}
+        />
+        <SummaryTile
+          label="Pagos OTAs"
+          value={money(otas)}
+          sub={`Viator ${money(data.received?.viator)} · GYG ${money(data.received?.gyg)}`}
+          tone="bg-gray-900 text-white ring-gray-900"
+        />
+      </div>
+    </section>
+  );
+}
+
 // ─── Generado según la app ──────────────────────────────────────────────────
-function GeneratedCard({ generated, month }) {
+function GeneratedCard({ generated }) {
   const total = Number(generated?.total) || 0;
   const rows = SOURCES.filter((s) => generated?.bySource?.[s.key] != null)
     .map((s) => ({ ...s, amount: Number(generated.bySource[s.key]) || 0 }))
@@ -215,7 +277,7 @@ function GeneratedCard({ generated, month }) {
         </span>
         <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-100/90">
-            Generado según la app · <span className="capitalize">{monthLabel(month)}</span>
+            De dónde vino lo generado
           </p>
           <p className="mt-0.5 text-4xl font-black leading-none tabular-nums tracking-tight">{money(total)}</p>
           <p className="mt-1 text-xs text-emerald-100/80">
@@ -404,6 +466,7 @@ function PaymentsCard({ provider, payments, received, month, onChanged }) {
   return (
     <SectionCard
       icon={FiDollarSign}
+      iconClass={cfg.icon}
       title={cfg.title}
       hint={cfg.hint}
       right={
@@ -534,7 +597,8 @@ export default function FinanzasPage() {
           </div>
         ) : (
           <>
-            <GeneratedCard generated={data.generated} month={month} />
+            <SummaryGrid data={data} month={month} />
+            <GeneratedCard generated={data.generated} />
             <BalancesCard
               key={`bal-${month}`}
               month={month}
