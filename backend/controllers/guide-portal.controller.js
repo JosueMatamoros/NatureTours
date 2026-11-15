@@ -493,7 +493,7 @@ export async function guideTakeOffer(req, res) {
     const slot = await takeOffer(req.params.id, req.guide.guideId);
     return res.json({ ok: true, ...slot });
   } catch (err) {
-    return sendError(res, err, "guideTakeOffer", "No se pudo tomar el tour");
+    return sendError(res, err, "guideTakeOffer", "No se pudo apartar el tour");
   }
 }
 

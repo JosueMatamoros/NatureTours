@@ -405,46 +405,78 @@ function SlotGuidePicker({ slot, date, allGuides, onChanged, onReload }) {
   );
 }
 
-// Tours publicados que este guía puede tomar: el primero que toca "Lo tomo" se lo queda.
-function OffersCard({ offers, onTake }) {
+// Tours publicados que este guía puede tomar: una barra delgada que abre la lista.
+function OffersButton({ offers, onTake, onGo }) {
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(null);
   const [msg, setMsg] = useState("");
-  if (!offers.length && !msg) return null;
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [open]);
+  if (!offers.length && !open) return null;
+  const n = offers.length;
   return (
-    <div className="mb-4 overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white shadow-sm">
-      <div className="flex items-center gap-2 border-b border-amber-100 px-4 py-3">
-        <span className="grid h-8 w-8 place-items-center rounded-xl bg-amber-500 text-white"><FiSend className="h-4 w-4" /></span>
-        <div>
-          <p className="text-sm font-black text-amber-900">Tours disponibles</p>
-          <p className="text-xs text-amber-800/70">El primero que lo tome se lo queda</p>
+    <>
+      <button
+        type="button"
+        onClick={() => { setOpen(true); setMsg(""); }}
+        className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-left shadow-sm transition hover:bg-orange-100 cursor-pointer"
+      >
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-orange-500 text-white"><FiSend className="h-4 w-4" /></span>
+        <span className="flex-1 text-sm font-black text-orange-900">
+          {n} tour{n === 1 ? "" : "s"} disponible{n === 1 ? "" : "s"}
+          <span className="block text-xs font-medium text-orange-800/70">¿Querés operar alguno? Apartalo</span>
+        </span>
+        <FiChevronRight className="h-5 w-5 text-orange-400" />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-[2px] sm:items-center" onClick={() => setOpen(false)}>
+          <section role="dialog" aria-label="Tours disponibles" onClick={(e) => e.stopPropagation()} className="flex max-h-[85vh] w-full max-w-md flex-col rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+            <div className="mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-slate-200 sm:hidden" />
+            <header className="flex items-start justify-between gap-3 px-5 pb-3 pt-4">
+              <div>
+                <p className="text-lg font-black text-slate-900">Tours disponibles</p>
+                <p className="text-sm text-slate-500">Si querés operar alguno de estos tours, apartalo.</p>
+              </div>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar" className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer">
+                <FiX className="h-5 w-5" />
+              </button>
+            </header>
+            <ul className="flex-1 space-y-2 overflow-y-auto px-5 pb-5">
+              {offers.length === 0 && <li className="py-6 text-center text-sm text-slate-400">Ya no hay tours disponibles.</li>}
+              {offers.map((o) => (
+                <li key={o.id} className="flex items-center gap-3 rounded-2xl border border-orange-100 bg-orange-50/50 p-3">
+                  <button type="button" onClick={() => { onGo(o.tourDate); setOpen(false); }} className="min-w-0 flex-1 text-left cursor-pointer">
+                    <p className="text-base font-black leading-tight text-slate-900">{formatClock(o.startTime)}</p>
+                    <p className="truncate text-xs font-medium capitalize text-slate-500">{navLabel(o.tourDate)} · {o.tourName}</p>
+                    <p className="mt-0.5 text-xs font-bold text-orange-600">Ver el día ›</p>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy === o.id}
+                    onClick={async () => {
+                      setBusy(o.id);
+                      setMsg("");
+                      try { await onTake(o); setMsg("¡Listo! Apartaste el tour."); }
+                      catch (e) { setMsg(e.message || "No se pudo apartar"); }
+                      finally { setBusy(null); }
+                    }}
+                    className="shrink-0 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-orange-500/30 transition hover:bg-orange-600 disabled:opacity-50 cursor-pointer"
+                  >
+                    {busy === o.id ? "…" : "Apartar"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {msg && <p className="px-5 pb-4 text-sm font-semibold text-emerald-700">{msg}</p>}
+          </section>
         </div>
-      </div>
-      <ul className="divide-y divide-amber-100">
-        {offers.map((o) => (
-          <li key={o.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="min-w-0">
-              <p className="text-base font-black leading-tight text-slate-900">{formatClock(o.startTime)}</p>
-              <p className="truncate text-xs font-medium text-slate-500 capitalize">{o.tourName} · {navLabel(o.tourDate)}</p>
-            </div>
-            <button
-              type="button"
-              disabled={busy === o.id}
-              onClick={async () => {
-                setBusy(o.id);
-                setMsg("");
-                try { await onTake(o); setMsg("¡Listo! El tour es tuyo."); }
-                catch (e) { setMsg(e.message || "No se pudo tomar"); }
-                finally { setBusy(null); }
-              }}
-              className="shrink-0 rounded-xl bg-amber-500 px-4 py-2 text-sm font-black text-white shadow-sm shadow-amber-500/30 transition hover:bg-amber-600 disabled:opacity-50 cursor-pointer"
-            >
-              {busy === o.id ? "…" : "Lo tomo"}
-            </button>
-          </li>
-        ))}
-      </ul>
-      {msg && <p className="px-4 pb-3 pt-1 text-sm font-semibold text-amber-900">{msg}</p>}
-    </div>
+      )}
+    </>
   );
 }
 
@@ -568,7 +600,7 @@ function SlotCard({ slot, guide, header, onReply, renderRow }) {
 }
 
 // Tour publicado en el día que se está viendo: la tarjeta del horario, borrosa,
-// con "Lo tomo" (el primero que lo toma se lo queda).
+// con "Apartar" (por dentro: el primero que lo aparta se lo queda).
 function OfferSlotCard({ offer, onTake }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -603,18 +635,18 @@ function OfferSlotCard({ offer, onTake }) {
         <div className="absolute inset-0 grid place-items-center bg-white/40 p-4">
           <div className="w-full max-w-xs rounded-2xl border border-orange-200 bg-white p-4 text-center shadow-lg">
             <p className="text-sm font-black text-slate-900">Tour disponible</p>
-            <p className="mt-0.5 text-xs text-slate-500">El primero que lo tome se lo queda</p>
+            <p className="mt-0.5 text-xs text-slate-500">¿Querés operar este tour? Apartalo.</p>
             <button
               type="button"
               disabled={busy}
               onClick={async () => {
                 setBusy(true);
                 setError("");
-                try { await onTake(); } catch (e) { setError(e.message || "No se pudo tomar"); setBusy(false); }
+                try { await onTake(); } catch (e) { setError(e.message || "No se pudo apartar"); setBusy(false); }
               }}
               className="mt-3 w-full rounded-xl bg-orange-500 py-2.5 text-sm font-black text-white shadow-sm shadow-orange-500/30 transition hover:bg-orange-600 disabled:opacity-50 cursor-pointer"
             >
-              {busy ? "Tomando…" : "Lo tomo"}
+              {busy ? "Apartando…" : "Apartar"}
             </button>
             {error && <p className="mt-2 text-xs font-semibold text-red-600">{error}</p>}
           </div>
@@ -808,7 +840,7 @@ function GuideDay({ guide, onLogout, viewSwitch }) {
 
         <NotificationsCard isAdmin={guide.isAdmin} isViewer={guide.isViewer} className="mb-4" />
 
-        <OffersCard offers={offers} onTake={handleTakeOffer} />
+        <OffersButton offers={offers} onTake={handleTakeOffer} onGo={(d) => setDate(d)} />
 
         {/* Navegador de fecha */}
         <div className="relative mb-3 flex items-center justify-between gap-2">
@@ -817,11 +849,16 @@ function GuideDay({ guide, onLogout, viewSwitch }) {
               type="button"
               onClick={() => setCalendarOpen((o) => !o)}
               aria-label="Elegir fecha"
-              className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl shadow-sm transition cursor-pointer ${
+              className={`relative grid h-10 w-10 shrink-0 place-items-center rounded-xl shadow-sm transition cursor-pointer ${
                 calendarOpen ? "bg-emerald-600 text-white" : "bg-white text-slate-500 ring-1 ring-slate-200"
               }`}
             >
               <FiCalendar className="h-4 w-4" />
+              {offers.length > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-orange-500 px-1 text-[11px] font-black text-white ring-2 ring-slate-50">
+                  {offers.length}
+                </span>
+              )}
             </button>
             <div className="flex items-center gap-0.5 rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
               <button onClick={() => setDate((d) => shiftYmd(d, -1))} aria-label="Día anterior" className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer">

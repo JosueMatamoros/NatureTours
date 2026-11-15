@@ -129,7 +129,7 @@ export async function takeOffer(id, guideId) {
     const o = q.rows[0];
     if (!o) {
       await client.query("ROLLBACK");
-      throw fail(409, "Otro guía ya tomó este tour");
+      throw fail(409, "Este tour ya lo apartó otro guía");
     }
     await client.query(
       `INSERT INTO slot_guides (tour_id, tour_date, start_time, guide_id, status, confirmed_at)

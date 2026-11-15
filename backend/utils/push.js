@@ -287,11 +287,11 @@ export async function pushOfferToGuides({ guideIds, tourId, tourDate, startTime 
     if (!tourName) return;
     await Promise.allSettled(guideIds.map((guideId) => pushToGuide(guideId, (sub) => ({
       title: `📣 ${firstName(sub.guide_name) || "Hola"}, hay un tour disponible`,
-      body: `${tourName}\n${whenLabel(tourDate, startTime)}\nEl primero que lo tome se lo queda.`,
+      body: `${tourName}\n${whenLabel(tourDate, startTime)}\n¿Querés operarlo? Entrá y apartalo.`,
       image: TOUR_IMAGE[tourId],
       url: `/asistencia?fecha=${tourDate}`,
       tag: `offer-${tourId}-${tourDate}-${startTime}`,
-      actions: [{ action: "open", title: "Tomarlo" }],
+      actions: [{ action: "open", title: "Ver tour" }],
     }))));
   } catch (err) {
     console.error("pushOfferToGuides error:", err);
@@ -310,7 +310,7 @@ export async function pushGuideReplyToAdmins({ guideId, tourId, tourDate, startT
     const msg = {
       confirmed: { title: `✅ ${who} confirmó su tour`, extra: "" },
       declined: { title: `⚠️ ${who} no puede hacer el tour`, extra: "\nHay que asignar a otro guía." },
-      taken: { title: `🙋 ${who} tomó el tour publicado`, extra: "" },
+      taken: { title: `🙋 ${who} apartó el tour publicado`, extra: "" },
     }[reply];
     if (!msg) return;
     await pushToAdmins({
