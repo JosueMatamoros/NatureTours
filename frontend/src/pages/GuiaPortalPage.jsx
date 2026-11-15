@@ -509,7 +509,8 @@ function ConfirmSlot({ onReply }) {
 // clientes ni cuántos vienen) con "Lo hago" / "No puedo"; si dijo que no, sale
 // en rojo y sin información; al aceptar, la información aparece con animación.
 function SlotCard({ slot, guide, header, onReply, renderRow }) {
-  const my = guide.isViewer ? null : slot.myStatus;
+  // El supervisor nunca ve la tarjeta bloqueada (ni borrosa ni rechazada).
+  const my = guide.isViewer || guide.isSupervisor ? null : slot.myStatus;
   const [prevMy, setPrevMy] = useState(my);
   const [reveal, setReveal] = useState(false);
   if (prevMy !== my) {
@@ -524,10 +525,12 @@ function SlotCard({ slot, guide, header, onReply, renderRow }) {
 
   const pending = my === "pending";
   const declined = my === "declined";
+  // Supervisor: borde naranja si el horario está publicado para que lo aparten.
+  const published = guide.isSupervisor && !!slot.offer;
 
   return (
     <div className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition-colors duration-500 ${
-      declined ? "border-red-200" : reveal ? "border-emerald-300 nt-glow" : "border-slate-200"
+      declined ? "border-red-200" : reveal ? "border-emerald-300 nt-glow" : published ? "border-2 border-orange-400" : "border-slate-200"
     }`}>
       <div className={`border-b px-4 py-3 ${declined ? "border-red-100 bg-red-50" : "border-slate-100 bg-slate-50"}`}>
         <div className="flex items-center justify-between gap-2">
@@ -684,10 +687,12 @@ function GuideDay({ guide, onLogout }) {
       if (!silent) setLoading(false);
     }
   }, []);
+  // Ni solo lectura ni supervisor ven "tours disponibles" (barra, calendario naranja ni tarjetas).
+  const hideOffers = guide.isViewer || guide.isSupervisor;
   const loadOffers = useCallback(() => {
-    if (guide.isViewer) return Promise.resolve();
+    if (hideOffers) return Promise.resolve();
     return getGuideOffers().then((r) => setOffers(r.offers || [])).catch(() => {});
-  }, [guide.isViewer]);
+  }, [hideOffers]);
 
   useEffect(() => { loadDay(date); }, [loadDay, date]);
   useEffect(() => { loadOffers(); }, [loadOffers]);
@@ -907,7 +912,7 @@ function GuideDay({ guide, onLogout }) {
                 />
                 <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 pb-1 pt-2 text-xs font-semibold text-slate-500">
                   <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-emerald-100 ring-1 ring-emerald-300" /> {guide.isSupervisor ? "Con reservas" : "Tus tours"}</span>
-                  {!guide.isViewer && <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-orange-50 ring-2 ring-orange-400" /> Tours disponibles</span>}
+                  {!hideOffers && <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-orange-50 ring-2 ring-orange-400" /> Tours disponibles</span>}
                 </div>
               </div>
             </>
