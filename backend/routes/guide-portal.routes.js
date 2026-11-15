@@ -9,6 +9,11 @@ import {
   guideSetArrived,
   guideAllGuides,
   guideAssignSlot,
+  guideOffers,
+  guideTakeOffer,
+  guideReply,
+  guidePublishOffer,
+  guideCancelOffer,
 } from "../controllers/guide-portal.controller.js";
 import { authenticateGuide } from "../middlewares/auth.middleware.js";
 
@@ -30,5 +35,10 @@ router.get("/my-days", authenticateGuide, guideMyDays);
 router.patch("/attendance/:bookingId", authenticateGuide, guideSetArrived);
 router.get("/all-guides", authenticateGuide, guideAllGuides);
 router.put("/assign", authenticateGuide, guideAssignSlot);
+router.get("/offers", authenticateGuide, guideOffers);
+router.post("/offers", authenticateGuide, guidePublishOffer);
+router.post("/offers/:id/take", authenticateGuide, guideTakeOffer);
+router.delete("/offers/:id", authenticateGuide, guideCancelOffer);
+router.post("/reply", authenticateGuide, guideReply);
 
 export default router;

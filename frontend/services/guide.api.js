@@ -111,3 +111,32 @@ export function assignGuideSlot({ tourId, tourDate, startTime, guideId, assigned
     body: JSON.stringify({ tourId, tourDate, startTime, guideId, assigned }),
   });
 }
+
+// ─── Confirmar tours / tours publicados ─────────────────────────────────────
+export function getGuideOffers() {
+  return guideRequest("/api/guide/offers");
+}
+
+export function takeGuideOffer(id) {
+  return guideRequest(`/api/guide/offers/${id}/take`, { method: "POST" });
+}
+
+// "Lo hago" (accept=true) o "No puedo" (accept=false) a un tour asignado.
+export function replyGuideAssignment({ tourId, tourDate, startTime, accept }) {
+  return guideRequest("/api/guide/reply", {
+    method: "POST",
+    body: JSON.stringify({ tourId, tourDate, startTime, accept }),
+  });
+}
+
+// Supervisores: publicar / cancelar publicación.
+export function publishSlotOffer({ tourId, tourDate, startTime, guideIds }) {
+  return guideRequest("/api/guide/offers", {
+    method: "POST",
+    body: JSON.stringify({ tourId, tourDate, startTime, guideIds }),
+  });
+}
+
+export function cancelSlotOffer(id) {
+  return guideRequest(`/api/guide/offers/${id}`, { method: "DELETE" });
+}

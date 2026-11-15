@@ -268,7 +268,7 @@ export async function pushAssignmentToGuide({ guideId, tourId, tourDate, startTi
     if (!tourName) return;
     await pushToGuide(guideId, (sub) => ({
       title: `🧭 ¡${firstName(sub.guide_name) || "Hola"}, tenés un tour!`,
-      body: `${tourName}\n${whenLabel(tourDate, startTime)}`,
+      body: `${tourName}\n${whenLabel(tourDate, startTime)}\nAbrí la app y confirmá si lo hacés.`,
       image: TOUR_IMAGE[tourId],
       url: `/asistencia?fecha=${tourDate}`,
       tag: `assign-${tourId}-${tourDate}-${startTime}`,
@@ -276,5 +276,50 @@ export async function pushAssignmentToGuide({ guideId, tourId, tourDate, startTi
     }));
   } catch (err) {
     console.error("pushAssignmentToGuide error:", err);
+  }
+}
+
+// Tour publicado: le llega a cada guía elegido; el primero que lo toma se lo queda.
+export async function pushOfferToGuides({ guideIds, tourId, tourDate, startTime }) {
+  try {
+    const q = await pool.query(`select name from tours where id = $1`, [tourId]);
+    const tourName = q.rows[0]?.name;
+    if (!tourName) return;
+    await Promise.allSettled(guideIds.map((guideId) => pushToGuide(guideId, (sub) => ({
+      title: `📣 ${firstName(sub.guide_name) || "Hola"}, hay un tour disponible`,
+      body: `${tourName}\n${whenLabel(tourDate, startTime)}\nEl primero que lo tome se lo queda.`,
+      image: TOUR_IMAGE[tourId],
+      url: `/asistencia?fecha=${tourDate}`,
+      tag: `offer-${tourId}-${tourDate}-${startTime}`,
+      actions: [{ action: "open", title: "Tomarlo" }],
+    }))));
+  } catch (err) {
+    console.error("pushOfferToGuides error:", err);
+  }
+}
+
+// Aviso a los admins cuando un guía confirma, rechaza o toma un tour.
+export async function pushGuideReplyToAdmins({ guideId, tourId, tourDate, startTime, reply }) {
+  try {
+    const q = await pool.query(
+      `select (select name from guides where id = $1) as guide, (select name from tours where id = $2) as tour`,
+      [guideId, tourId],
+    );
+    const { guide, tour } = q.rows[0] || {};
+    const who = firstName(guide) || "Un guía";
+    const msg = {
+      confirmed: { title: `✅ ${who} confirmó su tour`, extra: "" },
+      declined: { title: `⚠️ ${who} no puede hacer el tour`, extra: "\nHay que asignar a otro guía." },
+      taken: { title: `🙋 ${who} tomó el tour publicado`, extra: "" },
+    }[reply];
+    if (!msg) return;
+    await pushToAdmins({
+      title: msg.title,
+      body: `${tour || "Tour"}\n${whenLabel(tourDate, startTime)}${msg.extra}`,
+      url: `/matamoros/asistencia?fecha=${tourDate}`,
+      tag: `reply-${tourId}-${tourDate}-${startTime}-${guideId}`,
+    });
+  } catch (err) {
+    console.error("pushGuideReplyToAdmins error:", err);
   }
 }

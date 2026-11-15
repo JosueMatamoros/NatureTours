@@ -28,3 +28,12 @@ export function getGuideAssignments(date) {
 export function assignGuide({ tourId, tourDate, startTime, guideId, assigned = true }) {
   return api.put("/api/guides/assignments", { tourId, tourDate, startTime, guideId, assigned });
 }
+
+// Publicar un horario a varios guías: el primero que lo toma se lo queda.
+export function publishGuideOffer({ tourId, tourDate, startTime, guideIds }) {
+  return api.post("/api/guides/offers", { tourId, tourDate, startTime, guideIds });
+}
+
+export function cancelGuideOffer(id) {
+  return api.delete(`/api/guides/offers/${id}`);
+}

@@ -117,6 +117,23 @@ const startupMigrations = [
   `INSERT INTO guides (name, email, can_create_manual)
    VALUES ('Josué', '1002matamoros@gmail.com', false)
    ON CONFLICT (email) DO NOTHING`,
+  // Confirmación del guía: lo que asigna el admin queda "pending" hasta que el
+  // guía diga "Lo hago". Lo anterior (y lo que el guía toma él mismo) = confirmed.
+  `ALTER TABLE slot_guides ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'confirmed'`,
+  `ALTER TABLE slot_guides ADD COLUMN IF NOT EXISTS confirmed_at timestamptz`,
+  // Tours publicados: se ofrecen a varios guías; el primero que lo toma se lo queda.
+  `CREATE TABLE IF NOT EXISTS slot_offers (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     tour_id integer NOT NULL REFERENCES tours(id),
+     tour_date date NOT NULL,
+     start_time time NOT NULL,
+     guide_ids uuid[] NOT NULL,
+     created_at timestamptz NOT NULL DEFAULT now(),
+     taken_by uuid REFERENCES guides(id) ON DELETE SET NULL,
+     taken_at timestamptz,
+     cancelled_at timestamptz
+   )`,
+  `CREATE INDEX IF NOT EXISTS slot_offers_open_idx ON slot_offers (tour_date) WHERE taken_by IS NULL AND cancelled_at IS NULL`,
 ];
 
 (async () => {

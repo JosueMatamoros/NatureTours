@@ -5,7 +5,7 @@
 // posterior; por ahora el email queda guardado como identificador y
 // can_create_manual define si a futuro podrán crear reservas manuales.
 import { pool } from "../db.js";
-import { pushAssignmentToGuide } from "../utils/push.js";
+import { setSlotGuide, publishOffer, cancelOffer, openOffersForDate, offerSchema } from "../utils/slot-assign.js";
 import { z } from "zod";
 import { hashPassword } from "../utils/password.js";
 
@@ -206,6 +206,7 @@ export async function getAssignments(req, res) {
               to_char(sg.tour_date,'YYYY-MM-DD') AS tour_date,
               to_char(sg.start_time,'HH24:MI')   AS start_time,
               sg.guide_id,
+              sg.status,
               g.name  AS guide_name,
               g.active AS guide_active
        FROM slot_guides sg
@@ -223,7 +224,9 @@ export async function getAssignments(req, res) {
         guideId: r.guide_id,
         guideName: r.guide_name,
         guideActive: r.guide_active,
+        status: r.status,
       })),
+      offers: await openOffersForDate(parsed.data.date),
     });
   } catch (err) {
     console.error("getAssignments error:", err);
@@ -240,29 +243,41 @@ export async function assignGuide(req, res) {
   }
   const { tourId, tourDate, startTime, guideId, assigned } = parsed.data;
   try {
-    if (!assigned) {
-      await pool.query(
-        `DELETE FROM slot_guides
-         WHERE tour_id = $1 AND tour_date = $2::date AND start_time = $3::time AND guide_id = $4`,
-        [tourId, tourDate, startTime, guideId],
-      );
-      return res.json({ ok: true, guideId, assigned: false });
-    }
-
-    const ins = await pool.query(
-      `INSERT INTO slot_guides (tour_id, tour_date, start_time, guide_id)
-       VALUES ($1, $2::date, $3::time, $4)
-       ON CONFLICT (tour_id, tour_date, start_time, guide_id) DO NOTHING`,
-      [tourId, tourDate, startTime, guideId],
-    );
-    // Aviso push al guía (solo si la asignación es nueva).
-    if (ins.rowCount > 0) pushAssignmentToGuide({ guideId, tourId, tourDate, startTime });
-    return res.json({ ok: true, guideId, assigned: true });
+    // Asignado directo = queda "pendiente" (gris) hasta que el guía confirme.
+    const { status } = await setSlotGuide({ tourId, tourDate, startTime, guideId, assigned });
+    return res.json({ ok: true, guideId, assigned, status });
   } catch (err) {
     if (err.code === "23503") {
       return res.status(400).json({ ok: false, message: "Guía o tour inválido" });
     }
     console.error("assignGuide error:", err);
     return res.status(500).json({ ok: false, message: "Error asignando guía" });
+  }
+}
+
+// POST /api/guides/offers — publica un horario a varios guías (el primero que lo toma).
+export async function publishSlotOffer(req, res) {
+  const parsed = offerSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ ok: false, message: "Datos inválidos" });
+  try {
+    const r = await publishOffer(parsed.data);
+    return res.json({ ok: true, id: r.id });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ ok: false, message: err.message });
+    console.error("publishSlotOffer error:", err);
+    return res.status(500).json({ ok: false, message: "Error publicando el tour" });
+  }
+}
+
+// DELETE /api/guides/offers/:id — cancela una publicación que nadie ha tomado.
+export async function cancelSlotOffer(req, res) {
+  try {
+    await cancelOffer(req.params.id);
+    return res.json({ ok: true });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ ok: false, message: err.message });
+    if (err.code === "22P02") return res.status(400).json({ ok: false, message: "Id inválido" });
+    console.error("cancelSlotOffer error:", err);
+    return res.status(500).json({ ok: false, message: "Error cancelando" });
   }
 }

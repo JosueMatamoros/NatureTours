@@ -3,8 +3,8 @@
 // de horarios que no son suyos.
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
+import { setSlotGuide, publishOffer, cancelOffer, openOffersForDate, openOffersForGuide, takeOffer, replyAssignment, slotSchema, offerSchema } from "../utils/slot-assign.js";
 import { computeRevenue } from "../utils/revenue.js";
-import { pushAssignmentToGuide } from "../utils/push.js";
 import { verifyPassword } from "../utils/password.js";
 import { z } from "zod";
 
@@ -33,7 +33,7 @@ const assignSchema = z.object({
 async function attachSlotGuides(slots, date) {
   if (!slots.length) return slots;
   const q = await pool.query(
-    `SELECT sg.tour_id, to_char(sg.start_time,'HH24:MI') AS st, sg.guide_id, g.name
+    `SELECT sg.tour_id, to_char(sg.start_time,'HH24:MI') AS st, sg.guide_id, g.name, sg.status
      FROM slot_guides sg JOIN guides g ON g.id = sg.guide_id
      WHERE sg.tour_date = $1::date`,
     [date],
@@ -42,9 +42,13 @@ async function attachSlotGuides(slots, date) {
   for (const r of q.rows) {
     const key = `${r.tour_id}|${r.st}`;
     if (!byKey.has(key)) byKey.set(key, []);
-    byKey.get(key).push({ id: r.guide_id, name: r.name });
+    byKey.get(key).push({ id: r.guide_id, name: r.name, status: r.status });
   }
-  for (const s of slots) s.guides = byKey.get(`${s.tourId}|${s.startTime}`) || [];
+  const offers = await openOffersForDate(date);
+  for (const s of slots) {
+    s.guides = byKey.get(`${s.tourId}|${s.startTime}`) || [];
+    s.offer = offers.find((o) => o.tourId === s.tourId && o.startTime === s.startTime) || null;
+  }
   return slots;
 }
 
@@ -429,27 +433,73 @@ export async function guideAssignSlot(req, res) {
   }
   const { tourId, tourDate, startTime, guideId, assigned } = parsed.data;
   try {
-    if (!assigned) {
-      await pool.query(
-        `DELETE FROM slot_guides WHERE tour_id=$1 AND tour_date=$2::date AND start_time=$3::time AND guide_id=$4`,
-        [tourId, tourDate, startTime, guideId],
-      );
-      return res.json({ ok: true, guideId, assigned: false });
-    }
-    const ins = await pool.query(
-      `INSERT INTO slot_guides (tour_id, tour_date, start_time, guide_id)
-       VALUES ($1,$2::date,$3::time,$4)
-       ON CONFLICT (tour_id, tour_date, start_time, guide_id) DO NOTHING`,
-      [tourId, tourDate, startTime, guideId],
-    );
-    // Aviso push al guía (si es nueva y no se la asignó él mismo).
-    if (ins.rowCount > 0 && guideId !== req.guide.guideId) {
-      pushAssignmentToGuide({ guideId, tourId, tourDate, startTime });
-    }
-    return res.json({ ok: true, guideId, assigned: true });
+    const { status } = await setSlotGuide({ tourId, tourDate, startTime, guideId, assigned, byGuideId: req.guide.guideId });
+    return res.json({ ok: true, guideId, assigned, status });
   } catch (err) {
     if (err.code === "23503") return res.status(400).json({ ok: false, message: "Guía o tour inválido" });
     console.error("guideAssignSlot error:", err);
     return res.status(500).json({ ok: false, message: "Error asignando guía" });
+  }
+}
+
+// ─── Confirmar / publicar ────────────────────────────────────────────────────
+function sendError(res, err, label, fallback) {
+  if (err.status) return res.status(err.status).json({ ok: false, message: err.message });
+  if (err.code === "22P02") return res.status(400).json({ ok: false, message: "Id inválido" });
+  console.error(`${label} error:`, err);
+  return res.status(500).json({ ok: false, message: fallback });
+}
+
+// GET /api/guide/offers — tours publicados que este guía puede tomar.
+export async function guideOffers(req, res) {
+  try {
+    return res.json({ ok: true, offers: await openOffersForGuide(req.guide.guideId) });
+  } catch (err) {
+    return sendError(res, err, "guideOffers", "Error cargando tours disponibles");
+  }
+}
+
+// POST /api/guide/offers/:id/take — el primero que lo toma se lo queda.
+export async function guideTakeOffer(req, res) {
+  try {
+    const slot = await takeOffer(req.params.id, req.guide.guideId);
+    return res.json({ ok: true, ...slot });
+  } catch (err) {
+    return sendError(res, err, "guideTakeOffer", "No se pudo tomar el tour");
+  }
+}
+
+// POST /api/guide/reply { tourId, tourDate, startTime, accept } — "Lo hago" / "No puedo".
+export async function guideReply(req, res) {
+  const parsed = slotSchema.extend({ accept: z.boolean() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ ok: false, message: "Datos inválidos" });
+  try {
+    await replyAssignment({ ...parsed.data, guideId: req.guide.guideId });
+    return res.json({ ok: true });
+  } catch (err) {
+    return sendError(res, err, "guideReply", "No se pudo guardar");
+  }
+}
+
+// POST /api/guide/offers — publicar (solo supervisores).
+export async function guidePublishOffer(req, res) {
+  if (!req.guide.isSupervisor) return res.status(403).json({ ok: false, message: "Solo supervisores" });
+  const parsed = offerSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ ok: false, message: "Datos inválidos" });
+  try {
+    return res.json({ ok: true, ...(await publishOffer(parsed.data)) });
+  } catch (err) {
+    return sendError(res, err, "guidePublishOffer", "Error publicando el tour");
+  }
+}
+
+// DELETE /api/guide/offers/:id — cancelar publicación (solo supervisores).
+export async function guideCancelOffer(req, res) {
+  if (!req.guide.isSupervisor) return res.status(403).json({ ok: false, message: "Solo supervisores" });
+  try {
+    await cancelOffer(req.params.id);
+    return res.json({ ok: true });
+  } catch (err) {
+    return sendError(res, err, "guideCancelOffer", "Error cancelando");
   }
 }

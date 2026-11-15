@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDateParam } from "../hooks/useDateParam";
 import {
@@ -20,6 +20,7 @@ import {
   FiUserPlus,
   FiArrowRight,
   FiDollarSign,
+  FiSend,
 } from "react-icons/fi";
 import CalendarPicker from "../components/checkout/CalendarPicker";
 import SourceChip from "../components/SourceChip";
@@ -34,7 +35,13 @@ import {
   guideSetArrived,
   getGuideAllGuides,
   assignGuideSlot,
+  getGuideOffers,
+  takeGuideOffer,
+  replyGuideAssignment,
+  publishSlotOffer,
+  cancelSlotOffer,
 } from "../../services/guide.api";
+import { GuideAssignSheet, GuideChip } from "../components/guides/GuideAssign";
 
 const WEEKDAYS_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
@@ -357,75 +364,109 @@ function DayRevenueCard({ revenue }) {
 }
 
 // ─── Selector de guía por slot (solo supervisor) ────────────────────────────
-function SlotGuidePicker({ slot, date, allGuides, onChanged }) {
+function SlotGuidePicker({ slot, date, allGuides, onChanged, onReload }) {
   const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const assignedIds = new Set((slot.guides || []).map((g) => g.id));
+  const [saving, setSaving] = useState([]);
+  const assigned = (slot.guides || []).map((g) => ({ id: g.id, name: g.name, status: g.status }));
 
   async function toggle(guideId) {
-    const isOn = assignedIds.has(guideId);
-    setSaving(true);
+    const isOn = assigned.some((g) => g.id === guideId);
+    setSaving((s) => [...s, guideId]);
+    onChanged(guideId, !isOn); // optimista
     try {
-      await assignGuideSlot({
-        tourId: slot.tourId, tourDate: date, startTime: slot.startTime, guideId, assigned: !isOn,
-      });
-      onChanged(guideId, !isOn); // update local del slot, sin recargar la página
-    } catch { /* noop */ } finally {
-      setSaving(false);
+      await assignGuideSlot({ tourId: slot.tourId, tourDate: date, startTime: slot.startTime, guideId, assigned: !isOn });
+    } catch {
+      onChanged(guideId, isOn); // revertir
+    } finally {
+      setSaving((s) => s.filter((x) => x !== guideId));
     }
   }
 
-  const names = (slot.guides || []).map((g) => g.name).join(", ");
-  const hasGuide = (slot.guides || []).length > 0;
-
   return (
-    <div className="relative">
-      {hasGuide ? (
-        // Con guía: se cambia tocando el nombre (no hay botón aparte).
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          disabled={saving}
-          title="Tocá para cambiar el guía"
-          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 disabled:opacity-50 cursor-pointer"
-        >
-          <FiCompass className="h-3.5 w-3.5" /> Guía: {names}
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          disabled={saving}
-          className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-semibold text-slate-500 hover:border-emerald-400 hover:text-emerald-600 disabled:opacity-50 cursor-pointer"
-        >
-          <FiUserPlus className="h-3.5 w-3.5" /> Asignar guía
-        </button>
-      )}
+    <>
+      <GuideChip guides={allGuides} assigned={assigned} offer={slot.offer} busy={saving.length > 0} onClick={() => setOpen(true)} />
       {open && (
-        <>
-          <button type="button" aria-hidden tabIndex={-1} onClick={() => setOpen(false)} className="fixed inset-0 z-20 cursor-default" />
-          <div className="absolute left-0 top-full z-30 mt-1 w-56 max-w-[calc(100vw-3rem)] rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
-            {allGuides.length === 0 ? (
-              <p className="px-3 py-2 text-xs text-slate-400">No hay guías</p>
-            ) : (
-              allGuides.map((g) => {
-                const on = assignedIds.has(g.id);
-                return (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => toggle(g.id)}
-                    className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer"
-                  >
-                    <span className={on ? "font-semibold text-emerald-700" : "text-slate-700"}>{g.name}</span>
-                    {on && <FiCheck className="h-4 w-4 text-emerald-600" />}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </>
+        <GuideAssignSheet
+          title={formatClock(slot.startTime)}
+          subtitle={`${slot.tourName} · ${navLabel(date)}`}
+          guides={allGuides}
+          assigned={assigned}
+          offer={slot.offer}
+          pending={saving}
+          onToggle={toggle}
+          onPublish={async (ids) => { await publishSlotOffer({ tourId: slot.tourId, tourDate: date, startTime: slot.startTime, guideIds: ids }); await onReload(); }}
+          onCancelOffer={async () => { await cancelSlotOffer(slot.offer.id); await onReload(); }}
+          onClose={() => setOpen(false)}
+        />
       )}
+    </>
+  );
+}
+
+// Tours publicados que este guía puede tomar: el primero que toca "Lo tomo" se lo queda.
+function OffersCard({ offers, onTake }) {
+  const [busy, setBusy] = useState(null);
+  const [msg, setMsg] = useState("");
+  if (!offers.length && !msg) return null;
+  return (
+    <div className="mb-4 overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white shadow-sm">
+      <div className="flex items-center gap-2 border-b border-amber-100 px-4 py-3">
+        <span className="grid h-8 w-8 place-items-center rounded-xl bg-amber-500 text-white"><FiSend className="h-4 w-4" /></span>
+        <div>
+          <p className="text-sm font-black text-amber-900">Tours disponibles</p>
+          <p className="text-xs text-amber-800/70">El primero que lo tome se lo queda</p>
+        </div>
+      </div>
+      <ul className="divide-y divide-amber-100">
+        {offers.map((o) => (
+          <li key={o.id} className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-base font-black leading-tight text-slate-900">{formatClock(o.startTime)}</p>
+              <p className="truncate text-xs font-medium text-slate-500 capitalize">{o.tourName} · {navLabel(o.tourDate)}</p>
+            </div>
+            <button
+              type="button"
+              disabled={busy === o.id}
+              onClick={async () => {
+                setBusy(o.id);
+                setMsg("");
+                try { await onTake(o); setMsg("¡Listo! El tour es tuyo."); }
+                catch (e) { setMsg(e.message || "No se pudo tomar"); }
+                finally { setBusy(null); }
+              }}
+              className="shrink-0 rounded-xl bg-amber-500 px-4 py-2 text-sm font-black text-white shadow-sm shadow-amber-500/30 transition hover:bg-amber-600 disabled:opacity-50 cursor-pointer"
+            >
+              {busy === o.id ? "…" : "Lo tomo"}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {msg && <p className="px-4 pb-3 pt-1 text-sm font-semibold text-amber-900">{msg}</p>}
+    </div>
+  );
+}
+
+// Asignación directa sin confirmar: "Lo hago" / "No puedo".
+function ConfirmSlot({ onReply }) {
+  const [busy, setBusy] = useState(null);
+  const [error, setError] = useState("");
+  async function reply(accept) {
+    setBusy(accept ? "yes" : "no");
+    setError("");
+    try { await onReply(accept); } catch (e) { setError(e.message || "No se pudo guardar"); } finally { setBusy(null); }
+  }
+  return (
+    <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+      <p className="text-sm font-bold text-slate-800">Te asignaron este tour. ¿Lo hacés?</p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button type="button" disabled={!!busy} onClick={() => reply(false)} className="rounded-xl border border-slate-200 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 cursor-pointer">
+          {busy === "no" ? "…" : "No puedo"}
+        </button>
+        <button type="button" disabled={!!busy} onClick={() => reply(true)} className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2.5 text-sm font-black text-white shadow-sm shadow-emerald-600/30 transition hover:bg-emerald-700 disabled:opacity-50 cursor-pointer">
+          <FiCheck className="h-4 w-4" /> {busy === "yes" ? "…" : "Lo hago"}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs font-semibold text-red-600">{error}</p>}
     </div>
   );
 }
@@ -444,20 +485,59 @@ function GuideDay({ guide, onLogout }) {
 
   const today = todayYmd();
   const tomorrow = shiftYmd(today, 1);
+  const myGuideId = guide.id;
 
-  const loadDay = useCallback(async (d) => {
-    setLoading(true);
+  const [offers, setOffers] = useState([]);
+  const daySeq = useRef(0);
+  const loadDay = useCallback(async (d, silent = false) => {
+    const seq = ++daySeq.current;
+    if (!silent) setLoading(true);
     try {
       const r = await getGuideMyDay(d);
-      setDayData(r);
+      if (seq === daySeq.current) setDayData(r);
     } catch {
-      setDayData({ slots: [] });
+      if (!silent && seq === daySeq.current) setDayData({ slots: [] });
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
+  const loadOffers = useCallback(() => {
+    if (guide.isViewer) return Promise.resolve();
+    return getGuideOffers().then((r) => setOffers(r.offers || [])).catch(() => {});
+  }, [guide.isViewer]);
 
   useEffect(() => { loadDay(date); }, [loadDay, date]);
+  useEffect(() => { loadOffers(); }, [loadOffers]);
+  // Se mantiene al día solo: al volver a la app y cada 30 s.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.hidden) return;
+      loadDay(date, true);
+      loadOffers();
+    };
+    const t = setInterval(refresh, 30000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [loadDay, loadOffers, date]);
+
+  async function handleTakeOffer(o) {
+    await takeGuideOffer(o.id);
+    await loadOffers();
+    getGuideMyDays().then((r) => setMyDays(r.days || [])).catch(() => {});
+    if (o.tourDate === date) await loadDay(date, true);
+    else setDate(o.tourDate);
+  }
+
+  async function handleReply(slot, accept) {
+    await replyGuideAssignment({ tourId: slot.tourId, tourDate: date, startTime: slot.startTime, accept });
+    await loadDay(date, true);
+    if (!accept) getGuideMyDays().then((r) => setMyDays(r.days || [])).catch(() => {});
+  }
   useEffect(() => {
     getGuideMyDays().then((r) => setMyDays(r.days || [])).catch(() => setMyDays([]));
   }, []);
@@ -503,7 +583,7 @@ function GuideDay({ guide, onLogout }) {
           if (s.tourId !== slot.tourId || s.startTime !== slot.startTime) return s;
           const current = s.guides || [];
           const next = assigned
-            ? (current.some((x) => x.id === guideId) ? current : [...current, { id: guideId, name: g?.name || "" }])
+            ? (current.some((x) => x.id === guideId) ? current : [...current, { id: guideId, name: g?.name || "", status: guideId === guide.id ? "confirmed" : "pending" }])
             : current.filter((x) => x.id !== guideId);
           return { ...s, guides: next };
         }),
@@ -572,6 +652,8 @@ function GuideDay({ guide, onLogout }) {
         </div>
 
         <NotificationsCard isAdmin={guide.isAdmin} isViewer={guide.isViewer} className="mb-4" />
+
+        <OffersCard offers={offers} onTake={handleTakeOffer} />
 
         {/* Navegador de fecha */}
         <div className="relative mb-3 flex items-center justify-between gap-2">
@@ -690,15 +772,16 @@ function GuideDay({ guide, onLogout }) {
                   {/* Guía asignado al slot (antes de los clientes) */}
                   <div className="mt-2.5">
                     {guide.isSupervisor ? (
-                      <SlotGuidePicker slot={slot} date={date} allGuides={allGuides} onChanged={(gid, on) => patchSlotGuides(slot, gid, on)} />
+                      <SlotGuidePicker slot={slot} date={date} allGuides={allGuides} onChanged={(gid, on) => patchSlotGuides(slot, gid, on)} onReload={() => loadDay(date, true)} />
                     ) : slot.guides && slot.guides.length > 0 ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
-                        <FiCompass className="h-3.5 w-3.5" /> Guía: {slot.guides.map((g) => g.name).join(", ")}
-                      </span>
+                      <GuideChip guides={[]} assigned={slot.guides} offer={null} onClick={() => {}} />
                     ) : (
                       <span className="text-xs font-medium text-slate-400">Sin guía asignado</span>
                     )}
                   </div>
+                  {!guide.isViewer && (slot.guides || []).some((g) => g.id === myGuideId && g.status === "pending") && (
+                    <ConfirmSlot onReply={(accept) => handleReply(slot, accept)} />
+                  )}
                 </div>
 
                 <div className="px-4 py-1">

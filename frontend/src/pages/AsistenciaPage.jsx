@@ -25,7 +25,10 @@ import {
   getGuides,
   getGuideAssignments,
   assignGuide as apiAssignGuide,
+  publishGuideOffer,
+  cancelGuideOffer,
 } from "../../services/guides.api";
+import { GuideAssignSheet, GuideChip } from "../components/guides/GuideAssign";
 
 const BUSINESS_TIME_ZONE = "America/Costa_Rica";
 const TOUR_DURATION_MINUTES = 120;
@@ -238,79 +241,6 @@ function ReservationRow({ r, onToggleArrived, busy }) {
   );
 }
 
-// ─── Selector de guía de un horario ──────────────────────────────────────────
-// Multi-guía: varios guías pueden compartir un mismo horario. `value` es un
-// array de guideIds; `onToggle(guideId)` agrega/quita cada uno.
-function SlotGuideMulti({ guides, value, onToggle, pending = [] }) {
-  const [open, setOpen] = useState(false);
-  const assigned = guides.filter((g) => value.includes(g.id));
-  const label =
-    assigned.length === 0
-      ? "Sin guía"
-      : assigned.length === 1
-        ? assigned[0].name
-        : `${assigned.length} guías`;
-  const busy = pending.length > 0;
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        title="Guías asignados a este horario"
-        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition focus:outline-none ${
-          assigned.length ? "border-teal-200 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-500"
-        }`}
-      >
-        {busy ? (
-          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        ) : (
-          <FiCompass className="h-4 w-4" />
-        )}
-        <span className="max-w-[9rem] truncate">{label}</span>
-      </button>
-
-      {open && (
-        <>
-          <button
-            type="button"
-            aria-hidden
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-20 cursor-default"
-          />
-          <div className="absolute right-0 top-full z-30 mt-1 w-52 rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
-            {guides.length === 0 ? (
-              <p className="px-3 py-2 text-xs text-gray-400">No hay guías activos</p>
-            ) : (
-              guides.map((g) => {
-                const on = value.includes(g.id);
-                const saving = pending.includes(g.id);
-                return (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => onToggle(g.id)}
-                    className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 active:bg-gray-100"
-                  >
-                    <span className={on ? "font-semibold text-teal-700" : "text-gray-700"}>{g.name}</span>
-                    {saving ? (
-                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
-                    ) : (
-                      on && <FiCheck className="h-4 w-4 text-teal-600" />
-                    )}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-
 // ─── Página ──────────────────────────────────────────────────────────────────
 export default function AsistenciaPage() {
   const navigate = useNavigate();
@@ -336,6 +266,10 @@ export default function AsistenciaPage() {
   // Guías que se están guardando: { "tourId|hora": [guideId, …] }
   const [pendingGuides, setPendingGuides] = useState({});
   const [guideError, setGuideError] = useState(null);
+  // Estado de cada guía ("tourId|hora|guideId" → pending/confirmed) y publicaciones abiertas por horario.
+  const [guideStatus, setGuideStatus] = useState({});
+  const [offers, setOffers] = useState({});
+  const [sheetKey, setSheetKey] = useState(null); // horario con la hoja de guías abierta
 
   const load = useCallback(() => {
     setLoading(true);
@@ -369,11 +303,17 @@ export default function AsistenciaPage() {
         // Si mientras tanto se pidió otra vez o hay un cambio guardándose, esta respuesta ya es vieja.
         if (seq !== assignSeq.current || inFlight.current > 0) return;
         const map = {};
+        const status = {};
         for (const a of res.assignments || []) {
           const key = `${a.tourId}|${a.startTime}`;
           (map[key] ||= []).push(a.guideId);
+          status[`${key}|${a.guideId}`] = a.status || "confirmed";
         }
+        const offerMap = {};
+        for (const o of res.offers || []) offerMap[`${o.tourId}|${o.startTime}`] = o;
         setAssignments(map);
+        setGuideStatus(status);
+        setOffers(offerMap);
       })
       .catch(() => {});
   }, [date, setAssignments]);
@@ -413,6 +353,8 @@ export default function AsistenciaPage() {
       ...assignmentsRef.current,
       [key]: assigned ? [...current, guideId] : current.filter((id) => id !== guideId),
     });
+    // Asignado directo = gris hasta que el guía confirme.
+    if (assigned) setGuideStatus((m) => ({ ...m, [`${key}|${guideId}`]: "pending" }));
     setPendingGuides((p) => ({ ...p, [key]: [...(p[key] || []), guideId] }));
     inFlight.current += 1;
 
@@ -430,6 +372,16 @@ export default function AsistenciaPage() {
           if (inFlight.current === 0) loadAssignmentsRef.current();
         });
     slotQueue.current[key] = (slotQueue.current[key] || Promise.resolve()).then(run);
+  }
+
+  async function publishSlot(tourId, startTime, guideIds) {
+    await publishGuideOffer({ tourId, tourDate: date, startTime, guideIds });
+    await loadAssignmentsRef.current();
+  }
+
+  async function cancelSlotOffer(offer) {
+    await cancelGuideOffer(offer.id);
+    await loadAssignmentsRef.current();
   }
 
   async function toggleArrived(r) {
@@ -588,6 +540,26 @@ export default function AsistenciaPage() {
 
       {loading && <p className="py-16 text-center text-sm text-gray-400">Cargando...</p>}
       {error && <p className="py-8 text-center font-semibold text-red-600">{error}</p>}
+      {sheetKey && (() => {
+        const [tourIdStr, startTime] = sheetKey.split("|");
+        const tourId = Number(tourIdStr);
+        const slot = bySlot.find((x) => x.startTime === startTime && x.tourId === tourId);
+        const tourName = slot?.rows[0]?.tourName || slot?.rows[0]?.tour?.name || "";
+        return (
+          <GuideAssignSheet
+            title={formatSlotRange(startTime)}
+            subtitle={[tourName, date].filter(Boolean).join(" · ")}
+            guides={guides}
+            assigned={(assignments[sheetKey] || []).map((id) => ({ id, status: guideStatus[`${sheetKey}|${id}`] }))}
+            offer={offers[sheetKey] || null}
+            pending={pendingGuides[sheetKey] || []}
+            onToggle={(guideId) => toggleSlotGuide(tourId, startTime, guideId)}
+            onPublish={(ids) => publishSlot(tourId, startTime, ids)}
+            onCancelOffer={() => cancelSlotOffer(offers[sheetKey])}
+            onClose={() => setSheetKey(null)}
+          />
+        );
+      })()}
       {guideError && (
         <div className="fixed inset-x-0 bottom-4 z-50 mx-auto w-fit max-w-[90vw] rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg">
           {guideError}
@@ -612,11 +584,12 @@ export default function AsistenciaPage() {
                 </span>
                 {slot.tourId && (
                   <div className="ml-auto">
-                    <SlotGuideMulti
+                    <GuideChip
                       guides={guides}
-                      value={assignments[`${slot.tourId}|${slot.startTime}`] || []}
-                      pending={pendingGuides[`${slot.tourId}|${slot.startTime}`]}
-                      onToggle={(guideId) => toggleSlotGuide(slot.tourId, slot.startTime, guideId)}
+                      assigned={(assignments[`${slot.tourId}|${slot.startTime}`] || []).map((id) => ({ id, status: guideStatus[`${slot.tourId}|${slot.startTime}|${id}`] }))}
+                      offer={offers[`${slot.tourId}|${slot.startTime}`]}
+                      busy={(pendingGuides[`${slot.tourId}|${slot.startTime}`] || []).length > 0}
+                      onClick={() => setSheetKey(`${slot.tourId}|${slot.startTime}`)}
                     />
                   </div>
                 )}
