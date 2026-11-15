@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDateParam } from "../hooks/useDateParam";
 import {
@@ -241,7 +241,7 @@ function ReservationRow({ r, onToggleArrived, busy }) {
 // ─── Selector de guía de un horario ──────────────────────────────────────────
 // Multi-guía: varios guías pueden compartir un mismo horario. `value` es un
 // array de guideIds; `onToggle(guideId)` agrega/quita cada uno.
-function SlotGuideMulti({ guides, value, onToggle, saving }) {
+function SlotGuideMulti({ guides, value, onToggle, pending = [] }) {
   const [open, setOpen] = useState(false);
   const assigned = guides.filter((g) => value.includes(g.id));
   const label =
@@ -250,19 +250,23 @@ function SlotGuideMulti({ guides, value, onToggle, saving }) {
       : assigned.length === 1
         ? assigned[0].name
         : `${assigned.length} guías`;
+  const busy = pending.length > 0;
 
   return (
     <div className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        disabled={saving}
         title="Guías asignados a este horario"
-        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition focus:outline-none disabled:opacity-50 ${
+        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition focus:outline-none ${
           assigned.length ? "border-teal-200 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-500"
         }`}
       >
-        <FiCompass className="h-4 w-4" />
+        {busy ? (
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        ) : (
+          <FiCompass className="h-4 w-4" />
+        )}
         <span className="max-w-[9rem] truncate">{label}</span>
       </button>
 
@@ -281,15 +285,20 @@ function SlotGuideMulti({ guides, value, onToggle, saving }) {
             ) : (
               guides.map((g) => {
                 const on = value.includes(g.id);
+                const saving = pending.includes(g.id);
                 return (
                   <button
                     key={g.id}
                     type="button"
                     onClick={() => onToggle(g.id)}
-                    className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm hover:bg-gray-50"
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 active:bg-gray-100"
                   >
                     <span className={on ? "font-semibold text-teal-700" : "text-gray-700"}>{g.name}</span>
-                    {on && <FiCheck className="h-4 w-4 text-teal-600" />}
+                    {saving ? (
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
+                    ) : (
+                      on && <FiCheck className="h-4 w-4 text-teal-600" />
+                    )}
                   </button>
                 );
               })
@@ -318,8 +327,15 @@ export default function AsistenciaPage() {
 
   // Guías (lista) y asignaciones del día, keyed por `${tourId}|${startTime}`.
   const [guides, setGuides] = useState([]);
-  const [assignments, setAssignments] = useState({});
-  const [savingGuideKey, setSavingGuideKey] = useState(null);
+  const [assignments, setAssignmentsState] = useState({});
+  const assignmentsRef = useRef({}); // siempre lo último (para clics seguidos)
+  const setAssignments = useCallback((map) => {
+    assignmentsRef.current = map;
+    setAssignmentsState(map);
+  }, []);
+  // Guías que se están guardando: { "tourId|hora": [guideId, …] }
+  const [pendingGuides, setPendingGuides] = useState({});
+  const [guideError, setGuideError] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -340,10 +356,18 @@ export default function AsistenciaPage() {
   }, []);
 
   // Asignaciones de guía por horario para la fecha activa. Cada horario puede
-  // tener VARIOS guías → el valor es un array de guideIds.
-  useEffect(() => {
-    getGuideAssignments(date)
+  // tener VARIOS guías → el valor es un array de guideIds. Se vuelven a pedir al
+  // volver a la pestaña y cada 30 s, para ver lo que cambie otra persona.
+  const assignSeq = useRef(0);
+  const inFlight = useRef(0); // cambios de guía sin terminar
+  const slotQueue = useRef({}); // cola por horario: los cambios van en orden
+
+  const loadAssignments = useCallback(() => {
+    const seq = ++assignSeq.current;
+    return getGuideAssignments(date)
       .then((res) => {
+        // Si mientras tanto se pidió otra vez o hay un cambio guardándose, esta respuesta ya es vieja.
+        if (seq !== assignSeq.current || inFlight.current > 0) return;
         const map = {};
         for (const a of res.assignments || []) {
           const key = `${a.tourId}|${a.startTime}`;
@@ -351,24 +375,61 @@ export default function AsistenciaPage() {
         }
         setAssignments(map);
       })
-      .catch(() => setAssignments({}));
-  }, [date]);
+      .catch(() => {});
+  }, [date, setAssignments]);
+  const loadAssignmentsRef = useRef(loadAssignments);
+  loadAssignmentsRef.current = loadAssignments;
 
-  async function toggleSlotGuide(tourId, startTime, guideId) {
+  useEffect(() => {
+    setAssignments({});
+    setPendingGuides({});
+    loadAssignments();
+  }, [loadAssignments, setAssignments]);
+
+  useEffect(() => {
+    const refresh = () => { if (!document.hidden) loadAssignments(); };
+    const timer = setInterval(refresh, 30000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [loadAssignments]);
+
+  useEffect(() => {
+    if (!guideError) return;
+    const t = setTimeout(() => setGuideError(null), 4000);
+    return () => clearTimeout(t);
+  }, [guideError]);
+
+  function toggleSlotGuide(tourId, startTime, guideId) {
     const key = `${tourId}|${startTime}`;
-    const current = assignments[key] || [];
-    const isAssigned = current.includes(guideId);
-    const next = isAssigned ? current.filter((id) => id !== guideId) : [...current, guideId];
+    const current = assignmentsRef.current[key] || [];
+    const assigned = !current.includes(guideId);
+    // Optimista: se marca/desmarca al instante, sin esperar al servidor.
+    setAssignments({
+      ...assignmentsRef.current,
+      [key]: assigned ? [...current, guideId] : current.filter((id) => id !== guideId),
+    });
+    setPendingGuides((p) => ({ ...p, [key]: [...(p[key] || []), guideId] }));
+    inFlight.current += 1;
 
-    setSavingGuideKey(key);
-    setAssignments((m) => ({ ...m, [key]: next })); // optimista
-    try {
-      await apiAssignGuide({ tourId, tourDate: date, startTime, guideId, assigned: !isAssigned });
-    } catch {
-      setAssignments((m) => ({ ...m, [key]: current })); // revertir
-    } finally {
-      setSavingGuideKey(null);
-    }
+    const run = () =>
+      apiAssignGuide({ tourId, tourDate: date, startTime, guideId, assigned })
+        .catch(() => setGuideError("No se pudo guardar el guía. Se recargó lo que hay guardado."))
+        .finally(() => {
+          inFlight.current -= 1;
+          setPendingGuides((p) => {
+            const list = [...(p[key] || [])];
+            list.splice(list.indexOf(guideId), 1);
+            return { ...p, [key]: list };
+          });
+          // Al terminar todos los cambios, se confirma contra el servidor.
+          if (inFlight.current === 0) loadAssignmentsRef.current();
+        });
+    slotQueue.current[key] = (slotQueue.current[key] || Promise.resolve()).then(run);
   }
 
   async function toggleArrived(r) {
@@ -527,6 +588,11 @@ export default function AsistenciaPage() {
 
       {loading && <p className="py-16 text-center text-sm text-gray-400">Cargando...</p>}
       {error && <p className="py-8 text-center font-semibold text-red-600">{error}</p>}
+      {guideError && (
+        <div className="fixed inset-x-0 bottom-4 z-50 mx-auto w-fit max-w-[90vw] rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg">
+          {guideError}
+        </div>
+      )}
 
       {!loading && !error && bySlot.length === 0 && (
         <p className="py-16 text-center text-sm text-gray-400">No hay reservas para esta fecha.</p>
@@ -549,7 +615,7 @@ export default function AsistenciaPage() {
                     <SlotGuideMulti
                       guides={guides}
                       value={assignments[`${slot.tourId}|${slot.startTime}`] || []}
-                      saving={savingGuideKey === `${slot.tourId}|${slot.startTime}`}
+                      pending={pendingGuides[`${slot.tourId}|${slot.startTime}`]}
                       onToggle={(guideId) => toggleSlotGuide(slot.tourId, slot.startTime, guideId)}
                     />
                   </div>
