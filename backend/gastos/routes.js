@@ -558,10 +558,9 @@ router.get("/grupos/:id/ingresos", h(async (req, res) => {
   const desde = `${mes}-01`;
   const hasta = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
   const f = (await pool.query(
-    `SELECT to_char((now() AT TIME ZONE '${TZ}')::date + 1, 'YYYY-MM-DD') AS manana,
-            to_char(now() AT TIME ZONE '${TZ}', 'YYYY-MM') AS mes`)).rows[0];
-  const corte = f.manana < hasta ? (f.manana > desde ? f.manana : desde) : hasta; // tours hasta hoy
-  const [ing, tc] = await Promise.all([revenueBetween(desde, corte), tipoCambioDelMes(mes, f.mes)]);
+    `SELECT to_char(now() AT TIME ZONE '${TZ}', 'YYYY-MM') AS mes`)).rows[0];
+  // Mes completo (incluye tours ya reservados que aún no pasan), igual que Finanzas.
+  const [ing, tc] = await Promise.all([revenueBetween(desde, hasta), tipoCambioDelMes(mes, f.mes)]);
   res.json({
     ok: true, mes, usd: ing.total, crc: Math.round(ing.total * tc.valor),
     tipoCambio: tc.valor, fechaTipoCambio: tc.fecha, cerrado: tc.cerrado,
