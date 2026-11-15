@@ -6,7 +6,7 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import { getVapidPublicKey } from "../utils/push.js";
 import { revenueBetween } from "../utils/revenue.js";
-import { activar, login, requiereUsuario } from "./auth.js";
+import { login, requiereUsuario } from "./auth.js";
 import { categorizar, claveDe, normalizar } from "./categorizar.js";
 import { S, sembrarCategorias } from "./esquema.js";
 import { avisarGastosNuevos } from "./push.js";
@@ -41,11 +41,11 @@ router.post("/login", limiteAcceso, h(async (req, res) => {
   res.json({ ok: true, ...s, ...(await datos(s.usuario.id)) });
 }));
 
-router.post("/activar", limiteAcceso, h(async (req, res) => {
-  const { codigo, cedula, password } = req.body || {};
-  const s = await activar(codigo, cedula, password);
-  res.json({ ok: true, ...s, ...(await datos(s.usuario.id)) });
-}));
+// Ya no se crean cuentas desde la app: las crea el administrador con
+// scripts/gastos-usuario.mjs. Los códigos de activación viejos dejan de servir.
+router.post("/activar", limiteAcceso, (req, res) => {
+  res.status(410).json({ ok: false, error: "Las cuentas las crea el administrador. Pídele tu acceso." });
+});
 
 // ───────────── Ingesta desde el Apps Script de Gmail ─────────────
 
@@ -143,6 +143,13 @@ async function soloGrupos(uid) {
   return Boolean(r.rows[0]?.solo_grupos);
 }
 
+// Ingresos del negocio: el dueño (cuenta completa) o quien tenga ver_ingresos.
+async function puedeVerIngresos(uid) {
+  const r = await pool.query(`SELECT solo_grupos, ver_ingresos FROM ${S}.usuarios WHERE id = $1`, [uid]);
+  const u = r.rows[0];
+  return Boolean(u && (!u.solo_grupos || u.ver_ingresos));
+}
+
 const SEL_CAT = `SELECT id, nombre, icono, color FROM ${S}.categorias`;
 
 /** Todo lo que la app necesita para pintar: personal + cada grupo. */
@@ -215,7 +222,7 @@ async function grupoConGuias(grupoId, uid) {
 
 async function datos(uid) {
   const [usuario, usuarios, personalCats, personalMovs, grupos] = await Promise.all([
-    pool.query(`SELECT id, nombre, solo_grupos AS "soloGrupos" FROM ${S}.usuarios WHERE id = $1`, [uid]),
+    pool.query(`SELECT id, nombre, solo_grupos AS "soloGrupos", ver_ingresos AS "verIngresos" FROM ${S}.usuarios WHERE id = $1`, [uid]),
     pool.query(`SELECT id, nombre FROM ${S}.usuarios ORDER BY nombre`),
     pool.query(`${SEL_CAT} WHERE usuario_id = $1 ORDER BY orden, nombre`, [uid]),
     pool.query(`${SEL_MOV} WHERE m.usuario_id = $1 AND m.grupo_id IS NULL AND NOT m.eliminado ORDER BY m.fecha DESC`, [uid]),
@@ -247,8 +254,8 @@ async function datos(uid) {
       categorias: de(cats.rows, g.id),
       movimientos: movs.rows.filter((m) => m.grupoId === g.id),
       ...(g.pagosGuias ? { guiasPendientes: guias.rows.find((r) => r.grupo_id === g.id)?.pendientes || 0 } : {}),
-      // Ingresos del negocio: solo el dueño (las cuentas "solo grupos" no los ven)
-      ...(g.pagosGuias && !usuario.rows[0]?.soloGrupos ? { verIngresos: true } : {}),
+      // Ingresos del negocio: el dueño o las cuentas "solo grupos" con ver_ingresos
+      ...(g.pagosGuias && (!usuario.rows[0]?.soloGrupos || usuario.rows[0]?.verIngresos) ? { verIngresos: true } : {}),
     })),
   };
 }
@@ -553,7 +560,7 @@ router.get("/grupos/:id/ingresos", h(async (req, res) => {
   const grupoId = validar(uuid, req.params.id);
   const mes = validar(mesValido, req.query.mes);
   await grupoConGuias(grupoId, req.usuario.id);
-  if (await soloGrupos(req.usuario.id)) throw err("No tienes acceso a los ingresos", 403);
+  if (!(await puedeVerIngresos(req.usuario.id))) throw err("No tienes acceso a los ingresos", 403);
   const [y, m] = mes.split("-").map(Number);
   const desde = `${mes}-01`;
   const hasta = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;

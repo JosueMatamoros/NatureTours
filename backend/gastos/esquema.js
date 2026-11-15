@@ -97,6 +97,7 @@ export async function migrarGastos() {
        UNIQUE (usuario_id, ref_externa)
      )`,
     `ALTER TABLE ${S}.usuarios ADD COLUMN IF NOT EXISTS solo_grupos boolean NOT NULL DEFAULT false`, // sin personal ni crear grupos
+    `ALTER TABLE ${S}.usuarios ADD COLUMN IF NOT EXISTS ver_ingresos boolean NOT NULL DEFAULT false`, // cuenta "solo grupos" que igual ve los ingresos del negocio
     `CREATE INDEX IF NOT EXISTS movimientos_usuario_fecha ON ${S}.movimientos (usuario_id, fecha)`,
     `CREATE INDEX IF NOT EXISTS movimientos_grupo_fecha ON ${S}.movimientos (grupo_id, fecha) WHERE grupo_id IS NOT NULL`,
     `CREATE TABLE IF NOT EXISTS ${S}.reglas (
