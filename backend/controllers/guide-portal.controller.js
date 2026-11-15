@@ -201,8 +201,15 @@ export async function guideMe(req, res) {
       isAdmin: Boolean(req.guide.isAdmin),
       isSupervisor: Boolean(req.guide.isSupervisor),
       isViewer: Boolean(req.guide.isViewer),
+      isGuide: Boolean(req.guide.isGuide),
     },
   });
+}
+
+// Un supervisor que también es guía puede ver la app "como guía" (?asGuide=1).
+function seesAll(req) {
+  if (req.query?.asGuide === "1" && req.guide.isGuide) return false;
+  return req.guide.isSupervisor || req.guide.isViewer;
 }
 
 // GET /api/guide/my-day?date=YYYY-MM-DD
@@ -219,7 +226,7 @@ export async function guideMyDay(req, res) {
   try {
     // Supervisor: ve TODOS los horarios/tours del día (no solo los asignados),
     // para ayudar a pasar lista en cualquier grupo.
-    if (req.guide.isSupervisor || req.guide.isViewer) {
+    if (seesAll(req)) {
       const q = await pool.query(
         `SELECT
            b.id, b.tour_id, t.name AS tour_name,
@@ -397,7 +404,7 @@ export async function guideMyDays(req, res) {
   const guideId = req.guide.guideId;
   try {
     // Supervisor: días con reservas de cualquier tour. Guía: sus días asignados.
-    const q = req.guide.isSupervisor || req.guide.isViewer
+    const q = seesAll(req)
       ? await pool.query(
           `SELECT to_char(b.tour_date,'YYYY-MM-DD') AS date, COUNT(*)::int AS slots
            FROM bookings b
@@ -418,7 +425,9 @@ export async function guideMyDays(req, res) {
            ORDER BY tour_date`,
           [guideId],
         );
-    return res.json({ ok: true, days: q.rows });
+    // Días con tours publicados que este guía puede tomar (otro color en el calendario).
+    const offerDays = req.guide.isViewer ? [] : [...new Set((await openOffersForGuide(guideId)).map((o) => o.tourDate))];
+    return res.json({ ok: true, days: q.rows, offerDays });
   } catch (err) {
     console.error("guideMyDays error:", err);
     return res.status(500).json({ ok: false, message: "Error obteniendo días" });

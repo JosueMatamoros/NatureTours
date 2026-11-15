@@ -41,6 +41,7 @@ import {
   replyGuideAssignment,
   publishSlotOffer,
   cancelSlotOffer,
+  setViewAsGuide,
 } from "../../services/guide.api";
 import { GuideAssignSheet, GuideChip } from "../components/guides/GuideAssign";
 
@@ -566,8 +567,65 @@ function SlotCard({ slot, guide, header, onReply, renderRow }) {
   );
 }
 
+// Tour publicado en el día que se está viendo: la tarjeta del horario, borrosa,
+// con "Lo tomo" (el primero que lo toma se lo queda).
+function OfferSlotCard({ offer, onTake }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  return (
+    <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-orange-300 bg-white shadow-sm">
+      <div className="border-b border-orange-100 bg-orange-50 px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-orange-500 ring-1 ring-orange-200">
+              <FiSend className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-lg font-black leading-none text-slate-900">{formatClock(offer.startTime)}</p>
+              <p className="mt-0.5 text-xs font-medium text-slate-500">{offer.tourName}</p>
+            </div>
+          </div>
+          <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-700">Disponible</span>
+        </div>
+      </div>
+      <div className="relative min-h-[10rem]">
+        <div aria-hidden className="pointer-events-none select-none px-4 py-1 blur-[7px]">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center justify-between gap-3 border-b border-slate-100 py-3 last:border-0">
+              <div className="space-y-1.5">
+                <div className="h-3.5 w-32 rounded bg-slate-300" />
+                <div className="h-3 w-20 rounded bg-slate-200" />
+              </div>
+              <div className="h-8 w-20 rounded-lg bg-orange-200" />
+            </div>
+          ))}
+        </div>
+        <div className="absolute inset-0 grid place-items-center bg-white/40 p-4">
+          <div className="w-full max-w-xs rounded-2xl border border-orange-200 bg-white p-4 text-center shadow-lg">
+            <p className="text-sm font-black text-slate-900">Tour disponible</p>
+            <p className="mt-0.5 text-xs text-slate-500">El primero que lo tome se lo queda</p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                setError("");
+                try { await onTake(); } catch (e) { setError(e.message || "No se pudo tomar"); setBusy(false); }
+              }}
+              className="mt-3 w-full rounded-xl bg-orange-500 py-2.5 text-sm font-black text-white shadow-sm shadow-orange-500/30 transition hover:bg-orange-600 disabled:opacity-50 cursor-pointer"
+            >
+              {busy ? "Tomando…" : "Lo tomo"}
+            </button>
+            {error && <p className="mt-2 text-xs font-semibold text-red-600">{error}</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Día ────────────────────────────────────────────────────────────────────
-function GuideDay({ guide, onLogout }) {
+function GuideDay({ guide, onLogout, viewSwitch }) {
   const navigate = useNavigate();
   const initialToday = useMemo(() => todayYmd(), []);
   const [date, setDate] = useDateParam(initialToday);
@@ -644,6 +702,8 @@ function GuideDay({ guide, onLogout }) {
   const slots = dayData?.slots || [];
   const totalGuests = slots.reduce((s, sl) => s + (sl.totalGuests || 0), 0);
   const markedSet = new Set(myDays.map((d) => d.date));
+  const offerSet = new Set(offers.map((o) => o.tourDate));
+  const dayOffers = offers.filter((o) => o.tourDate === date);
 
   async function handleLogout() {
     try { await guideLogout(); } catch { /* noop */ }
@@ -718,6 +778,7 @@ function GuideDay({ guide, onLogout }) {
                   )}
                 </div>
                 <p className="truncate text-xl font-black leading-tight text-slate-900">{guide.name}</p>
+                {viewSwitch}
               </div>
             </div>
             {!guide.isViewer && (
@@ -805,9 +866,14 @@ function GuideDay({ guide, onLogout }) {
                   selected={date}
                   onSelect={(ymd) => { if (ymd) { setDate(ymd); setCalendarOpen(false); } }}
                   markedDaysSet={markedSet}
+                  offerDaysSet={offerSet}
                   bare
                   allowPast
                 />
+                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 pb-1 pt-2 text-xs font-semibold text-slate-500">
+                  <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-emerald-100 ring-1 ring-emerald-300" /> {guide.isSupervisor ? "Con reservas" : "Tus tours"}</span>
+                  {!guide.isViewer && <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-orange-50 ring-2 ring-orange-400" /> Tours disponibles</span>}
+                </div>
               </div>
             </>
           )}
@@ -837,7 +903,7 @@ function GuideDay({ guide, onLogout }) {
           <div className="space-y-3">
             {[0, 1].map((i) => <div key={i} className="h-32 animate-pulse rounded-2xl bg-slate-100" />)}
           </div>
-        ) : slots.length === 0 ? (
+        ) : slots.length === 0 && dayOffers.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-14 text-center">
             <FiCalendar className="mx-auto h-8 w-8 text-slate-300" />
             <p className="mt-3 font-semibold text-slate-700">Sin tours asignados</p>
@@ -845,6 +911,9 @@ function GuideDay({ guide, onLogout }) {
           </div>
         ) : (
           <div className="space-y-4">
+            {dayOffers.map((o) => (
+              <OfferSlotCard key={o.id} offer={o} onTake={() => handleTakeOffer(o)} />
+            ))}
             {slots.map((slot) => (
               <SlotCard
                 key={`${slot.tourId}-${slot.startTime}`}
@@ -874,6 +943,14 @@ function GuideDay({ guide, onLogout }) {
 export default function GuiaPortalPage() {
   const [guide, setGuide] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [asGuide, setAsGuide] = useState(() => {
+    try { return localStorage.getItem("nt_ver_como_guia") === "1"; } catch { return false; }
+  });
+  setViewAsGuide(asGuide && Boolean(guide?.isSupervisor && guide?.isGuide));
+  function changeView(v) {
+    setAsGuide(v);
+    try { localStorage.setItem("nt_ver_como_guia", v ? "1" : "0"); } catch { /* nada */ }
+  }
 
   useEffect(() => {
     guideMe()
@@ -891,5 +968,21 @@ export default function GuiaPortalPage() {
   }
 
   if (!guide) return <GuideLogin onLoggedIn={setGuide} />;
-  return <GuideDay guide={guide} onLogout={() => setGuide(null)} />;
+  const canSwitch = guide.isSupervisor && guide.isGuide;
+  const effective = canSwitch && asGuide ? { ...guide, isSupervisor: false } : guide;
+  const viewSwitch = canSwitch ? (
+    <div className="mt-1.5 inline-flex rounded-lg bg-slate-100 p-0.5 text-[11px] font-bold">
+      {[[false, "Supervisor"], [true, "Ver como guía"]].map(([v, label]) => (
+        <button
+          key={label}
+          type="button"
+          onClick={() => changeView(v)}
+          className={`whitespace-nowrap rounded-md px-2 py-1 transition cursor-pointer ${asGuide === v ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  ) : null;
+  return <GuideDay key={asGuide && canSwitch ? "guia" : "sup"} guide={effective} viewSwitch={viewSwitch} onLogout={() => setGuide(null)} />;
 }

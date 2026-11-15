@@ -5,7 +5,7 @@ import { pool } from "../db.js";
 // guía siga activo (y admin, si entra al panel). Desactivarlo corta el acceso.
 async function loadGuide(guideId) {
   const q = await pool.query(
-    `SELECT active, is_admin, is_supervisor, is_viewer FROM guides WHERE id = $1`,
+    `SELECT active, is_admin, is_supervisor, is_viewer, is_guide FROM guides WHERE id = $1`,
     [guideId]
   );
   return q.rows[0] || null;
@@ -83,6 +83,7 @@ export function authenticateGuide(req, res, next) {
       isViewer,
       isAdmin: !isViewer && Boolean(g.is_admin),
       isSupervisor: !isViewer && Boolean(g.is_supervisor),
+      isGuide: !isViewer && g.is_guide !== false,
     };
     next();
   });

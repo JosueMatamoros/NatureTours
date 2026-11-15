@@ -30,6 +30,7 @@ export default function CalendarPicker({
   onMonthChange,
   disabledDaysSet, // Set("YYYY-MM-DD") con días full
   markedDaysSet, // Set("YYYY-MM-DD") a resaltar en verde (días con tour)
+  offerDaysSet, // Set("YYYY-MM-DD") con tours disponibles para tomar (naranja)
   bare = false, // sin el recuadro/borde propio (cuando ya va dentro de un popover)
   allowPast = false, // permitir seleccionar días pasados
 }) {
@@ -57,6 +58,7 @@ export default function CalendarPicker({
         }}
         modifiers={{
           marked: (d) => markedDaysSet?.has(toYMDLocal(d)) ?? false,
+          offer: (d) => offerDaysSet?.has(toYMDLocal(d)) ?? false,
         }}
         disabled={(d) => {
           // bloquear fechas pasadas (salvo que allowPast lo permita)
@@ -73,9 +75,10 @@ export default function CalendarPicker({
         }}
         className="mx-auto"
         modifiersClassNames={{
-          selected: "bg-emerald-600 text-white rounded-lg",
+          selected: "!bg-emerald-600 !text-white !ring-0 rounded-lg",
           today: "bg-amber-500 text-white font-semibold rounded-lg ",
           marked: "bg-emerald-100 text-emerald-800 font-semibold rounded-lg",
+          offer: "rounded-lg font-semibold text-orange-700 ring-2 ring-inset ring-orange-400 bg-orange-50",
         }}
         components={{
           Chevron: ({ orientation }) =>
