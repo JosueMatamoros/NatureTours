@@ -506,9 +506,49 @@ router.get("/grupos/:id/guias", h(async (req, res) => {
   res.json({ ok: true, precio: PRECIO_GUIA, guias: await listaGuias(grupoId, mes) });
 }));
 
-// Ingresos del mes según las reservas (mismo cálculo que Finanzas del panel).
-// Solo lectura; en dólares y convertidos a colones con el tipo de cambio de Mis Gastos.
-const TIPO_CAMBIO = Number(process.env.GASTOS_TIPO_CAMBIO) || 505;
+// Ingresos del mes según las reservas (mismo cálculo que Finanzas del panel), en
+// colones al tipo de cambio de compra del BCCR. El del mes en curso se guarda
+// cada vez que se consulta; al pasar el mes queda fijo el último guardado.
+const TC_RESPALDO = Number(process.env.GASTOS_TIPO_CAMBIO) || 505;
+let tcCache = null; // { valor, fecha, hasta }
+async function tipoCambioBCCR() {
+  if (tcCache && tcCache.hasta > Date.now()) return tcCache;
+  try {
+    const r = await fetch("https://api.hacienda.go.cr/indicadores/tc/dolar", { signal: AbortSignal.timeout(6000) });
+    const j = await r.json();
+    const valor = Number(j?.compra?.valor);
+    if (!r.ok || !(valor > 100)) throw new Error("respuesta inválida");
+    tcCache = { valor, fecha: j.compra.fecha, hasta: Date.now() + 60 * 60 * 1000 };
+    return tcCache;
+  } catch (e) {
+    console.error("Mis Gastos: no se pudo traer el tipo de cambio del BCCR:", e.message);
+    return null;
+  }
+}
+
+async function tipoCambioDelMes(mes, mesActual) {
+  const guardado = async () => (await pool.query(
+    `SELECT valor::float AS valor, to_char(fecha, 'YYYY-MM-DD') AS fecha FROM ${S}.tipo_cambio WHERE mes = $1`, [mes])).rows[0];
+  if (mes < mesActual) {
+    const g = await guardado();
+    if (g) return { ...g, cerrado: true };
+  }
+  const hoy = await tipoCambioBCCR();
+  if (hoy) {
+    if (mes === mesActual) {
+      await pool.query(
+        `INSERT INTO ${S}.tipo_cambio (mes, valor, fecha) VALUES ($1, $2, $3::date)
+         ON CONFLICT (mes) DO UPDATE SET valor = EXCLUDED.valor, fecha = EXCLUDED.fecha, actualizado = now()`,
+        [mes, hoy.valor, hoy.fecha]);
+    }
+    return { valor: hoy.valor, fecha: hoy.fecha, cerrado: false };
+  }
+  // Sin conexión con el BCCR: el último guardado, o el de respaldo.
+  const ult = (await pool.query(
+    `SELECT valor::float AS valor, to_char(fecha, 'YYYY-MM-DD') AS fecha FROM ${S}.tipo_cambio ORDER BY fecha DESC LIMIT 1`)).rows[0];
+  return ult ? { ...ult, cerrado: false } : { valor: TC_RESPALDO, fecha: null, cerrado: false };
+}
+
 router.get("/grupos/:id/ingresos", h(async (req, res) => {
   const grupoId = validar(uuid, req.params.id);
   const mes = validar(mesValido, req.query.mes);
@@ -517,16 +557,14 @@ router.get("/grupos/:id/ingresos", h(async (req, res) => {
   const [y, m] = mes.split("-").map(Number);
   const desde = `${mes}-01`;
   const hasta = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
-  const hoy = (await pool.query(`SELECT to_char((now() AT TIME ZONE '${TZ}')::date + 1, 'YYYY-MM-DD') AS d`)).rows[0].d;
-  const corte = hoy < hasta ? (hoy > desde ? hoy : desde) : hasta; // hasta hoy (incluido)
-  const [mesCompleto, hastaHoy] = await Promise.all([revenueBetween(desde, hasta), revenueBetween(desde, corte)]);
-  const crc = (usd) => Math.round(usd * TIPO_CAMBIO);
+  const f = (await pool.query(
+    `SELECT to_char((now() AT TIME ZONE '${TZ}')::date + 1, 'YYYY-MM-DD') AS manana,
+            to_char(now() AT TIME ZONE '${TZ}', 'YYYY-MM') AS mes`)).rows[0];
+  const corte = f.manana < hasta ? (f.manana > desde ? f.manana : desde) : hasta; // tours hasta hoy
+  const [ing, tc] = await Promise.all([revenueBetween(desde, corte), tipoCambioDelMes(mes, f.mes)]);
   res.json({
-    ok: true, mes, tipoCambio: TIPO_CAMBIO,
-    usd: hastaHoy.total, crc: crc(hastaHoy.total),
-    porVenirUsd: Math.round((mesCompleto.total - hastaHoy.total) * 100) / 100,
-    porVenir: crc(mesCompleto.total - hastaHoy.total),
-    porOrigen: hastaHoy.bySource, reservas: hastaHoy.bookings, sinPrecio: hastaHoy.missing,
+    ok: true, mes, usd: ing.total, crc: Math.round(ing.total * tc.valor),
+    tipoCambio: tc.valor, fechaTipoCambio: tc.fecha, cerrado: tc.cerrado,
   });
 }));
 

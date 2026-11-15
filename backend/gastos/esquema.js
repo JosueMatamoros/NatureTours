@@ -137,6 +137,13 @@ export async function migrarGastos() {
      FROM public.slot_guides sg WHERE sg.id = p.slot_id AND p.tour_id IS NULL`,
     // Gastos que pagó la empresa (caja chica) en vez de una persona
     `ALTER TABLE ${S}.movimientos ADD COLUMN IF NOT EXISTS caja boolean NOT NULL DEFAULT false`,
+    // Tipo de cambio del dólar (BCCR, compra) por mes: el último que se guardó en el mes queda como el del cierre.
+    `CREATE TABLE IF NOT EXISTS ${S}.tipo_cambio (
+       mes text PRIMARY KEY,
+       valor numeric(10,2) NOT NULL,
+       fecha date NOT NULL,
+       actualizado timestamptz NOT NULL DEFAULT now()
+     )`,
   ];
   for (const q of sql) await pool.query(q);
 }
