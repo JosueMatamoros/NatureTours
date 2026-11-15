@@ -3,7 +3,7 @@
 // de horarios que no son suyos.
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
-import { setSlotGuide, publishOffer, cancelOffer, openOffersForDate, openOffersForGuide, takeOffer, replyAssignment, slotSchema, offerSchema } from "../utils/slot-assign.js";
+import { setSlotGuide, publishOffer, cancelOffer, openOffersForDate, openOffersForGuide, takeOffer, replyAssignment, declinesForGuide, slotSchema, offerSchema } from "../utils/slot-assign.js";
 import { computeRevenue } from "../utils/revenue.js";
 import { verifyPassword } from "../utils/password.js";
 import { z } from "zod";
@@ -50,6 +50,17 @@ async function attachSlotGuides(slots, date) {
     s.offer = offers.find((o) => o.tourId === s.tourId && o.startTime === s.startTime) || null;
   }
   return slots;
+}
+
+// Estado del guía en cada horario: confirmed / pending / declined / null.
+async function markMyStatus(slots, guideId, date) {
+  const declined = await declinesForGuide(guideId, date);
+  const declinedKeys = new Set(declined.map((d) => `${d.tourId}|${d.startTime}`));
+  for (const s of slots) {
+    const own = (s.guides || []).find((g) => g.id === guideId);
+    s.myStatus = own ? own.status : declinedKeys.has(`${s.tourId}|${s.startTime}`) ? "declined" : null;
+  }
+  return declined.filter((d) => !slots.some((s) => s.tourId === d.tourId && s.startTime === d.startTime));
 }
 
 function sessionCookieOptions() {
@@ -251,6 +262,7 @@ export async function guideMyDay(req, res) {
         totalGuests: s.reservations.reduce((sum, r) => sum + r.guests, 0),
       }));
       await attachSlotGuides(supSlots, date);
+      await markMyStatus(supSlots, guideId, date);
       // El dinero del día SOLO lo ven supervisores (ni guías ni solo lectura).
       const revenue = req.guide.isSupervisor ? computeRevenue(q.rows) : undefined;
       return res.json({ ok: true, date, slots: supSlots, supervisor: true, revenue });
@@ -259,7 +271,8 @@ export async function guideMyDay(req, res) {
     const slotsQ = await pool.query(
       `SELECT sg.tour_id,
               t.name AS tour_name,
-              to_char(sg.start_time,'HH24:MI') AS start_time
+              to_char(sg.start_time,'HH24:MI') AS start_time,
+              sg.status
        FROM slot_guides sg
        JOIN tours t ON t.id = sg.tour_id
        WHERE sg.guide_id = $1 AND sg.tour_date = $2::date
@@ -282,6 +295,7 @@ export async function guideMyDay(req, res) {
         AND sg.tour_date = b.tour_date
         AND sg.start_time = b.start_time
         AND sg.guide_id = $1
+        AND sg.status = 'confirmed' -- sin confirmar no ve clientes
        LEFT JOIN LATERAL (
          SELECT p.mode, p.amount, p.customer_id
          FROM payments p
@@ -312,11 +326,16 @@ export async function guideMyDay(req, res) {
       if (slot) slot.reservations.push(mapReservation(row));
     }
 
+    const pendingKeys = new Set(slotsQ.rows.filter((r) => r.status !== "confirmed").map((r) => `${r.tour_id}|${r.start_time}`));
     const slots = [...bySlot.values()].map((s) => ({
       ...s,
-      totalGuests: s.reservations.reduce((sum, r) => sum + r.guests, 0),
+      // Sin confirmar: ni clientes ni cuántos vienen.
+      totalGuests: pendingKeys.has(`${s.tourId}|${s.startTime}`) ? null : s.reservations.reduce((sum, r) => sum + r.guests, 0),
     }));
     await attachSlotGuides(slots, date);
+    const extra = await markMyStatus(slots, guideId, date);
+    for (const d of extra) slots.push({ ...d, reservations: [], totalGuests: null, guides: [], offer: null, myStatus: "declined" });
+    slots.sort((a, b) => a.startTime.localeCompare(b.startTime));
 
     return res.json({ ok: true, date, slots });
   } catch (err) {

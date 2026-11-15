@@ -133,6 +133,15 @@ const startupMigrations = [
      taken_at timestamptz,
      cancelled_at timestamptz
    )`,
+  // Guías que dijeron "No puedo" (para mostrarles la tarjeta en rojo).
+  `CREATE TABLE IF NOT EXISTS slot_declines (
+     tour_id integer NOT NULL REFERENCES tours(id),
+     tour_date date NOT NULL,
+     start_time time NOT NULL,
+     guide_id uuid NOT NULL REFERENCES guides(id) ON DELETE CASCADE,
+     declined_at timestamptz NOT NULL DEFAULT now(),
+     PRIMARY KEY (tour_id, tour_date, start_time, guide_id)
+   )`,
   `CREATE INDEX IF NOT EXISTS slot_offers_open_idx ON slot_offers (tour_date) WHERE taken_by IS NULL AND cancelled_at IS NULL`,
 ];
 

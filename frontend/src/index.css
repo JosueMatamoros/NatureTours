@@ -54,3 +54,24 @@ html, body, #root {
   font-display: swap;
   src: url("/src/fonts/quicksand-v37-latin-700.woff2") format("woff2");
 }
+
+/* Portal de guías: al confirmar un tour, la información aparece con animación. */
+@keyframes nt-reveal {
+  from { opacity: 0; filter: blur(8px); transform: translateY(6px); }
+  to { opacity: 1; filter: blur(0); transform: none; }
+}
+@keyframes nt-pop {
+  0% { transform: scale(0.85); opacity: 0; }
+  60% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes nt-glow {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45); }
+  100% { box-shadow: 0 0 0 14px rgba(16, 185, 129, 0); }
+}
+.nt-reveal { animation: nt-reveal 0.7s ease-out both; }
+.nt-pop { animation: nt-pop 0.5s ease-out both; }
+.nt-glow { animation: nt-glow 1.2s ease-out 2; }
+@media (prefers-reduced-motion: reduce) {
+  .nt-reveal, .nt-pop, .nt-glow { animation: none; }
+}

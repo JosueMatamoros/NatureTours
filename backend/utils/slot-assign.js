@@ -37,12 +37,20 @@ export async function setSlotGuide({ tourId, tourDate, startTime, guideId, assig
      ON CONFLICT (tour_id, tour_date, start_time, guide_id) DO NOTHING`,
     [tourId, tourDate, startTime, guideId, self ? "confirmed" : "pending"],
   );
+  await clearDecline({ tourId, tourDate, startTime, guideId });
   if (ins.rowCount > 0) {
     // Ya tiene guía: las publicaciones abiertas de ese horario se cierran.
     await cancelOpenOffers({ tourId, tourDate, startTime });
     if (!self) pushAssignmentToGuide({ guideId, tourId, tourDate, startTime });
   }
   return { status: self ? "confirmed" : "pending" };
+}
+
+async function clearDecline({ tourId, tourDate, startTime, guideId }) {
+  await pool.query(
+    `DELETE FROM slot_declines WHERE tour_id = $1 AND tour_date = $2::date AND start_time = $3::time AND guide_id = $4`,
+    [tourId, tourDate, startTime, guideId],
+  );
 }
 
 async function cancelOpenOffers({ tourId, tourDate, startTime }) {
@@ -131,6 +139,7 @@ export async function takeOffer(id, guideId) {
     );
     await client.query("COMMIT");
     const slot = { tourId: o.tour_id, tourDate: o.tour_date, startTime: o.start_time };
+    await clearDecline({ ...slot, guideId });
     pushGuideReplyToAdmins({ guideId, ...slot, reply: "taken" });
     return slot;
   } catch (err) {
@@ -155,5 +164,25 @@ export async function replyAssignment({ tourId, tourDate, startTime, guideId, ac
         [tourId, tourDate, startTime, guideId],
       );
   if (!q.rowCount) throw fail(409, "Ese tour ya no está asignado a vos");
+  if (!accept) {
+    await pool.query(
+      `INSERT INTO slot_declines (tour_id, tour_date, start_time, guide_id) VALUES ($1, $2::date, $3::time, $4)
+       ON CONFLICT (tour_id, tour_date, start_time, guide_id) DO UPDATE SET declined_at = now()`,
+      [tourId, tourDate, startTime, guideId],
+    );
+  }
   pushGuideReplyToAdmins({ guideId, tourId, tourDate, startTime, reply: accept ? "confirmed" : "declined" });
+}
+
+/** Horarios de ese día que este guía rechazó (y no le volvieron a asignar). */
+export async function declinesForGuide(guideId, date) {
+  const q = await pool.query(
+    `SELECT d.tour_id, t.name AS tour_name, to_char(d.start_time,'HH24:MI') AS start_time
+     FROM slot_declines d JOIN tours t ON t.id = d.tour_id
+     WHERE d.guide_id = $1 AND d.tour_date = $2::date
+       AND NOT EXISTS (SELECT 1 FROM slot_guides sg WHERE sg.tour_id = d.tour_id AND sg.tour_date = d.tour_date
+                         AND sg.start_time = d.start_time AND sg.guide_id = d.guide_id)`,
+    [guideId, date],
+  );
+  return q.rows.map((r) => ({ tourId: r.tour_id, tourName: r.tour_name, startTime: r.start_time }));
 }

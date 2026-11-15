@@ -21,6 +21,7 @@ import {
   FiArrowRight,
   FiDollarSign,
   FiSend,
+  FiX,
 } from "react-icons/fi";
 import CalendarPicker from "../components/checkout/CalendarPicker";
 import SourceChip from "../components/SourceChip";
@@ -456,8 +457,9 @@ function ConfirmSlot({ onReply }) {
     try { await onReply(accept); } catch (e) { setError(e.message || "No se pudo guardar"); } finally { setBusy(null); }
   }
   return (
-    <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
-      <p className="text-sm font-bold text-slate-800">Te asignaron este tour. ¿Lo hacés?</p>
+    <div className="w-full max-w-xs rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-lg">
+      <p className="text-sm font-black text-slate-900">Te asignaron este tour</p>
+      <p className="mt-0.5 text-xs text-slate-500">Confirmá para ver los clientes</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <button type="button" disabled={!!busy} onClick={() => reply(false)} className="rounded-xl border border-slate-200 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 cursor-pointer">
           {busy === "no" ? "…" : "No puedo"}
@@ -467,6 +469,99 @@ function ConfirmSlot({ onReply }) {
         </button>
       </div>
       {error && <p className="mt-2 text-xs font-semibold text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+// Tarjeta de un horario. Si el guía no ha confirmado, todo sale borroso (sin
+// clientes ni cuántos vienen) con "Lo hago" / "No puedo"; si dijo que no, sale
+// en rojo y sin información; al aceptar, la información aparece con animación.
+function SlotCard({ slot, guide, header, onReply, renderRow }) {
+  const my = guide.isViewer ? null : slot.myStatus;
+  const [prevMy, setPrevMy] = useState(my);
+  const [reveal, setReveal] = useState(false);
+  if (prevMy !== my) {
+    setPrevMy(my);
+    if (prevMy === "pending" && my === "confirmed") setReveal(true);
+  }
+  useEffect(() => {
+    if (!reveal) return;
+    const t = setTimeout(() => setReveal(false), 2200);
+    return () => clearTimeout(t);
+  }, [reveal]);
+
+  const pending = my === "pending";
+  const declined = my === "declined";
+
+  return (
+    <div className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition-colors duration-500 ${
+      declined ? "border-red-200" : reveal ? "border-emerald-300 nt-glow" : "border-slate-200"
+    }`}>
+      <div className={`border-b px-4 py-3 ${declined ? "border-red-100 bg-red-50" : "border-slate-100 bg-slate-50"}`}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className={`grid h-10 w-10 place-items-center rounded-xl bg-white ring-1 ${declined ? "text-red-500 ring-red-200" : "text-emerald-600 ring-slate-200"}`}>
+              {declined ? <FiX className="h-4 w-4" /> : <FiClock className="h-4 w-4" />}
+            </span>
+            <div>
+              <p className={`text-lg font-black leading-none ${declined ? "text-red-900/70 line-through decoration-red-300" : "text-slate-900"}`}>{formatClock(slot.startTime)}</p>
+              <p className={`mt-0.5 text-xs font-medium ${declined ? "text-red-700/60" : "text-slate-500"}`}>{slot.tourName}</p>
+            </div>
+          </div>
+          {declined ? (
+            <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700">Rechazado</span>
+          ) : pending ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-200 px-2.5 py-1 text-xs font-bold text-slate-500">
+              <FiUsers className="h-3.5 w-3.5" /> <span className="blur-[3px] select-none">00</span>
+            </span>
+          ) : (
+            <span className={`inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700 tabular-nums ${reveal ? "nt-pop" : ""}`}>
+              <FiUsers className="h-3.5 w-3.5" /> {slot.totalGuests}
+            </span>
+          )}
+        </div>
+        {header && !(declined && !guide.isSupervisor) && <div className={`mt-2.5 ${pending && !guide.isSupervisor ? "blur-[3px] select-none pointer-events-none" : ""}`}>{header}</div>}
+      </div>
+
+      {declined ? (
+        <div className="flex items-center gap-3 px-4 py-5">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-red-100 text-red-500"><FiX className="h-5 w-5" /></span>
+          <div>
+            <p className="text-sm font-bold text-red-800">Dijiste que no podés este tour</p>
+            <p className="text-xs text-red-700/60">Ya se le avisó al administrador.</p>
+          </div>
+        </div>
+      ) : pending ? (
+        <div className="relative min-h-[11rem]">
+          <div aria-hidden className="pointer-events-none select-none px-4 py-1 blur-[7px]">
+            {(slot.reservations.length ? slot.reservations.slice(0, 3) : [0, 1, 2]).map((r, i) => (
+              <div key={r?.id || i} className="flex items-center justify-between gap-3 border-b border-slate-100 py-3 last:border-0">
+                <div className="space-y-1.5">
+                  <div className="h-3.5 w-32 rounded bg-slate-300" />
+                  <div className="h-3 w-20 rounded bg-slate-200" />
+                </div>
+                <div className="h-8 w-20 rounded-lg bg-emerald-200" />
+              </div>
+            ))}
+          </div>
+          <div className="absolute inset-0 grid place-items-center bg-white/40 p-4">
+            <ConfirmSlot onReply={onReply} />
+          </div>
+        </div>
+      ) : (
+        <div className={`px-4 py-1 ${reveal ? "nt-reveal" : ""}`}>
+          {reveal && (
+            <p className="nt-pop mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 py-2 text-sm font-black text-emerald-700">
+              <FiCheck className="h-4 w-4" /> ¡Tour confirmado!
+            </p>
+          )}
+          {slot.reservations.length === 0 ? (
+            <p className="py-4 text-center text-sm text-slate-400">Aún no hay reservas.</p>
+          ) : (
+            slot.reservations.map((r) => renderRow(r))
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -485,7 +580,6 @@ function GuideDay({ guide, onLogout }) {
 
   const today = todayYmd();
   const tomorrow = shiftYmd(today, 1);
-  const myGuideId = guide.id;
 
   const [offers, setOffers] = useState([]);
   const daySeq = useRef(0);
@@ -752,48 +846,22 @@ function GuideDay({ guide, onLogout }) {
         ) : (
           <div className="space-y-4">
             {slots.map((slot) => (
-              <div key={`${slot.tourId}-${slot.startTime}`} className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="rounded-t-2xl border-b border-slate-100 bg-slate-50 px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-emerald-600 ring-1 ring-slate-200">
-                        <FiClock className="h-4 w-4" />
-                      </span>
-                      <div>
-                        <p className="text-lg font-black leading-none text-slate-900">{formatClock(slot.startTime)}</p>
-                        <p className="mt-0.5 text-xs font-medium text-slate-500">{slot.tourName}</p>
-                      </div>
-                    </div>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700 tabular-nums">
-                      <FiUsers className="h-3.5 w-3.5" /> {slot.totalGuests}
-                    </span>
-                  </div>
-
-                  {/* Guía asignado al slot (antes de los clientes) */}
-                  <div className="mt-2.5">
-                    {guide.isSupervisor ? (
-                      <SlotGuidePicker slot={slot} date={date} allGuides={allGuides} onChanged={(gid, on) => patchSlotGuides(slot, gid, on)} onReload={() => loadDay(date, true)} />
-                    ) : slot.guides && slot.guides.length > 0 ? (
-                      <GuideChip guides={[]} assigned={slot.guides} offer={null} onClick={() => {}} />
-                    ) : (
-                      <span className="text-xs font-medium text-slate-400">Sin guía asignado</span>
-                    )}
-                  </div>
-                  {!guide.isViewer && (slot.guides || []).some((g) => g.id === myGuideId && g.status === "pending") && (
-                    <ConfirmSlot onReply={(accept) => handleReply(slot, accept)} />
-                  )}
-                </div>
-
-                <div className="px-4 py-1">
-                  {slot.reservations.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-slate-400">Aún no hay reservas.</p>
-                  ) : (
-                    slot.reservations.map((r) => (
-                      <ReservationRow key={r.id} r={r} onToggle={handleToggleArrived} busy={busyId === r.id} readOnly={guide.isViewer} />
-                    ))
-                  )}
-                </div>
-              </div>
+              <SlotCard
+                key={`${slot.tourId}-${slot.startTime}`}
+                slot={slot}
+                guide={guide}
+                header={
+                  guide.isSupervisor ? (
+                    <SlotGuidePicker slot={slot} date={date} allGuides={allGuides} onChanged={(gid, on) => patchSlotGuides(slot, gid, on)} onReload={() => loadDay(date, true)} />
+                  ) : slot.guides && slot.guides.length > 0 ? (
+                    <GuideChip guides={[]} assigned={slot.guides} offer={null} onClick={() => {}} />
+                  ) : null
+                }
+                onReply={(accept) => handleReply(slot, accept)}
+                renderRow={(r) => (
+                  <ReservationRow key={r.id} r={r} onToggle={handleToggleArrived} busy={busyId === r.id} readOnly={guide.isViewer} />
+                )}
+              />
             ))}
           </div>
         )}
