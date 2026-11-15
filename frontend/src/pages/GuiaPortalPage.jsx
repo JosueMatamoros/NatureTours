@@ -41,7 +41,6 @@ import {
   replyGuideAssignment,
   publishSlotOffer,
   cancelSlotOffer,
-  setViewAsGuide,
 } from "../../services/guide.api";
 import { GuideAssignSheet, GuideChip } from "../components/guides/GuideAssign";
 
@@ -657,7 +656,7 @@ function OfferSlotCard({ offer, onTake }) {
 }
 
 // ─── Día ────────────────────────────────────────────────────────────────────
-function GuideDay({ guide, onLogout, viewSwitch }) {
+function GuideDay({ guide, onLogout }) {
   const navigate = useNavigate();
   const initialToday = useMemo(() => todayYmd(), []);
   const [date, setDate] = useDateParam(initialToday);
@@ -810,7 +809,6 @@ function GuideDay({ guide, onLogout, viewSwitch }) {
                   )}
                 </div>
                 <p className="truncate text-xl font-black leading-tight text-slate-900">{guide.name}</p>
-                {viewSwitch}
               </div>
             </div>
             {!guide.isViewer && (
@@ -980,14 +978,8 @@ function GuideDay({ guide, onLogout, viewSwitch }) {
 export default function GuiaPortalPage() {
   const [guide, setGuide] = useState(null);
   const [checking, setChecking] = useState(true);
-  const [asGuide, setAsGuide] = useState(() => {
-    try { return localStorage.getItem("nt_ver_como_guia") === "1"; } catch { return false; }
-  });
-  setViewAsGuide(asGuide && Boolean(guide?.isSupervisor && guide?.isGuide));
-  function changeView(v) {
-    setAsGuide(v);
-    try { localStorage.setItem("nt_ver_como_guia", v ? "1" : "0"); } catch { /* nada */ }
-  }
+  // Ya no hay "Ver como guía": se limpia por si quedó guardado.
+  useEffect(() => { try { localStorage.removeItem("nt_ver_como_guia"); } catch { /* nada */ } }, []);
 
   useEffect(() => {
     guideMe()
@@ -1005,21 +997,5 @@ export default function GuiaPortalPage() {
   }
 
   if (!guide) return <GuideLogin onLoggedIn={setGuide} />;
-  const canSwitch = guide.isSupervisor && guide.isGuide;
-  const effective = canSwitch && asGuide ? { ...guide, isSupervisor: false } : guide;
-  const viewSwitch = canSwitch ? (
-    <div className="mt-1.5 inline-flex rounded-lg bg-slate-100 p-0.5 text-[11px] font-bold">
-      {[[false, "Supervisor"], [true, "Ver como guía"]].map(([v, label]) => (
-        <button
-          key={label}
-          type="button"
-          onClick={() => changeView(v)}
-          className={`whitespace-nowrap rounded-md px-2 py-1 transition cursor-pointer ${asGuide === v ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  ) : null;
-  return <GuideDay key={asGuide && canSwitch ? "guia" : "sup"} guide={effective} viewSwitch={viewSwitch} onLogout={() => setGuide(null)} />;
+  return <GuideDay guide={guide} onLogout={() => setGuide(null)} />;
 }

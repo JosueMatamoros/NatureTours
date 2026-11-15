@@ -83,17 +83,13 @@ export function guideMe() {
   return guideRequest("/api/guide/me");
 }
 
-// Supervisor que también es guía: puede ver la app "como guía".
-let asGuide = false;
-export function setViewAsGuide(on) { asGuide = Boolean(on); }
-
 export function getGuideMyDay(date) {
   if (!date) throw new Error("date requerido (YYYY-MM-DD)");
-  return guideRequest(`/api/guide/my-day?date=${date}${asGuide ? "&asGuide=1" : ""}`);
+  return guideRequest(`/api/guide/my-day?date=${date}`);
 }
 
 export function getGuideMyDays() {
-  return guideRequest(`/api/guide/my-days${asGuide ? "?asGuide=1" : ""}`);
+  return guideRequest("/api/guide/my-days");
 }
 
 export function guideSetArrived(bookingId, arrived) {
