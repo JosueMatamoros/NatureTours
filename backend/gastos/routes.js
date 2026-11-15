@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { pool } from "../db.js";
 import { getVapidPublicKey } from "../utils/push.js";
+import { revenueBetween } from "../utils/revenue.js";
 import { activar, login, requiereUsuario } from "./auth.js";
 import { categorizar, claveDe, normalizar } from "./categorizar.js";
 import { S, sembrarCategorias } from "./esquema.js";
@@ -246,6 +247,8 @@ async function datos(uid) {
       categorias: de(cats.rows, g.id),
       movimientos: movs.rows.filter((m) => m.grupoId === g.id),
       ...(g.pagosGuias ? { guiasPendientes: guias.rows.find((r) => r.grupo_id === g.id)?.pendientes || 0 } : {}),
+      // Ingresos del negocio: solo el dueño (las cuentas "solo grupos" no los ven)
+      ...(g.pagosGuias && !usuario.rows[0]?.soloGrupos ? { verIngresos: true } : {}),
     })),
   };
 }
@@ -501,6 +504,30 @@ router.get("/grupos/:id/guias", h(async (req, res) => {
   await grupoConGuias(grupoId, req.usuario.id);
   await reconciliarGuias(grupoId);
   res.json({ ok: true, precio: PRECIO_GUIA, guias: await listaGuias(grupoId, mes) });
+}));
+
+// Ingresos del mes según las reservas (mismo cálculo que Finanzas del panel).
+// Solo lectura; en dólares y convertidos a colones con el tipo de cambio de Mis Gastos.
+const TIPO_CAMBIO = Number(process.env.GASTOS_TIPO_CAMBIO) || 505;
+router.get("/grupos/:id/ingresos", h(async (req, res) => {
+  const grupoId = validar(uuid, req.params.id);
+  const mes = validar(mesValido, req.query.mes);
+  await grupoConGuias(grupoId, req.usuario.id);
+  if (await soloGrupos(req.usuario.id)) throw err("No tienes acceso a los ingresos", 403);
+  const [y, m] = mes.split("-").map(Number);
+  const desde = `${mes}-01`;
+  const hasta = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
+  const hoy = (await pool.query(`SELECT to_char((now() AT TIME ZONE '${TZ}')::date + 1, 'YYYY-MM-DD') AS d`)).rows[0].d;
+  const corte = hoy < hasta ? (hoy > desde ? hoy : desde) : hasta; // hasta hoy (incluido)
+  const [mesCompleto, hastaHoy] = await Promise.all([revenueBetween(desde, hasta), revenueBetween(desde, corte)]);
+  const crc = (usd) => Math.round(usd * TIPO_CAMBIO);
+  res.json({
+    ok: true, mes, tipoCambio: TIPO_CAMBIO,
+    usd: hastaHoy.total, crc: crc(hastaHoy.total),
+    porVenirUsd: Math.round((mesCompleto.total - hastaHoy.total) * 100) / 100,
+    porVenir: crc(mesCompleto.total - hastaHoy.total),
+    porOrigen: hastaHoy.bySource, reservas: hastaHoy.bookings, sinPrecio: hastaHoy.missing,
+  });
 }));
 
 // Marca quién pagó el guía de un tour (o que no aplica / pendiente).
