@@ -142,6 +142,14 @@ const SEAT_STYLE = {
   slate: { empty: "border-2 border-dashed border-slate-300 bg-slate-50", icon: "text-slate-400" },
 };
 
+// Con caballo puesto: encargado y guía en dorado, niño en rosado, adulto/extra en verde.
+const ASSIGNED = {
+  gold: "bg-yellow-50 ring-yellow-500",
+  amber: "bg-yellow-50 ring-yellow-500",
+  pink: "bg-pink-50 ring-pink-400",
+  slate: "bg-emerald-50 ring-emerald-500",
+};
+
 function SeatTile({ label, horse, tone = "slate", onClick, big = false }) {
   const st = horse ? statusOf(horse) : null;
   const sty = SEAT_STYLE[tone];
@@ -150,7 +158,7 @@ function SeatTile({ label, horse, tone = "slate", onClick, big = false }) {
       type="button"
       onClick={onClick}
       className={`flex flex-col items-center gap-1.5 rounded-2xl text-center transition active:scale-95 cursor-pointer ${big ? "w-full p-3" : "p-2"} ${
-        horse ? `bg-white shadow-sm ring-2 ${tone === "pink" ? "ring-pink-400" : tone === "gold" ? "ring-yellow-500" : "ring-emerald-500"}` : sty.empty
+        horse ? `shadow-sm ring-2 ${ASSIGNED[tone] || ASSIGNED.slate}` : sty.empty
       }`}
     >
       {horse ? (
@@ -218,8 +226,8 @@ export function TourCard({ slot, horsesById, onPick, bare = false }) {
           ))}
           {gd.map((s) => (
             <div key={s}>
-              <SectionTitle icon={FiUser} color="text-amber-700">Guía</SectionTitle>
-              <SeatTile big label={seatLabel(slot, s).replace("Guía · ", "")} tone="amber" horse={horseAt(s)} onClick={() => onPick(slot, s)} />
+              <SectionTitle icon={FiUser} color="text-yellow-700">Guía</SectionTitle>
+              <SeatTile big label={seatLabel(slot, s).replace("Guía · ", "")} tone="gold" horse={horseAt(s)} onClick={() => onPick(slot, s)} />
             </div>
           ))}
         </div>
