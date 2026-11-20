@@ -115,6 +115,7 @@ export function Toast({ msg }) {
 // → extras. Sin nombres de clientes: solo cuántos son y si vienen niños.
 const SEAT_STYLE = {
   sky: { empty: "border-2 border-dashed border-sky-300 bg-sky-50", icon: "text-sky-500" },
+  gold: { empty: "border-2 border-dashed border-yellow-500 bg-linear-to-br from-yellow-50 to-amber-100", icon: "text-yellow-600" },
   amber: { empty: "border-2 border-dashed border-amber-400 bg-amber-50", icon: "text-amber-500" },
   pink: { empty: "border-2 border-dashed border-pink-300 bg-pink-50", icon: "text-pink-500" },
   slate: { empty: "border-2 border-dashed border-slate-300 bg-slate-50", icon: "text-slate-400" },
@@ -128,7 +129,7 @@ function SeatTile({ label, horse, tone = "slate", onClick, big = false }) {
       type="button"
       onClick={onClick}
       className={`flex flex-col items-center gap-1.5 rounded-2xl text-center transition active:scale-95 cursor-pointer ${big ? "w-full p-3" : "p-2"} ${
-        horse ? `bg-white shadow-sm ring-2 ${tone === "pink" ? "ring-pink-400" : "ring-emerald-500"}` : sty.empty
+        horse ? `bg-white shadow-sm ring-2 ${tone === "pink" ? "ring-pink-400" : tone === "gold" ? "ring-yellow-500" : "ring-emerald-500"}` : sty.empty
       }`}
     >
       {horse ? (
@@ -190,8 +191,8 @@ export function TourCard({ slot, horsesById, onPick, bare = false }) {
         <div className="grid grid-cols-2 gap-3">
           {wr.map((s) => (
             <div key={s}>
-              <SectionTitle color="text-sky-700">{seatLabel(slot, s)}</SectionTitle>
-              <SeatTile big label="Siempre va" tone="sky" horse={horseAt(s)} onClick={() => onPick(slot, s)} />
+              <SectionTitle color="text-yellow-700">{seatLabel(slot, s)}</SectionTitle>
+              <SeatTile big label={seatLabel(slot, s)} tone="gold" horse={horseAt(s)} onClick={() => onPick(slot, s)} />
             </div>
           ))}
           {gd.map((s) => (
