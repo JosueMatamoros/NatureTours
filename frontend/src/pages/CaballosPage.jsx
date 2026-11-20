@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  FiArrowLeft, FiCamera, FiCheck, FiChevronLeft, FiChevronRight, FiEdit2, FiPlus, FiClock, FiFileText,
+  FiArrowLeft, FiCamera, FiCheck, FiEdit2, FiPlus, FiFileText,
 } from "react-icons/fi";
 import { GiHorseHead, GiHorseshoe, GiHammerNails, GiStickingPlaster } from "react-icons/gi";
 import {
@@ -16,7 +16,7 @@ import {
 import { BigButton, Chip, HoofGrid, HorseAvatar, Sheet, Toast, TourCard } from "../components/horses/HorsesUI";
 import { useHorseAssign } from "../components/horses/useHorseAssign";
 
-function ToursTab({ date, setDate, today, toast }) {
+function ToursTab({ date, toast }) {
   const [day, setDay] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,19 +35,8 @@ function ToursTab({ date, setDate, today, toast }) {
   const { openPick, picker } = useHorseAssign(day, setDay, () => load(date, true), (m) => toast(m, true));
   const horsesById = Object.fromEntries((day?.horses || []).map((h) => [h.id, h]));
 
-  const tomorrow = shiftYmd(today, 1);
   return (
     <>
-      <div className="mb-4 flex items-center gap-2">
-        <button onClick={() => setDate(shiftYmd(date, -1))} aria-label="Día anterior" className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white text-slate-600 ring-1 ring-slate-200 cursor-pointer">
-          <FiChevronLeft className="h-6 w-6" />
-        </button>
-        <button onClick={() => setDate(today)} className={`h-12 flex-1 rounded-2xl text-base font-black cursor-pointer ${date === today ? "bg-emerald-600 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}>Hoy</button>
-        <button onClick={() => setDate(tomorrow)} className={`h-12 flex-1 rounded-2xl text-base font-black cursor-pointer ${date === tomorrow ? "bg-orange-500 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}>Mañana</button>
-        <button onClick={() => setDate(shiftYmd(date, 1))} aria-label="Día siguiente" className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white text-slate-600 ring-1 ring-slate-200 cursor-pointer">
-          <FiChevronRight className="h-6 w-6" />
-        </button>
-      </div>
       <p className="mb-3 px-1 text-lg font-black capitalize text-slate-800">{dayLabel(date)}</p>
 
       {loading ? (
@@ -500,13 +489,14 @@ export default function CaballosPage() {
     );
   }
 
-  const tabBtn = (id, Icon, label) => (
+  const tomorrow = shiftYmd(me.today, 1);
+  const dayTab = (ymd, label, on) => (
     <button
       type="button"
-      onClick={() => setTab(id)}
-      className={`flex h-16 flex-1 items-center justify-center gap-2 rounded-2xl text-lg font-black transition cursor-pointer ${tab === id ? "bg-slate-900 text-white shadow-lg" : "text-slate-500"}`}
+      onClick={() => { setDate(ymd); setTab("tours"); }}
+      className={`h-16 flex-1 rounded-2xl text-xl font-black transition cursor-pointer ${tab === "tours" && date === ymd ? `${on} text-white shadow-lg` : "text-slate-500"}`}
     >
-      <Icon className="h-7 w-7" /> {label}
+      {label}
     </button>
   );
 
@@ -526,19 +516,29 @@ export default function CaballosPage() {
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-600 text-white shadow-sm shadow-amber-600/30">
             <GiHorseHead className="h-7 w-7" />
           </span>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-black leading-tight text-slate-900">Caballos</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-black leading-tight text-slate-900">{tab === "horses" ? "Herraduras" : "Caballos"}</h1>
             <p className="truncate text-xs font-semibold text-slate-400">{me.user.name}</p>
           </div>
+          {/* Botón especial: directo a herraduras */}
+          <button
+            type="button"
+            onClick={() => setTab("horses")}
+            className={`flex h-14 shrink-0 items-center gap-2 rounded-2xl px-4 text-base font-black shadow-lg transition active:scale-95 cursor-pointer ${
+              tab === "horses" ? "bg-slate-900 text-white" : "bg-amber-500 text-white shadow-amber-500/30"
+            }`}
+          >
+            <GiHorseshoe className="h-7 w-7" /> Herraduras
+          </button>
         </div>
 
         <div className="mb-5 flex gap-1 rounded-3xl bg-white p-1.5 ring-1 ring-slate-200">
-          {tabBtn("tours", FiClock, "Tours")}
-          {tabBtn("horses", GiHorseshoe, "Caballos")}
+          {dayTab(me.today, "Hoy", "bg-emerald-600")}
+          {dayTab(tomorrow, "Mañana", "bg-orange-500")}
         </div>
 
         {tab === "tours" ? (
-          <ToursTab date={date} setDate={setDate} today={me.today} toast={toast} />
+          <ToursTab date={date} toast={toast} />
         ) : (
           <HorsesTab today={me.today} toast={toast} isAdmin={me.user.isAdmin} />
         )}
