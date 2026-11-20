@@ -319,11 +319,10 @@ function HorsePicker({ slot, seat, day, onClose, onChoose }) {
       if (h.id === current) return -1;
       if (h.resting) return 4;
       if (inSlot[h.id]) return 3;
-      const other = (day.usage[h.id] || []).filter((t) => t !== slot.startTime);
-      return other.length ? 1 : 0;
+      return 0; // salir varias veces en el día o en la semana no es problema: sin aviso
     };
     return day.horses.filter((h) => h.active).sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
-  }, [day, slot, inSlot, current]);
+  }, [day, inSlot, current]);
 
   function tap(h) {
     if (h.id === current) return onClose();
@@ -356,7 +355,6 @@ function HorsePicker({ slot, seat, day, onClose, onChoose }) {
           {list.map((h) => {
             const st = statusOf(h);
             const here = inSlot[h.id] && h.id !== current;
-            const other = (day.usage[h.id] || []).filter((t) => t !== slot.startTime);
             return (
               <button
                 key={h.id}
@@ -374,8 +372,6 @@ function HorsePicker({ slot, seat, day, onClose, onChoose }) {
                   <Chip tone="red">Descansa</Chip>
                 ) : here ? (
                   <Chip tone="blue">Ya en este tour</Chip>
-                ) : other.length ? (
-                  <Chip tone="gray"><FiClock className="h-3 w-3" /> {clock(other[0])}</Chip>
                 ) : st.tone !== "green" ? (
                   <Chip tone={st.tone}><GiHorseshoe className="h-3 w-3" /> Revisar</Chip>
                 ) : (
