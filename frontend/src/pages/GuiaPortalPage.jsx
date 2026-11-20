@@ -81,6 +81,9 @@ function formatCedula(digits) {
 // Cédula corta de 7 dígitos (x-xxx-xxx) → completa de 9 (x-0xxx-0xxx),
 // ej. "2448088" → "204480088". Se aplica al salir del campo o al ingresar
 // (no mientras escribe, para no estorbar a quien teclea los 9 dígitos).
+// Excepción puntual: Marlon entra con "1234" (no tiene cédula de 9 dígitos).
+const CEDULAS_CORTAS = new Set(["1234"]);
+
 function expandCedula(digits) {
   return digits.length === 7 ? `${digits[0]}0${digits.slice(1, 4)}0${digits.slice(4)}` : digits;
 }
@@ -98,7 +101,7 @@ function GuideLogin({ onLoggedIn }) {
     setError("");
     const fullCedula = expandCedula(cedula);
     if (fullCedula !== cedula) setCedula(fullCedula);
-    if (fullCedula.length !== 9) {
+    if (fullCedula.length !== 9 && !CEDULAS_CORTAS.has(fullCedula)) {
       setError("Revisá la cédula: debe tener 9 dígitos.");
       return;
     }
