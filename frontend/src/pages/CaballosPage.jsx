@@ -13,7 +13,7 @@ import {
 import {
   HERRAR_PRONTO, HERRAR_YA, HOOF_NAME, TONE, clock, dayLabel, photoToDataUrl, shiftYmd, shoeSummary, shortDay, statusOf, toYmd,
 } from "../components/horses/horsesUtil";
-import { BigButton, Chip, HoofGrid, HorseAvatar, Sheet, Toast, TourCard } from "../components/horses/HorsesUI";
+import { BigButton, Chip, HoofGrid, HoofLegend, HorseAvatar, Sheet, Toast, TourCard } from "../components/horses/HorsesUI";
 import { useHorseAssign } from "../components/horses/useHorseAssign";
 
 function ToursTab({ date, toast }) {
@@ -187,7 +187,7 @@ function HorseForm({ horse, onClose, onSaved, toast }) {
 
 // Acción guiada: herrar / se cayó / lastimado / nota.
 function ActionSheet({ horse, kind, onClose, onDone, toast, today }) {
-  const [hooves, setHooves] = useState(kind === "herrado" ? ["mi", "md", "pi", "pd"] : []);
+  const [hooves, setHooves] = useState([]); // nada marcado: se toca solo lo que se herró
   const [when, setWhen] = useState(today);
   const [days, setDays] = useState(null);
   const [reason, setReason] = useState(null);
@@ -228,12 +228,13 @@ function ActionSheet({ horse, kind, onClose, onDone, toast, today }) {
             {[["Las 4", ["mi", "md", "pi", "pd"]], ["Manos", ["mi", "md"]], ["Patas", ["pi", "pd"]]].map(([l, v]) => {
               const on = v.length === hooves.length && v.every((k) => hooves.includes(k));
               return (
-                <button key={l} type="button" onClick={() => setHooves(v)} className={`h-14 rounded-2xl text-base font-black cursor-pointer ${on ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-700"}`}>{l}</button>
+                <button key={l} type="button" onClick={() => setHooves(on ? [] : v)} className={`h-14 rounded-2xl text-base font-black cursor-pointer ${on ? "bg-amber-400 text-white" : "bg-slate-100 text-slate-700"}`}>{l}</button>
               );
             })}
           </div>
-          <p className="text-sm font-semibold text-slate-500">o tocá cada casco</p>
-          <HoofGrid shoes={{ mi: hooves.includes("mi"), md: hooves.includes("md"), pi: hooves.includes("pi"), pd: hooves.includes("pd") }} big onTap={toggle} />
+          <p className="text-sm font-semibold text-slate-500">o tocá cada casco que se herró o se compuso</p>
+          <HoofGrid shoes={horse.shoes} selected={hooves} big onTap={toggle} />
+          <HoofLegend changeLabel="Se herró ahora" />
           <div>
             <p className="mb-2 text-base font-black text-slate-700">¿Cuándo?</p>
             <div className="grid grid-cols-3 gap-2">
@@ -251,7 +252,10 @@ function ActionSheet({ horse, kind, onClose, onDone, toast, today }) {
           {shod.length === 0 ? (
             <p className="rounded-2xl bg-slate-50 p-4 text-slate-500">Este caballo no tiene herraduras puestas.</p>
           ) : (
-            <HoofGrid shoes={horse.shoes} big enabled={shod} selected={hooves} onTap={toggle} />
+            <>
+              <HoofGrid shoes={horse.shoes} big enabled={shod} selected={hooves} onTap={toggle} />
+              <HoofLegend changeLabel="Se cayó" />
+            </>
           )}
         </div>
       )}

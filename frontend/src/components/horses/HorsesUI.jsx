@@ -20,11 +20,22 @@ export function Chip({ tone, children, className = "" }) {
 }
 
 // Los 4 cascos vistos desde arriba: manos adelante, patas atrás.
+// Cascos. Afuera (tarjeta y detalle): verde = tiene herradura, gris = no tiene.
+// En "Se herró" / "Se le cayó" (con `selected`): lo que se toca sale amarillo
+// (el cambio), lo que ya tenía herradura sale verde claro y lo demás gris.
 export function HoofGrid({ shoes, onTap, enabled, selected, big = false }) {
+  const marking = Array.isArray(selected);
   const cell = (k) => {
     const on = shoes[k];
-    const sel = selected?.includes(k);
+    const sel = marking && selected.includes(k);
     const can = onTap && (!enabled || enabled.includes(k));
+    const circle = sel
+      ? "bg-amber-400 text-white shadow-md shadow-amber-400/40 ring-4 ring-amber-200"
+      : on && marking
+        ? "bg-emerald-100 text-emerald-600 ring-2 ring-emerald-300"
+        : on
+          ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+          : "border-4 border-dashed border-slate-300 bg-white text-slate-300";
     return (
       <button
         key={k}
@@ -32,15 +43,13 @@ export function HoofGrid({ shoes, onTap, enabled, selected, big = false }) {
         disabled={!can}
         onClick={() => can && onTap(k)}
         className={`flex flex-col items-center gap-1 rounded-2xl p-2 transition ${can ? "cursor-pointer active:scale-95" : "cursor-default"} ${
-          sel ? "bg-sky-100 ring-4 ring-sky-400" : ""
-        } ${onTap && !can ? "opacity-35" : ""}`}
+          onTap && !can ? "opacity-35" : ""
+        }`}
       >
-        <span className={`grid ${big ? "h-20 w-20" : "h-11 w-11"} place-items-center rounded-full ${
-          on ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30" : "border-4 border-dashed border-slate-300 bg-white text-slate-300"
-        }`}>
+        <span className={`grid ${big ? "h-20 w-20" : "h-11 w-11"} place-items-center rounded-full transition ${circle}`}>
           <GiHorseshoe className={big ? "h-10 w-10" : "h-6 w-6"} />
         </span>
-        {big && <span className="text-xs font-bold text-slate-600">{HOOF_NAME[k]}</span>}
+        {big && <span className={`text-xs font-bold ${sel ? "text-amber-700" : "text-slate-600"}`}>{HOOF_NAME[k]}</span>}
       </button>
     );
   };
@@ -50,6 +59,18 @@ export function HoofGrid({ shoes, onTap, enabled, selected, big = false }) {
       <div className="flex justify-center gap-3">{cell("mi")}{cell("md")}</div>
       <div className="flex justify-center gap-3">{cell("pi")}{cell("pd")}</div>
       {big && <p className="text-center text-[11px] font-black uppercase tracking-widest text-slate-400">Patas · atrás</p>}
+    </div>
+  );
+}
+
+// Leyenda para las hojas de marcar cascos.
+export function HoofLegend({ changeLabel }) {
+  const dot = (cls) => <span className={`inline-block h-3.5 w-3.5 rounded-full ${cls}`} />;
+  return (
+    <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs font-bold text-slate-500">
+      <span className="flex items-center gap-1.5">{dot("bg-amber-400")} {changeLabel}</span>
+      <span className="flex items-center gap-1.5">{dot("bg-emerald-100 ring-2 ring-emerald-300")} Ya tenía</span>
+      <span className="flex items-center gap-1.5">{dot("border-2 border-dashed border-slate-300 bg-white")} Sin herradura</span>
     </div>
   );
 }
