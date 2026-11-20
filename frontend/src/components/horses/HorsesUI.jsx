@@ -157,13 +157,13 @@ function SeatTile({ label, horse, tone = "slate", onClick, big = false }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-center gap-1.5 rounded-2xl text-center transition active:scale-95 cursor-pointer ${big ? "w-full p-3" : "p-2"} ${
+      className={`flex w-full flex-col items-center gap-1 rounded-2xl text-center transition active:scale-95 cursor-pointer ${big ? "p-1.5" : "p-1"} ${
         horse ? `shadow-sm ring-2 ${ASSIGNED[tone] || ASSIGNED.slate}` : sty.empty
       }`}
     >
       {horse ? (
-        <span className="relative">
-          <HorseAvatar horse={horse} size={big ? "h-24 w-24" : "h-16 w-16"} text={big ? "text-4xl" : "text-2xl"} />
+        <span className="relative block w-full">
+          <HorseAvatar horse={horse} size="aspect-square w-full" text={big ? "text-5xl" : "text-3xl"} />
           {st.tone !== "green" && (
             <span className={`absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full ring-2 ring-white ${st.tone === "red" ? "bg-red-600" : "bg-amber-500"} text-white`}>
               <FiAlertTriangle className="h-3.5 w-3.5" />
@@ -171,12 +171,12 @@ function SeatTile({ label, horse, tone = "slate", onClick, big = false }) {
           )}
         </span>
       ) : (
-        <span className={`grid ${big ? "h-24 w-24" : "h-16 w-16"} place-items-center rounded-2xl ${sty.icon}`}>
+        <span className={`grid aspect-square w-full place-items-center rounded-2xl ${sty.icon}`}>
           <FiPlus className="h-9 w-9" />
         </span>
       )}
-      <span className={`w-full truncate font-black text-slate-900 ${big ? "text-base" : "text-sm"}`}>{horse ? horse.name : "Escoger"}</span>
-      <span className="w-full truncate text-[11px] font-semibold text-slate-500">{label}</span>
+      <span className={`w-full truncate font-black leading-tight text-slate-900 ${big ? "text-sm" : "text-xs"}`}>{horse ? horse.name : "Escoger"}</span>
+      <span className="-mt-0.5 w-full truncate text-[10px] font-semibold leading-tight text-slate-500">{label}</span>
     </button>
   );
 }
