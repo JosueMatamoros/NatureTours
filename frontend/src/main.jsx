@@ -4,6 +4,10 @@ import { RouterProvider } from 'react-router-dom'
 import './index.css'
 import router from './router.jsx'
 import { PRERENDERED_PATHS } from './seo/seoData'
+import { initAdTracking } from './utils/adSource'
+
+// Anuncios de Google → WhatsApp: marca " (G)" en el mensaje y cuenta el clic.
+initAdTracking()
 
 // Android/Chrome: guardar el aviso de instalación de la app (PWA) para que el
 // botón "Instalar app" del portal lo pueda disparar cuando el usuario quiera.
