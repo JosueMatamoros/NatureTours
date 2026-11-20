@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { GiHorseHead } from "react-icons/gi";
 import NotificationsBell from "../components/ui/NotificationsBell";
+import { HorsesBar, SlotHorsesSheet } from "../components/horses/SlotHorses";
+import { useHorseAssign } from "../components/horses/useHorseAssign";
+import { horsesDay } from "../../services/horses.api";
 import { useDateParam } from "../hooks/useDateParam";
 import {
   FiCalendar,
@@ -508,7 +510,7 @@ function ConfirmSlot({ onReply }) {
 // Tarjeta de un horario. Si el guía no ha confirmado, todo sale borroso (sin
 // clientes ni cuántos vienen) con "Lo hago" / "No puedo"; si dijo que no, sale
 // en rojo y sin información; al aceptar, la información aparece con animación.
-function SlotCard({ slot, guide, header, onReply, renderRow }) {
+function SlotCard({ slot, guide, header, onReply, renderRow, footer }) {
   // El supervisor nunca ve la tarjeta bloqueada (ni borrosa ni rechazada).
   const my = guide.isViewer || guide.isSupervisor ? null : slot.myStatus;
   const [prevMy, setPrevMy] = useState(my);
@@ -597,6 +599,7 @@ function SlotCard({ slot, guide, header, onReply, renderRow }) {
           )}
         </div>
       )}
+      {footer && !declined && !pending && footer}
     </div>
   );
 }
@@ -689,6 +692,18 @@ function GuideDay({ guide }) {
   }, []);
   // Ni solo lectura ni supervisor ven "tours disponibles" (barra, calendario naranja ni tarjetas).
   const hideOffers = guide.isViewer || guide.isSupervisor;
+
+  // Caballos de cada tour (admins y encargado de caballos): se tocan en la tarjeta.
+  const [horseDay, setHorseDay] = useState(null);
+  const [horseSlotKey, setHorseSlotKey] = useState(null);
+  const loadHorses = useCallback((d) => {
+    if (!guide.canHorses) return;
+    horsesDay(d).then(setHorseDay).catch(() => setHorseDay(null));
+  }, [guide.canHorses]);
+  useEffect(() => { setHorseDay(null); loadHorses(date); }, [date, loadHorses]);
+  const { openPick, picker: horsePicker } = useHorseAssign(horseDay, setHorseDay, () => loadHorses(date), (m) => console.error("caballos:", m));
+  const horseSlotOf = (s) => horseDay?.slots.find((h) => h.tourId === s.tourId && h.startTime === s.startTime) || null;
+  const openHorseSlot = horseDay?.slots.find((h) => `${h.tourId}|${h.startTime}` === horseSlotKey) || null;
   // El encargado de caballos que no es guía ni supervisor entra directo a Caballos
   // (una vez por sesión, para que "Volver" lo deje ver el portal si quiere).
   useEffect(() => {
@@ -823,16 +838,6 @@ function GuideDay({ guide }) {
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <NotificationsBell />
-              {guide.canHorses && (
-                <button
-                  onClick={() => navigate("/asistencia/caballos")}
-                  title="Caballos"
-                  aria-label="Caballos"
-                  className="grid h-10 w-10 place-items-center rounded-xl bg-amber-600 text-white transition hover:bg-amber-700 cursor-pointer"
-                >
-                  <GiHorseHead className="h-6 w-6" />
-                </button>
-              )}
               {guide.isAdmin && (
                 <button
                   onClick={() => navigate("/matamoros")}
@@ -973,6 +978,7 @@ function GuideDay({ guide }) {
                   ) : null
                 }
                 onReply={(accept) => handleReply(slot, accept)}
+                footer={horseSlotOf(slot) ? <HorsesBar slot={horseSlotOf(slot)} onOpen={() => setHorseSlotKey(`${slot.tourId}|${slot.startTime}`)} /> : null}
                 renderRow={(r) => (
                   <ReservationRow key={r.id} r={r} onToggle={handleToggleArrived} busy={busyId === r.id} readOnly={guide.isViewer} />
                 )}
@@ -981,6 +987,10 @@ function GuideDay({ guide }) {
           </div>
         )}
       </div>
+      {openHorseSlot && (
+        <SlotHorsesSheet slot={openHorseSlot} horses={horseDay.horses} onPick={openPick} onClose={() => setHorseSlotKey(null)} />
+      )}
+      {horsePicker}
     </div>
   );
 }

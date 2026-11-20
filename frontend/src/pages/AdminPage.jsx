@@ -78,10 +78,10 @@ const CARDS = [
     descColor: "text-slate-200/90",
   },
   {
-    to: "/asistencia/caballos",
+    to: "/asistencia/caballos?tab=caballos",
     eyebrow: "Herraduras y salud",
     title: "Caballos",
-    desc: "Qué caballo sale en cada tour, herraduras, y quién está descansando.",
+    desc: "Herraduras, quién está renco o descansando, y agregar caballos.",
     icon: GiHorseHead,
     card: "border-amber-300/20 bg-linear-to-br from-amber-700 to-yellow-900 shadow-[0_18px_40px_rgba(180,83,9,0.25)] hover:shadow-[0_24px_60px_rgba(180,83,9,0.35)] focus:ring-amber-300/30",
     eyebrowColor: "text-amber-50/80",

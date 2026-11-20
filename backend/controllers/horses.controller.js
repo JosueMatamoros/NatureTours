@@ -5,6 +5,7 @@
 //         pi / pd = patas (atrás, izquierda / derecha)
 //
 // Asientos de un tour (tour_horses.seat):
+//   m:<guideId>        caballo del encargado de caballos (Marlon): va en todos los tours
 //   g:<guideId>        caballo del guía (g:0 si el horario aún no tiene guía)
 //   b:<bookingId>:<n>  caballo n de una reserva (uno por adulto/niño)
 //   x:<n>              caballo extra (ayudante, otro guía…)
@@ -41,7 +42,7 @@ const assignBody = z.object({
   tourId: z.number().int().positive(),
   date: ymd,
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
-  seat: z.string().regex(/^(g:([0-9a-f-]{36}|0)|b:[0-9a-f-]{36}:\d{1,2}|x:\d{1,2})$/),
+  seat: z.string().regex(/^(m:[0-9a-f-]{36}|g:([0-9a-f-]{36}|0)|b:[0-9a-f-]{36}:\d{1,2}|x:\d{1,2})$/),
   horseId: z.string().uuid().nullable(),
   force: z.boolean().optional(),
 });
@@ -160,9 +161,6 @@ export async function addHorseEvent(req, res) {
   if ((kind === "herrado" || kind === "herradura_caida") && !hooves.length) {
     return res.status(400).json({ ok: false, message: "Tocá cuáles cascos" });
   }
-  if (kind === "lastimado" && !p.data.restDays) {
-    return res.status(400).json({ ok: false, message: "¿Cuántos días descansa?" });
-  }
   if (kind === "nota" && !detail) {
     return res.status(400).json({ ok: false, message: "Escribí la nota" });
   }
@@ -193,8 +191,11 @@ export async function addHorseEvent(req, res) {
       hooves.forEach((k) => { shoes[k] = false; });
       await client.query(`UPDATE horses SET shoes = $2::jsonb, updated_at = now() WHERE id = $1`, [h.id, JSON.stringify(shoes)]);
     } else if (kind === "lastimado") {
-      restDays = p.data.restDays;
-      const until = DateTime.fromISO(today, { zone: getBusinessTimeZone() }).plus({ days: restDays }).toFormat("yyyy-LL-dd");
+      // Sin días: queda no disponible hasta que lo marquen "disponible".
+      restDays = p.data.restDays || null;
+      const until = restDays
+        ? DateTime.fromISO(today, { zone: getBusinessTimeZone() }).plus({ days: restDays }).toFormat("yyyy-LL-dd")
+        : "2999-12-31";
       await client.query(
         `UPDATE horses SET rest_until = $2::date, rest_reason = $3, updated_at = now() WHERE id = $1`,
         [h.id, until, detail || null],
@@ -266,7 +267,7 @@ export async function horsesDay(req, res) {
   if (!p.success) return res.status(400).json({ ok: false, message: "date debe ser YYYY-MM-DD" });
   const { date } = p.data;
   try {
-    const [bq, gq, aq, hq] = await Promise.all([
+    const [bq, gq, aq, hq, wq] = await Promise.all([
       pool.query(
         `SELECT b.id, b.tour_id, t.name AS tour_name, to_char(b.start_time,'HH24:MI') AS start_time,
                 b.adults, b.children, b.babies, b.guests, b.source, b.arrived,
@@ -298,13 +299,18 @@ export async function horsesDay(req, res) {
         [date],
       ),
       pool.query(`SELECT ${HORSE_COLS} FROM horses ORDER BY lower(name)`),
+      // Encargados de caballos (Marlon): van en todos los tours, antes del guía.
+      pool.query(`SELECT id, name FROM guides WHERE active AND can_horses AND NOT is_admin AND NOT is_viewer ORDER BY name`),
     ]);
 
     const slots = new Map();
     for (const b of bq.rows) {
       const key = `${b.tour_id}|${b.start_time}`;
       if (!slots.has(key)) {
-        slots.set(key, { tourId: b.tour_id, tourName: b.tour_name, startTime: b.start_time, guides: [], groups: [], assigned: {} });
+        slots.set(key, {
+          tourId: b.tour_id, tourName: b.tour_name, startTime: b.start_time,
+          wranglers: wq.rows.map((w) => ({ id: w.id, name: w.name })), guides: [], groups: [], assigned: {},
+        });
       }
       const riders = ridersOf(b);
       slots.get(key).groups.push({
@@ -313,6 +319,8 @@ export async function horsesDay(req, res) {
         source: b.source,
         arrived: Boolean(b.arrived),
         riders,
+        adults: Math.min(Number(b.adults || 0), riders),
+        kids: Math.max(riders - Math.min(Number(b.adults || 0), riders), 0),
         seats: Array.from({ length: riders }, (_, i) => `b:${b.id}:${i + 1}`),
       });
     }
@@ -370,9 +378,9 @@ export async function assignHorse(req, res) {
   const p = assignBody.safeParse(req.body);
   if (!p.success) return res.status(400).json({ ok: false, message: "Datos inválidos" });
   const { tourId, date, startTime, seat, horseId, force } = p.data;
-  const role = seat.startsWith("g:") ? "guia" : seat.startsWith("b:") ? "cliente" : "extra";
+  const role = seat.startsWith("m:") ? "encargado" : seat.startsWith("g:") ? "guia" : seat.startsWith("b:") ? "cliente" : "extra";
   const bookingId = role === "cliente" ? seat.split(":")[1] : null;
-  const guideId = role === "guia" && seat !== "g:0" ? seat.slice(2) : null;
+  const guideId = (role === "guia" && seat !== "g:0") || role === "encargado" ? seat.slice(2) : null;
 
   const client = await pool.connect();
   try {
