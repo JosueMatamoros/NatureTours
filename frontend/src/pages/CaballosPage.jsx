@@ -488,20 +488,6 @@ export default function CaballosPage() {
 
   useEffect(() => { try { sessionStorage.setItem("nt_caballos_tab", tab); } catch { /* nada */ } }, [tab]);
 
-  // Cuántas personas (a caballo) hay hoy y mañana; se refresca cada minuto.
-  const [people, setPeople] = useState({});
-  useEffect(() => {
-    if (!me) return;
-    const days = [me.today, shiftYmd(me.today, 1)];
-    const load = () => Promise.all(days.map((d) => horsesDay(d).then((r) => [d, r.slots.reduce((n, s) => n + s.groups.reduce((m, g) => m + g.riders, 0), 0)]).catch(() => [d, null])))
-      .then((pairs) => setPeople(Object.fromEntries(pairs)));
-    load();
-    const t = setInterval(load, 60000);
-    const onVis = () => document.visibilityState === "visible" && load();
-    document.addEventListener("visibilitychange", onVis);
-    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
-  }, [me]);
-
   if (!me) {
     return (
       <div className="grid min-h-screen place-items-center bg-slate-50">
@@ -511,22 +497,15 @@ export default function CaballosPage() {
   }
 
   const tomorrow = shiftYmd(me.today, 1);
-  const dayTab = (ymd, label, on) => {
-    const sel = tab === "tours" && date === ymd;
-    const n = people[ymd];
-    return (
-      <button
-        type="button"
-        onClick={() => { setDate(ymd); setTab("tours"); }}
-        className={`flex h-20 flex-1 flex-col items-center justify-center rounded-2xl transition cursor-pointer ${sel ? `${on} text-white shadow-lg` : "text-slate-500"}`}
-      >
-        <span className="text-xl font-black leading-none">{label}</span>
-        <span className={`mt-1 text-sm font-bold ${sel ? "text-white/90" : "text-slate-400"}`}>
-          {n == null ? "…" : `${n} persona${n === 1 ? "" : "s"}`}
-        </span>
-      </button>
-    );
-  };
+  const dayTab = (ymd, label, on) => (
+    <button
+      type="button"
+      onClick={() => { setDate(ymd); setTab("tours"); }}
+      className={`h-16 flex-1 rounded-2xl text-xl font-black transition cursor-pointer ${tab === "tours" && date === ymd ? `${on} text-white shadow-lg` : "text-slate-500"}`}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
