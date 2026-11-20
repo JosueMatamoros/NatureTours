@@ -35,6 +35,7 @@ const SpecialLinkPage = lazy(() => import("./pages/SpecialLinkPage"));
 const CustomPaymentPage = lazy(() => import("./pages/CustomPaymentPage"));
 const SpecialLinksAdminPage = lazy(() => import("./pages/SpecialLinksAdminPage"));
 const FinanzasPage = lazy(() => import("./pages/FinanzasPage"));
+const CaballosPage = lazy(() => import("./pages/CaballosPage"));
 
 function PageLoader() {
   return (
@@ -187,6 +188,16 @@ const router = createBrowserRouter([
         element: (
           <LazyPage>
             <GuiaPortalPage />
+          </LazyPage>
+        ),
+      },
+
+      // Caballos: encargado de caballos (sesión del portal) y admins.
+      {
+        path: "/asistencia/caballos",
+        element: (
+          <LazyPage>
+            <CaballosPage />
           </LazyPage>
         ),
       },

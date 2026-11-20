@@ -47,7 +47,7 @@ function Toggle({ checked, onChange, disabled, label }) {
 
 const EMPTY = {
   name: "", email: "", phone: "", cedula: "", password: "",
-  canCreateManual: false, isAdmin: false, isSupervisor: false, isGuide: true,
+  canCreateManual: false, isAdmin: false, isSupervisor: false, isGuide: true, canHorses: false,
 };
 
 function GuideModal({ guide, onClose, onSaved }) {
@@ -66,6 +66,7 @@ function GuideModal({ guide, onClose, onSaved }) {
         cedula: guide.cedula || "", password: "",
         canCreateManual: !!guide.canCreateManual, isAdmin: !!guide.isAdmin, isSupervisor: !!guide.isSupervisor,
         isGuide: guide.isGuide !== false,
+        canHorses: !!guide.canHorses,
       });
     } else {
       setForm(EMPTY);
@@ -89,6 +90,7 @@ function GuideModal({ guide, onClose, onSaved }) {
         isAdmin: form.isAdmin,
         isSupervisor: form.isSupervisor,
         isGuide: form.isGuide,
+        canHorses: form.canHorses,
       };
       if (editing) await updateGuide(guide.id, payload);
       else await createGuide(payload);
@@ -174,6 +176,10 @@ function GuideModal({ guide, onClose, onSaved }) {
               <span className="text-sm font-medium text-gray-700">Puede crear reservas manuales</span>
               <Toggle checked={form.canCreateManual} onChange={(v) => set("canCreateManual", v)} label="Puede crear manuales" />
             </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Encargado de caballos <span className="text-gray-400">(herraduras y caballos por tour)</span></span>
+              <Toggle checked={form.canHorses} onChange={(v) => set("canHorses", v)} label="Encargado de caballos" />
+            </div>
           </div>
         </div>
 
@@ -199,6 +205,7 @@ function GuideCard({ g, onEdit, onToggleActive, onDelete, busy }) {
             <p className="truncate font-bold text-gray-900">{g.name}</p>
             {g.isAdmin && <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-white">Admin</span>}
             {g.isSupervisor && <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">Supervisor</span>}
+            {g.canHorses && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Caballos</span>}
             {!g.active && <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-600">Inactivo</span>}
           </div>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-500"><FiMail className="h-3.5 w-3.5" /> {g.email}</p>

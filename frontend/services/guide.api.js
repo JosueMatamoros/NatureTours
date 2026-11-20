@@ -140,3 +140,15 @@ export function publishSlotOffer({ tourId, tourDate, startTime, guideIds }) {
 export function cancelSlotOffer(id) {
   return guideRequest(`/api/guide/offers/${id}`, { method: "DELETE" });
 }
+
+// ─── Historial de notificaciones (campanita) ────────────────────────────────
+export function getNotificationHistory() {
+  return guideRequest("/api/push/history");
+}
+
+export function markNotificationsRead(id) {
+  return guideRequest("/api/push/history/read", {
+    method: "POST",
+    body: JSON.stringify(id ? { id } : {}),
+  });
+}

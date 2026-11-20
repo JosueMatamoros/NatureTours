@@ -72,4 +72,40 @@ router.post("/unsubscribe", authenticateGuide, async (req, res) => {
   }
 });
 
+// GET /api/push/history — historial de avisos de esta persona (últimos 100).
+router.get("/history", authenticateGuide, async (req, res) => {
+  try {
+    const q = await pool.query(
+      `select id, title, body, url, created_at, read_at from notifications
+       where guide_id = $1 order by created_at desc limit 100`,
+      [req.guide.guideId],
+    );
+    const unread = q.rows.filter((r) => !r.read_at).length;
+    return res.json({
+      ok: true,
+      unread,
+      items: q.rows.map((r) => ({ id: r.id, title: r.title, body: r.body, url: r.url, at: r.created_at, read: Boolean(r.read_at) })),
+    });
+  } catch (err) {
+    console.error("push history error:", err);
+    return res.status(500).json({ ok: false, message: "Error cargando notificaciones" });
+  }
+});
+
+// POST /api/push/history/read { id? } — marca una (o todas) como vistas.
+router.post("/history/read", authenticateGuide, async (req, res) => {
+  const id = typeof req.body?.id === "string" && /^[0-9a-f-]{36}$/.test(req.body.id) ? req.body.id : null;
+  try {
+    await pool.query(
+      `update notifications set read_at = now()
+       where guide_id = $1 and read_at is null and ($2::uuid is null or id = $2::uuid)`,
+      [req.guide.guideId, id],
+    );
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("push history read error:", err);
+    return res.status(500).json({ ok: false, message: "Error" });
+  }
+});
+
 export default router;

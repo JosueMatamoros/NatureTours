@@ -5,7 +5,7 @@ import { pool } from "../db.js";
 // guía siga activo (y admin, si entra al panel). Desactivarlo corta el acceso.
 async function loadGuide(guideId) {
   const q = await pool.query(
-    `SELECT active, is_admin, is_supervisor, is_viewer, is_guide FROM guides WHERE id = $1`,
+    `SELECT name, active, is_admin, is_supervisor, is_viewer, is_guide, can_horses FROM guides WHERE id = $1`,
     [guideId]
   );
   return q.rows[0] || null;
@@ -84,7 +84,39 @@ export function authenticateGuide(req, res, next) {
       isAdmin: !isViewer && Boolean(g.is_admin),
       isSupervisor: !isViewer && Boolean(g.is_supervisor),
       isGuide: !isViewer && g.is_guide !== false,
+      canHorses: !isViewer && (Boolean(g.can_horses) || Boolean(g.is_admin)),
     };
     next();
+  });
+}
+
+// Caballos: entra el encargado de caballos (guía con can_horses) y cualquier
+// admin, sea con la sesión del portal (guía) o con la del panel (admin).
+export function authenticateHorses(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const headerToken = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+  const tokens = [headerToken, req.cookies?.guide_token, req.cookies?.admin_token].filter(Boolean);
+  if (!tokens.length) return res.status(401).json({ message: "Token requerido" });
+
+  (async () => {
+    for (const t of tokens) {
+      let payload;
+      try { payload = jwt.verify(t, process.env.JWT_SECRET); } catch { continue; }
+      if (payload?.guideId) {
+        const g = await loadGuide(payload.guideId);
+        if (!g || !g.active || g.is_viewer) continue;
+        if (!(g.is_admin || g.can_horses)) continue;
+        req.horseUser = { guideId: payload.guideId, name: g.name, isAdmin: Boolean(g.is_admin) };
+        return next();
+      }
+      if (payload?.role === "admin") {
+        req.horseUser = { guideId: null, name: payload.username || "Admin", isAdmin: true };
+        return next();
+      }
+    }
+    return res.status(403).json({ message: "Sin acceso a caballos" });
+  })().catch((e) => {
+    console.error("authenticateHorses error:", e);
+    res.status(500).json({ message: "Error de autenticación" });
   });
 }

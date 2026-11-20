@@ -23,6 +23,7 @@ import customPaymentsRoutes from "./routes/custom-payments.routes.js";
 import pushRoutes from "./routes/push.routes.js";
 import gastosRoutes from "./gastos/routes.js";
 import financeRoutes from "./routes/finance.routes.js";
+import horsesRoutes from "./routes/horses.routes.js";
 import { migrarGastos } from "./gastos/esquema.js";
 import { pool } from "./db.js";
 
@@ -80,6 +81,7 @@ app.use("/api/custom-payments", customPaymentsRoutes);
 app.use("/api/push", pushRoutes);
 app.use("/api/gastos", gastosRoutes);
 app.use("/api/finance", financeRoutes);
+app.use("/api/horses", horsesRoutes);
 
 const port = process.env.PORT || 4000;
 
@@ -143,6 +145,68 @@ const startupMigrations = [
      PRIMARY KEY (tour_id, tour_date, start_time, guide_id)
    )`,
   `CREATE INDEX IF NOT EXISTS slot_offers_open_idx ON slot_offers (tour_date) WHERE taken_by IS NULL AND cancelled_at IS NULL`,
+  // Caballos: ficha (herraduras por casco + descanso), historial y qué caballo
+  // salió en cada tour. Casco: mi/md = manos (adelante), pi/pd = patas (atrás).
+  `ALTER TABLE guides ADD COLUMN IF NOT EXISTS can_horses boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE tours ADD COLUMN IF NOT EXISTS uses_horses boolean`,
+  `UPDATE tours SET uses_horses = (name ILIKE '%horse%' OR name ILIKE '%caball%') WHERE uses_horses IS NULL`,
+  `CREATE TABLE IF NOT EXISTS horses (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     name text NOT NULL,
+     photo text,
+     color text,
+     notes text,
+     active boolean NOT NULL DEFAULT true,
+     shoes jsonb NOT NULL DEFAULT '{"mi":false,"md":false,"pi":false,"pd":false}',
+     shod_front_at date,
+     shod_back_at date,
+     rest_until date,
+     rest_reason text,
+     created_at timestamptz NOT NULL DEFAULT now(),
+     updated_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE TABLE IF NOT EXISTS horse_events (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     horse_id uuid NOT NULL REFERENCES horses(id) ON DELETE CASCADE,
+     kind text NOT NULL,
+     event_date date NOT NULL DEFAULT CURRENT_DATE,
+     hooves text[],
+     rest_days integer,
+     detail text,
+     by_guide uuid REFERENCES guides(id) ON DELETE SET NULL,
+     by_name text,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS horse_events_horse_idx ON horse_events (horse_id, created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS tour_horses (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     tour_id integer NOT NULL REFERENCES tours(id),
+     tour_date date NOT NULL,
+     start_time time NOT NULL,
+     seat text NOT NULL,
+     role text NOT NULL,
+     booking_id uuid REFERENCES bookings(id) ON DELETE SET NULL,
+     guide_id uuid REFERENCES guides(id) ON DELETE SET NULL,
+     horse_id uuid NOT NULL REFERENCES horses(id) ON DELETE CASCADE,
+     by_name text,
+     created_at timestamptz NOT NULL DEFAULT now(),
+     UNIQUE (tour_id, tour_date, start_time, seat),
+     UNIQUE (tour_date, start_time, horse_id)
+   )`,
+  `CREATE INDEX IF NOT EXISTS tour_horses_date_idx ON tour_horses (tour_date)`,
+  // Historial de notificaciones (la campanita del portal).
+  `CREATE TABLE IF NOT EXISTS notifications (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     guide_id uuid NOT NULL REFERENCES guides(id) ON DELETE CASCADE,
+     title text NOT NULL,
+     body text,
+     url text,
+     tag text,
+     created_at timestamptz NOT NULL DEFAULT now(),
+     read_at timestamptz
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS notifications_guide_tag_uq ON notifications (guide_id, tag) WHERE tag IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS notifications_guide_idx ON notifications (guide_id, created_at DESC)`,
 ];
 
 (async () => {

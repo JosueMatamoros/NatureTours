@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { GiHorseHead } from "react-icons/gi";
+import NotificationsBell from "../components/ui/NotificationsBell";
 import { useDateParam } from "../hooks/useDateParam";
 import {
   FiCalendar,
@@ -7,7 +9,6 @@ import {
   FiChevronRight,
   FiClock,
   FiUsers,
-  FiLogOut,
   FiCompass,
   FiLock,
   FiUser,
@@ -29,7 +30,6 @@ import InstallAppCard from "../components/ui/InstallAppCard";
 import NotificationsCard from "../components/ui/NotificationsCard";
 import {
   guideLogin,
-  guideLogout,
   guideMe,
   getGuideMyDay,
   getGuideMyDays,
@@ -659,7 +659,7 @@ function OfferSlotCard({ offer, onTake }) {
 }
 
 // ─── Día ────────────────────────────────────────────────────────────────────
-function GuideDay({ guide, onLogout }) {
+function GuideDay({ guide }) {
   const navigate = useNavigate();
   const initialToday = useMemo(() => todayYmd(), []);
   const [date, setDate] = useDateParam(initialToday);
@@ -689,6 +689,16 @@ function GuideDay({ guide, onLogout }) {
   }, []);
   // Ni solo lectura ni supervisor ven "tours disponibles" (barra, calendario naranja ni tarjetas).
   const hideOffers = guide.isViewer || guide.isSupervisor;
+  // El encargado de caballos que no es guía ni supervisor entra directo a Caballos
+  // (una vez por sesión, para que "Volver" lo deje ver el portal si quiere).
+  useEffect(() => {
+    if (!guide.canHorses || guide.isGuide || guide.isSupervisor || guide.isAdmin) return;
+    try {
+      if (sessionStorage.getItem("nt_caballos_auto")) return;
+      sessionStorage.setItem("nt_caballos_auto", "1");
+    } catch { /* nada */ }
+    navigate("/asistencia/caballos", { replace: false });
+  }, [guide, navigate]);
   const loadOffers = useCallback(() => {
     if (hideOffers) return Promise.resolve();
     return getGuideOffers().then((r) => setOffers(r.offers || [])).catch(() => {});
@@ -740,11 +750,6 @@ function GuideDay({ guide, onLogout }) {
   const markedSet = new Set(myDays.map((d) => d.date));
   const offerSet = new Set(offers.map((o) => o.tourDate));
   const dayOffers = offers.filter((o) => o.tourDate === date);
-
-  async function handleLogout() {
-    try { await guideLogout(); } catch { /* noop */ }
-    onLogout();
-  }
 
   // Pasar lista: cambia solo esa reserva en memoria (sin recargar el día).
   function patchReservation(bookingId, arrived) {
@@ -816,8 +821,18 @@ function GuideDay({ guide, onLogout }) {
                 <p className="truncate text-xl font-black leading-tight text-slate-900">{guide.name}</p>
               </div>
             </div>
-            {!guide.isViewer && (
             <div className="flex shrink-0 items-center gap-2">
+              <NotificationsBell />
+              {guide.canHorses && (
+                <button
+                  onClick={() => navigate("/asistencia/caballos")}
+                  title="Caballos"
+                  aria-label="Caballos"
+                  className="grid h-10 w-10 place-items-center rounded-xl bg-amber-600 text-white transition hover:bg-amber-700 cursor-pointer"
+                >
+                  <GiHorseHead className="h-6 w-6" />
+                </button>
+              )}
               {guide.isAdmin && (
                 <button
                   onClick={() => navigate("/matamoros")}
@@ -828,16 +843,7 @@ function GuideDay({ guide, onLogout }) {
                   <FiSettings className="h-5 w-5" />
                 </button>
               )}
-              <button
-                onClick={handleLogout}
-                title="Salir"
-                aria-label="Salir"
-                className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 cursor-pointer"
-              >
-                <FiLogOut className="h-5 w-5" />
-              </button>
             </div>
-            )}
           </div>
         </div>
 
@@ -1002,5 +1008,5 @@ export default function GuiaPortalPage() {
   }
 
   if (!guide) return <GuideLogin onLoggedIn={setGuide} />;
-  return <GuideDay guide={guide} onLogout={() => setGuide(null)} />;
+  return <GuideDay guide={guide} />;
 }

@@ -202,6 +202,7 @@ export async function guideMe(req, res) {
       isSupervisor: Boolean(req.guide.isSupervisor),
       isViewer: Boolean(req.guide.isViewer),
       isGuide: Boolean(req.guide.isGuide),
+      canHorses: Boolean(req.guide.canHorses),
     },
   });
 }

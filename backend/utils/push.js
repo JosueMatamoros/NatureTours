@@ -75,7 +75,32 @@ async function sendToSubscriptions(rows, payload) {
   );
 }
 
+// Historial: cada aviso queda guardado por persona (aunque no tenga la app
+// instalada o no lo haya visto en el teléfono). Mismo tag = se actualiza.
+async function recordHistory(guideFilterSql, params, payload) {
+  try {
+    const g = await pool.query(`select id, name from guides where active and ${guideFilterSql}`, params);
+    for (const row of g.rows) {
+      const data = typeof payload === "function" ? payload({ guide_name: row.name, guide_id: row.id }) : payload;
+      if (!data?.title) continue;
+      await pool.query(
+        `insert into notifications (guide_id, title, body, url, tag)
+         values ($1, $2, $3, $4, $5)
+         on conflict (guide_id, tag) where tag is not null
+         do update set title = excluded.title, body = excluded.body, url = excluded.url,
+                       created_at = now(), read_at = null`,
+        [row.id, String(data.title).slice(0, 200), data.body ? String(data.body).slice(0, 1000) : null, data.url || null, data.tag || null],
+      );
+    }
+    // Limpieza: se guardan 90 días.
+    if (Math.random() < 0.05) await pool.query(`delete from notifications where created_at < now() - interval '90 days'`);
+  } catch (err) {
+    console.error("notifications history error:", err.message);
+  }
+}
+
 export async function pushToAdmins(payload) {
+  await recordHistory("is_admin", [], payload);
   try {
     const q = await pool.query(
       `select s.*, g.name as guide_name from push_subscriptions s
@@ -91,6 +116,7 @@ export async function pushToAdmins(payload) {
 // Perfil de solo lectura (Eraida): recibe reservas nuevas y cancelaciones
 // solo de hoy o mañana (filtro en pushBookingToAdmins).
 export async function pushToViewers(payload) {
+  await recordHistory("is_viewer", [], payload);
   try {
     const q = await pool.query(
       `select s.*, g.name as guide_name from push_subscriptions s
@@ -104,6 +130,7 @@ export async function pushToViewers(payload) {
 }
 
 export async function pushToGuide(guideId, payload) {
+  await recordHistory("id = $1", [guideId], payload);
   try {
     const q = await pool.query(
       `select s.*, g.name as guide_name from push_subscriptions s

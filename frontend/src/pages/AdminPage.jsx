@@ -3,6 +3,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import InstallAppCard from "../components/ui/InstallAppCard";
 import NotificationsCard from "../components/ui/NotificationsCard";
+import { GiHorseHead } from "react-icons/gi";
 import { FiCalendar, FiSliders, FiUsers, FiUserCheck, FiCompass, FiLink, FiArrowLeft, FiDollarSign } from "react-icons/fi";
 
 const CARDS = [
@@ -75,6 +76,16 @@ const CARDS = [
     card: "border-slate-300/20 bg-linear-to-br from-slate-700 to-slate-900 shadow-[0_18px_40px_rgba(15,23,42,0.25)] hover:shadow-[0_24px_60px_rgba(15,23,42,0.35)] focus:ring-slate-300/30",
     eyebrowColor: "text-slate-200/80",
     descColor: "text-slate-200/90",
+  },
+  {
+    to: "/asistencia/caballos",
+    eyebrow: "Herraduras y salud",
+    title: "Caballos",
+    desc: "Qué caballo sale en cada tour, herraduras, y quién está descansando.",
+    icon: GiHorseHead,
+    card: "border-amber-300/20 bg-linear-to-br from-amber-700 to-yellow-900 shadow-[0_18px_40px_rgba(180,83,9,0.25)] hover:shadow-[0_24px_60px_rgba(180,83,9,0.35)] focus:ring-amber-300/30",
+    eyebrowColor: "text-amber-50/80",
+    descColor: "text-amber-50/90",
   },
 ];
 
