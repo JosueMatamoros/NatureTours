@@ -510,7 +510,7 @@ export default function CaballosPage() {
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
       <div className="mx-auto max-w-2xl px-4 pt-5">
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex items-center gap-2 min-[430px]:gap-3">
           {me.user.isAdmin && (
           <button
             onClick={() => navigate("/matamoros")}
@@ -520,22 +520,22 @@ export default function CaballosPage() {
             <FiArrowLeft className="h-6 w-6" />
           </button>
           )}
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-600 text-white shadow-sm shadow-amber-600/30">
+          <span className="hidden h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-600 text-white shadow-sm shadow-amber-600/30 min-[430px]:grid">
             <GiHorseHead className="h-7 w-7" />
           </span>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-black leading-tight text-slate-900">{tab === "horses" ? "Herraduras" : "Caballos"}</h1>
+            <h1 className="truncate text-xl font-black leading-tight text-slate-900 min-[430px]:text-2xl">{tab === "horses" ? "Herraduras" : "Caballos"}</h1>
             <p className="truncate text-xs font-semibold text-slate-400">{me.user.name}</p>
           </div>
           {/* Botón especial: directo a herraduras */}
           <button
             type="button"
             onClick={() => setTab("horses")}
-            className={`flex h-14 shrink-0 items-center gap-2 rounded-2xl px-4 text-base font-black shadow-lg transition active:scale-95 cursor-pointer ${
+            className={`flex h-12 shrink-0 items-center gap-1.5 rounded-2xl px-3 text-sm font-black shadow-lg min-[430px]:h-14 min-[430px]:gap-2 min-[430px]:px-4 min-[430px]:text-base transition active:scale-95 cursor-pointer ${
               tab === "horses" ? "bg-slate-900 text-white" : "bg-amber-500 text-white shadow-amber-500/30"
             }`}
           >
-            <GiHorseshoe className="h-7 w-7" /> Herraduras
+            <GiHorseshoe className="h-6 w-6 min-[430px]:h-7 min-[430px]:w-7" /> Herraduras
           </button>
         </div>
 
