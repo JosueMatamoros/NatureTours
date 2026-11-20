@@ -344,7 +344,17 @@ const nuevoMov = z.object({
   categoriaId: uuid.nullish(),
   nota: z.string().max(300).nullish(),
   pagadoPor: pagador.optional(), // solo en grupos: otra persona del grupo o la caja chica
+  moneda: z.enum(["CRC", "USD"]).optional(), // en dólares se guarda el original y se convierte a colones
 });
+
+/** Monto en colones: si fue en dólares, al tipo de cambio del mes del gasto. */
+async function enColones(monto, moneda, fecha) {
+  if (moneda !== "USD") return { monto, moneda: "CRC", original: monto };
+  const mesActual = (await pool.query(`SELECT to_char(now() AT TIME ZONE '${TZ}', 'YYYY-MM') AS mes`)).rows[0].mes;
+  const mes = (await pool.query(`SELECT to_char($1::timestamptz AT TIME ZONE '${TZ}', 'YYYY-MM') AS mes`, [fecha])).rows[0].mes;
+  const tc = await tipoCambioDelMes(mes, mesActual);
+  return { monto: Math.round(monto * tc.valor * 100) / 100, moneda: "USD", original: monto };
+}
 
 router.post("/movimientos", h(async (req, res) => {
   const b = validar(nuevoMov, req.body);
@@ -360,10 +370,11 @@ router.post("/movimientos", h(async (req, res) => {
     if (!(await esMiembro(pool, b.grupoId, b.pagadoPor))) throw err("Esa persona no es del grupo");
     dueño = b.pagadoPor;
   }
+  const c = await enColones(b.monto, b.moneda, fecha);
   await pool.query(
     `INSERT INTO ${S}.movimientos (usuario_id, grupo_id, origen, fecha, tipo, comercio, monto, moneda, monto_original, categoria_id, manual, nota, caja)
-     VALUES ($1, $2, 'manual', $3, 'Manual', $4, $5, 'CRC', $5, $6, true, $7, $8)`,
-    [dueño, b.grupoId || null, fecha, b.comercio, b.monto, b.categoriaId || null, b.nota || null, caja]
+     VALUES ($1, $2, 'manual', $3, 'Manual', $4, $5, $9, $10, $6, true, $7, $8)`,
+    [dueño, b.grupoId || null, fecha, b.comercio, c.monto, b.categoriaId || null, b.nota || null, caja, c.moneda, c.original]
   );
   res.json({ ok: true, ...(await datos(uid)) });
 }));
@@ -409,9 +420,17 @@ router.patch("/movimientos/:id", h(async (req, res) => {
     comercio: nuevoMov.shape.comercio.optional(),
     monto: nuevoMov.shape.monto.optional(),
     pagadoPor: pagador.optional(),
+    moneda: nuevoMov.shape.moneda,
   }), req.body);
   const m = await movimientoPermitido(pool, id, req.usuario.id);
   if (m.origen !== "manual") throw err("Los gastos que vienen del banco no se pueden editar");
+  // Monto y/o moneda: el monto viene en la moneda elegida; sin monto se reusa el original.
+  let c = null;
+  if (b.monto !== undefined || b.moneda !== undefined) {
+    const moneda = b.moneda ?? m.moneda;
+    const monto = b.monto ?? Number(m.monto_original ?? m.monto);
+    c = await enColones(monto, moneda, m.fecha);
+  }
   const caja = b.pagadoPor === undefined ? null : b.pagadoPor === CAJA;
   const persona = b.pagadoPor && !caja ? b.pagadoPor : null;
   if (b.pagadoPor && !m.grupo_id) throw err("Solo en gastos de grupo se puede cambiar quién pagó");
@@ -421,8 +440,9 @@ router.patch("/movimientos/:id", h(async (req, res) => {
       await db.query(`DELETE FROM ${S}.movimientos WHERE usuario_id = $1 AND ref_externa = $2 AND eliminado AND id <> $3`, [persona, m.ref_externa, id]);
     await db.query(
       `UPDATE ${S}.movimientos SET comercio = coalesce($2, comercio), monto = coalesce($3, monto),
-         monto_original = coalesce($3, monto_original), usuario_id = coalesce($4, usuario_id), caja = coalesce($5, caja) WHERE id = $1`,
-      [id, b.comercio ?? null, b.monto ?? null, persona, caja]);
+         monto_original = coalesce($6, monto_original), moneda = coalesce($7, moneda),
+         usuario_id = coalesce($4, usuario_id), caja = coalesce($5, caja) WHERE id = $1`,
+      [id, b.comercio ?? null, c?.monto ?? null, persona, caja, c?.original ?? null, c?.moneda ?? null]);
   });
   res.json({ ok: true, ...(await datos(req.usuario.id)) });
 }));
