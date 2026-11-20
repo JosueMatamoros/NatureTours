@@ -188,7 +188,6 @@ function HorseForm({ horse, onClose, onSaved, toast }) {
 // Acción guiada: herrar / se cayó / lastimado / nota.
 function ActionSheet({ horse, kind, onClose, onDone, toast, today }) {
   const [hooves, setHooves] = useState([]); // nada marcado: se toca solo lo que se herró
-  const [when, setWhen] = useState(today);
   const [days, setDays] = useState(null);
   const [reason, setReason] = useState(null);
   const [note, setNote] = useState("");
@@ -201,7 +200,7 @@ function ActionSheet({ horse, kind, onClose, onDone, toast, today }) {
     setSaving(true);
     try {
       const body = { kind };
-      if (kind === "herrado") Object.assign(body, { hooves, date: when });
+      if (kind === "herrado") Object.assign(body, { hooves }); // se guarda con la fecha de hoy
       if (kind === "herradura_caida") Object.assign(body, { hooves });
       if (kind === "lastimado") Object.assign(body, { restDays: days, detail: [reason, note.trim()].filter(Boolean).join(" · ") || undefined });
       if (kind === "nota") body.detail = note.trim();
@@ -235,14 +234,6 @@ function ActionSheet({ horse, kind, onClose, onDone, toast, today }) {
           <p className="text-sm font-semibold text-slate-500">o tocá cada casco que se herró o se compuso</p>
           <HoofGrid shoes={horse.shoes} selected={hooves} big onTap={toggle} />
           <HoofLegend changeLabel="Se herró ahora" />
-          <div>
-            <p className="mb-2 text-base font-black text-slate-700">¿Cuándo?</p>
-            <div className="grid grid-cols-3 gap-2">
-              <button type="button" onClick={() => setWhen(today)} className={`h-14 rounded-2xl text-base font-black cursor-pointer ${when === today ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-700"}`}>Hoy</button>
-              <button type="button" onClick={() => setWhen(shiftYmd(today, -1))} className={`h-14 rounded-2xl text-base font-black cursor-pointer ${when === shiftYmd(today, -1) ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-700"}`}>Ayer</button>
-              <input type="date" value={when} max={today} onChange={(e) => e.target.value && setWhen(e.target.value)} className={`h-14 rounded-2xl px-2 text-sm font-bold ${when < shiftYmd(today, -1) ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-700"}`} />
-            </div>
-          </div>
         </div>
       )}
 
