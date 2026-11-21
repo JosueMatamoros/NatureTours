@@ -287,13 +287,6 @@ function HorseStatsSheet({ horse: h, range, today, mode, label, onClose }) {
   const cells = [...Array(dowOf(range.from)).fill(null), ...daysBetween(range.from, range.to)];
   const shade = (n) => (n >= 3 ? "bg-emerald-700 text-white" : n === 2 ? "bg-emerald-500 text-white" : n === 1 ? "bg-emerald-200 text-emerald-900" : "bg-slate-100 text-slate-400");
 
-  let estado;
-  if (h.resting) estado = { t: "Descansando por lesión", c: "bg-red-50 text-red-700 ring-red-200" };
-  else if (h.streak >= RACHA_ALTA) estado = { t: `Lleva ${h.streak} días seguidos trabajando: le toca descanso`, c: "bg-red-50 text-red-700 ring-red-200" };
-  else if (h.streak >= 2) estado = { t: `Lleva ${h.streak} días seguidos trabajando`, c: "bg-amber-50 text-amber-800 ring-amber-200" };
-  else if (h.streak === 1) estado = { t: h.lastWorked === today ? "Hoy salió (ayer descansó)" : "Ayer salió (antes descansó)", c: "bg-emerald-50 text-emerald-800 ring-emerald-200" };
-  else if (h.lastWorked) estado = { t: `Descansando: salió por última vez ${h.daysOff === 1 ? "ayer" : `hace ${h.daysOff} días`}`, c: "bg-sky-50 text-sky-800 ring-sky-200" };
-  else estado = { t: "No ha salido en los últimos 6 meses", c: "bg-slate-50 text-slate-600 ring-slate-200" };
 
   return (
     <Sheet
@@ -309,8 +302,6 @@ function HorseStatsSheet({ horse: h, range, today, mode, label, onClose }) {
       onClose={onClose}
     >
       <div className="space-y-5">
-        <div className={`rounded-2xl px-4 py-3 text-center text-base font-black ring-1 ${estado.c}`}>{estado.t}</div>
-
         <div className="grid grid-cols-2 gap-2">
           <Tile value={work.length} label="salidas" />
           <Tile value={Object.keys(perDay).length} label="días trabajados" />
