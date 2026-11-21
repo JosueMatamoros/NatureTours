@@ -99,7 +99,6 @@ export default function HorsesStats({ today, toast }) {
   const [mode, setMode] = useState("month");
   const [anchor, setAnchor] = useState(today);
   const [time, setTime] = useState("all");
-  const [dayType, setDayType] = useState("all");
   const [data, setData] = useState(null);
   const [openId, setOpenId] = useState(null);
 
@@ -128,8 +127,7 @@ export default function HorsesStats({ today, toast }) {
     return [...s].sort();
   }, [data]);
 
-  const keep = (w) => (time === "all" || w.time === time)
-    && (dayType === "all" || (dayType === "weekend" ? dowOf(w.date) >= 5 : dowOf(w.date) < 5));
+  const keep = (w) => time === "all" || w.time === time;
 
   const rows = useMemo(() => {
     if (!data) return null;
@@ -141,7 +139,7 @@ export default function HorsesStats({ today, toast }) {
       .filter((h) => h.active || h.tours > 0)
       .sort((a, b) => b.tours - a.tours || b.days - a.days || a.name.localeCompare(b.name));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, time, dayType]);
+  }, [data, time]);
 
   const max = Math.max(1, ...(rows || []).map((h) => h.tours));
   const tired = (rows || []).filter((h) => h.active && h.streak >= RACHA_ALTA).sort((a, b) => b.streak - a.streak);
@@ -176,11 +174,6 @@ export default function HorsesStats({ today, toast }) {
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           <Pill on={time === "all"} onClick={() => setTime("all")}>Todo el día</Pill>
           {times.map((t) => <Pill key={t} on={time === t} onClick={() => setTime(t)}>{clock(t)}</Pill>)}
-        </div>
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          <Pill on={dayType === "all"} onClick={() => setDayType("all")}>Todos los días</Pill>
-          <Pill on={dayType === "weekday"} onClick={() => setDayType("weekday")}>Entre semana</Pill>
-          <Pill on={dayType === "weekend"} onClick={() => setDayType("weekend")}>Fin de semana</Pill>
         </div>
       </div>
 
