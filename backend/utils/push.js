@@ -258,6 +258,12 @@ export async function pushBookingToAdmins(bookingId, event = "new") {
       : `${src.emoji} Nueva reserva ${src.label}`;
     const body = [who, when, extra].filter(Boolean).join("\n");
 
+    // Al tocar el aviso se abre Asistencia en ese día y se resalta la reserva
+    // unos segundos (en una cancelación la reserva ya no aparece: solo el día).
+    const bookingUrl = cancelled
+      ? `/asistencia?fecha=${b.tour_date}`
+      : `/asistencia?fecha=${b.tour_date}&reserva=${b.id}`;
+
     // Eraida (solo lectura): solo si la reserva es para hoy o mañana.
     const days = daysFromToday(b.tour_date);
     if (days === 0 || days === 1) {
@@ -265,7 +271,7 @@ export async function pushBookingToAdmins(bookingId, event = "new") {
         title,
         body,
         image: cancelled ? undefined : TOUR_IMAGE[b.tour_id],
-        url: `/asistencia?fecha=${b.tour_date}`,
+        url: bookingUrl,
         tag: `booking-${b.id}-${event}`,
         actions: [{ action: "open", title: "Ver" }],
       });
@@ -275,10 +281,10 @@ export async function pushBookingToAdmins(bookingId, event = "new") {
       title,
       body,
       image: cancelled ? undefined : TOUR_IMAGE[b.tour_id],
-      url: `/matamoros/reservaciones?fecha=${b.tour_date}`,
+      url: bookingUrl,
       tag: `booking-${b.id}-${event}`,
       actions: [
-        { action: "open", title: "Ver reserva" },
+        { action: "open", title: "Ver en asistencia" },
         ...(phoneLink && !cancelled ? [{ action: "whatsapp", title: "💬 WhatsApp" }] : []),
       ],
       whatsapp: phoneLink,
@@ -343,7 +349,7 @@ export async function pushGuideReplyToAdmins({ guideId, tourId, tourDate, startT
     await pushToAdmins({
       title: msg.title,
       body: `${tour || "Tour"}\n${whenLabel(tourDate, startTime)}${msg.extra}`,
-      url: `/matamoros/asistencia?fecha=${tourDate}`,
+      url: `/asistencia?fecha=${tourDate}`,
       tag: `reply-${tourId}-${tourDate}-${startTime}-${guideId}`,
     });
   } catch (err) {

@@ -27,7 +27,14 @@ self.addEventListener("push", (event) => {
   if (data.image) options.image = data.image;
   if (Array.isArray(data.actions) && data.actions.length) options.actions = data.actions.slice(0, 2);
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    (async () => {
+      await self.registration.showNotification(title, options);
+      // Si la app está abierta, que actualice la campanita al momento.
+      const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      wins.forEach((w) => w.postMessage({ type: "nt-push" }));
+    })()
+  );
 });
 
 async function openOrFocus(url) {

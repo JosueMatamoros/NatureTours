@@ -72,6 +72,24 @@ html, body, #root {
 .nt-reveal { animation: nt-reveal 0.7s ease-out both; }
 .nt-pop { animation: nt-pop 0.5s ease-out both; }
 .nt-glow { animation: nt-glow 1.2s ease-out 2; }
+/* Panel de notificaciones estilo iPhone: baja desde arriba, tarjetas en cascada. */
+@keyframes nt-nc-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nt-nc-drop {
+  from { opacity: 0; transform: translateY(-28px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.nt-nc-backdrop { animation: nt-nc-fade 0.22s ease-out both; }
+.nt-nc-panel { animation: nt-nc-drop 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.1) both; }
+.nt-nc-card { animation: nt-nc-drop 0.3s ease-out both; }
+
+/* Reserva abierta desde una notificación: se marca en ámbar unos segundos. */
+@keyframes nt-flash {
+  0% { background-color: rgb(253 230 138); box-shadow: inset 4px 0 0 rgb(245 158 11); }
+  15%, 70% { background-color: rgb(254 243 199); box-shadow: inset 4px 0 0 rgb(245 158 11); }
+  100% { background-color: transparent; box-shadow: inset 4px 0 0 transparent; }
+}
+.nt-flash { animation: nt-flash 5s ease-out both; }
+
 @media (prefers-reduced-motion: reduce) {
-  .nt-reveal, .nt-pop, .nt-glow { animation: none; }
+  .nt-reveal, .nt-pop, .nt-glow, .nt-nc-backdrop, .nt-nc-panel, .nt-nc-card { animation: none; }
 }

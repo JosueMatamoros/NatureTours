@@ -72,11 +72,25 @@ router.post("/unsubscribe", authenticateGuide, async (req, res) => {
   }
 });
 
+// Avisos viejos apuntaban a Reservaciones o a la asistencia del panel admin:
+// ahora todo abre Asistencia (/asistencia) en ese día y, si es una reserva
+// nueva, la resalta.
+function toAsistencia(url, tag) {
+  if (!url || !url.startsWith("/matamoros/")) return url;
+  const fecha = new URLSearchParams(url.split("?")[1] || "").get("fecha");
+  const p = new URLSearchParams();
+  if (fecha) p.set("fecha", fecha);
+  const m = /^booking-(.+)-new$/.exec(tag || "");
+  if (m) p.set("reserva", m[1]);
+  const qs = p.toString();
+  return `/asistencia${qs ? `?${qs}` : ""}`;
+}
+
 // GET /api/push/history — historial de avisos de esta persona (últimos 100).
 router.get("/history", authenticateGuide, async (req, res) => {
   try {
     const q = await pool.query(
-      `select id, title, body, url, created_at, read_at from notifications
+      `select id, title, body, url, tag, created_at, read_at from notifications
        where guide_id = $1 order by created_at desc limit 100`,
       [req.guide.guideId],
     );
@@ -84,7 +98,7 @@ router.get("/history", authenticateGuide, async (req, res) => {
     return res.json({
       ok: true,
       unread,
-      items: q.rows.map((r) => ({ id: r.id, title: r.title, body: r.body, url: r.url, at: r.created_at, read: Boolean(r.read_at) })),
+      items: q.rows.map((r) => ({ id: r.id, title: r.title, body: r.body, url: toAsistencia(r.url, r.tag), at: r.created_at, read: Boolean(r.read_at) })),
     });
   } catch (err) {
     console.error("push history error:", err);

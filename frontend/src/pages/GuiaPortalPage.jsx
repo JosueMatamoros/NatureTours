@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import NotificationsBell from "../components/ui/NotificationsBell";
 import { HorsesBar, SlotHorsesSheet } from "../components/horses/SlotHorses";
 import { useHorseAssign } from "../components/horses/useHorseAssign";
@@ -220,7 +220,7 @@ function GuideLogin({ onLoggedIn }) {
 }
 
 // ─── Reserva ────────────────────────────────────────────────────────────────
-function ReservationRow({ r, onToggle, busy, readOnly = false }) {
+function ReservationRow({ r, onToggle, busy, readOnly = false, flash = false }) {
   const parts = [];
   if (r.adults) parts.push(`${r.adults} adulto${r.adults === 1 ? "" : "s"}`);
   if (r.children) parts.push(`${r.children} niño${r.children === 1 ? "" : "s"}`);
@@ -229,13 +229,21 @@ function ReservationRow({ r, onToggle, busy, readOnly = false }) {
   const bookingId = r.externalRef || `#${String(r.id).slice(0, 6).toUpperCase()}`;
 
   return (
-    <div className={`flex items-center gap-3 border-t border-slate-100 py-3 first:border-t-0 ${r.arrived ? "opacity-70" : ""}`}>
+    <div
+      id={`res-${r.id}`}
+      className={`-mx-4 flex scroll-mt-24 items-center gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 ${r.arrived && !flash ? "opacity-70" : ""} ${flash ? "nt-flash" : ""}`}
+    >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <p className={`truncate font-semibold ${r.arrived ? "text-slate-500 line-through" : "text-slate-900"}`}>
             {r.customer?.name || "Sin nombre"}
           </p>
           <SourceChip source={r.source} />
+          {flash && (
+            <span className="nt-pop rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
+              Nueva
+            </span>
+          )}
         </div>
         <p className="text-sm text-slate-500">{parts.join(" · ")}</p>
         {/* Debajo de la cantidad de personas: booking id y, solo si debe, el saldo */}
@@ -681,14 +689,20 @@ function GuideDay({ guide }) {
 
   const [offers, setOffers] = useState([]);
   const daySeq = useRef(0);
+
+  // Desde una notificación (?reserva=<id>): cuando carga ese día, se baja hasta
+  // la reserva y se marca en ámbar unos segundos. Luego se quita de la URL.
+  const [params, setParams] = useSearchParams();
+  const focusId = params.get("reserva");
+  const [flashId, setFlashId] = useState(null);
   const loadDay = useCallback(async (d, silent = false) => {
     const seq = ++daySeq.current;
     if (!silent) setLoading(true);
     try {
       const r = await getGuideMyDay(d);
-      if (seq === daySeq.current) setDayData(r);
+      if (seq === daySeq.current) setDayData({ ...r, ymd: d });
     } catch {
-      if (!silent && seq === daySeq.current) setDayData({ slots: [] });
+      if (!silent && seq === daySeq.current) setDayData({ slots: [], ymd: d });
     } finally {
       if (!silent) setLoading(false);
     }
@@ -762,6 +776,29 @@ function GuideDay({ guide }) {
       getGuideAllGuides().then((r) => setAllGuides(r.guides || [])).catch(() => setAllGuides([]));
     }
   }, [guide.isSupervisor]);
+
+  useEffect(() => {
+    if (!focusId || loading || !dayData || dayData.ymd !== date) return;
+    setParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.delete("reserva");
+      return p;
+    }, { replace: true });
+    const found = dayData.slots?.some((s) => s.reservations?.some((r) => String(r.id) === focusId));
+    if (!found) return;
+    setFlashId(null);
+    requestAnimationFrame(() => {
+      setFlashId(focusId);
+      setTimeout(() => {
+        document.getElementById(`res-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 60);
+    });
+  }, [focusId, loading, dayData, date, setParams]);
+  useEffect(() => {
+    if (!flashId) return;
+    const t = setTimeout(() => setFlashId(null), 5200);
+    return () => clearTimeout(t);
+  }, [flashId]);
 
   const slots = dayData?.slots || [];
   const totalGuests = slots.reduce((s, sl) => s + (sl.totalGuests || 0), 0);
@@ -983,7 +1020,7 @@ function GuideDay({ guide }) {
                 onReply={(accept) => handleReply(slot, accept)}
                 footer={horseSlotOf(slot) ? <HorsesBar slot={horseSlotOf(slot)} onOpen={() => setHorseSlotKey(`${slot.tourId}|${slot.startTime}`)} /> : null}
                 renderRow={(r) => (
-                  <ReservationRow key={r.id} r={r} onToggle={handleToggleArrived} busy={busyId === r.id} readOnly={guide.isViewer} />
+                  <ReservationRow key={r.id} r={r} onToggle={handleToggleArrived} busy={busyId === r.id} readOnly={guide.isViewer} flash={flashId != null && String(r.id) === flashId} />
                 )}
               />
             ))}
