@@ -425,3 +425,55 @@ export async function assignHorse(req, res) {
     client.release();
   }
 }
+
+// GET /api/horses/stats?from=YYYY-MM-DD&to=YYYY-MM-DD
+// Para la pestaña "Datos": cada caballo con sus salidas en el rango (fecha +
+// hora; el cliente filtra por horario o tipo de día) y su racha actual
+// (días seguidos trabajando hasta hoy) y última salida, mirando 180 días atrás.
+export async function horsesStats(req, res) {
+  const p = z.object({ from: ymd, to: ymd }).safeParse(req.query);
+  if (!p.success || p.data.from > p.data.to) return res.status(400).json({ ok: false, message: "Rango inválido" });
+  const today = todayYmdInBusinessZone();
+  try {
+    const [hq, wq, rq] = await Promise.all([
+      pool.query(`SELECT ${HORSE_COLS} FROM horses ORDER BY lower(name)`),
+      pool.query(
+        `SELECT th.horse_id, to_char(th.tour_date,'YYYY-MM-DD') AS date, to_char(th.start_time,'HH24:MI') AS time
+         FROM tour_horses th
+         WHERE th.tour_date BETWEEN $1::date AND LEAST($2::date, $3::date)
+         ORDER BY th.tour_date, th.start_time`,
+        [p.data.from, p.data.to, today],
+      ),
+      pool.query(
+        `SELECT horse_id, array_agg(DISTINCT to_char(tour_date,'YYYY-MM-DD')) AS dates
+         FROM tour_horses
+         WHERE tour_date BETWEEN ($1::date - 180) AND $1::date
+         GROUP BY horse_id`,
+        [today],
+      ),
+    ]);
+    const work = {};
+    for (const r of wq.rows) (work[r.horse_id] ||= []).push({ date: r.date, time: r.time });
+    const recent = Object.fromEntries(rq.rows.map((r) => [r.horse_id, new Set(r.dates)]));
+    const shift = (s, n) => DateTime.fromISO(s).plus({ days: n }).toISODate();
+    const horses = hq.rows.map((r) => {
+      const days = recent[r.id] || new Set();
+      const last = [...days].sort().pop() || null;
+      // Racha: días seguidos con salida terminando hoy (o ayer, si hoy aún no sale).
+      let streak = 0;
+      let d = days.has(today) ? today : shift(today, -1);
+      while (days.has(d)) { streak += 1; d = shift(d, -1); }
+      return {
+        ...mapHorse(r, today),
+        work: work[r.id] || [],
+        streak,
+        lastWorked: last,
+        daysOff: last ? daysSince(last, today) : null,
+      };
+    });
+    return res.json({ ok: true, today, from: p.data.from, to: p.data.to, horses });
+  } catch (err) {
+    console.error("horsesStats error:", err);
+    return res.status(500).json({ ok: false, message: "Error cargando estadísticas" });
+  }
+}

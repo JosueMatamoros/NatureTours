@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  FiArrowLeft, FiCamera, FiCheck, FiEdit2, FiPlus, FiFileText,
+  FiArrowLeft, FiBarChart2, FiCamera, FiCheck, FiEdit2, FiPlus, FiFileText,
 } from "react-icons/fi";
 import { GiHorseHead, GiHorseshoe, GiHammerNails, GiStickingPlaster } from "react-icons/gi";
 import {
@@ -15,6 +15,7 @@ import {
 } from "../components/horses/horsesUtil";
 import { BigButton, Chip, HoofGrid, HoofLegend, HorseAvatar, Sheet, Toast, TourCard } from "../components/horses/HorsesUI";
 import { useHorseAssign } from "../components/horses/useHorseAssign";
+import HorsesStats from "../components/horses/HorsesStats";
 
 function ToursTab({ date, toast }) {
   const [day, setDay] = useState(null);
@@ -472,6 +473,7 @@ export default function CaballosPage() {
   // Desde Ajustes (?tab=caballos) abre directo el control de caballos.
   const [tab, setTab] = useState(() => {
     if (params.get("tab") === "caballos") return "horses";
+    if (params.get("tab") === "datos") return "stats";
     try { return sessionStorage.getItem("nt_caballos_tab") || "tours"; } catch { return "tours"; }
   });
   const [date, setDate] = useState(null);
@@ -528,7 +530,7 @@ export default function CaballosPage() {
             <GiHorseHead className="h-7 w-7" />
           </span>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-xl font-black leading-tight text-slate-900 min-[430px]:text-2xl">{tab === "horses" ? "Herraduras" : "Caballos"}</h1>
+            <h1 className="truncate text-xl font-black leading-tight text-slate-900 min-[430px]:text-2xl">{tab === "horses" ? "Herraduras" : tab === "stats" ? "Datos" : "Caballos"}</h1>
             <p className="truncate text-xs font-semibold text-slate-400">{me.user.name}</p>
           </div>
           {/* Botón especial: directo a herraduras */}
@@ -546,10 +548,20 @@ export default function CaballosPage() {
         <div className="mb-5 flex gap-1 rounded-3xl bg-white p-1.5 ring-1 ring-slate-200">
           {dayTab(me.today, "Hoy", "bg-emerald-600")}
           {dayTab(tomorrow, "Mañana", "bg-orange-500")}
+          <button
+            type="button"
+            onClick={() => setTab("stats")}
+            aria-label="Datos de los caballos"
+            className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl text-[11px] font-black transition cursor-pointer min-[430px]:w-20 ${tab === "stats" ? "bg-sky-600 text-white shadow-lg" : "text-slate-500"}`}
+          >
+            <FiBarChart2 className="h-6 w-6" /> Datos
+          </button>
         </div>
 
         {tab === "tours" ? (
           <ToursTab date={date} toast={toast} />
+        ) : tab === "stats" ? (
+          <HorsesStats today={me.today} toast={toast} />
         ) : (
           <HorsesTab today={me.today} toast={toast} isAdmin={me.user.isAdmin} />
         )}

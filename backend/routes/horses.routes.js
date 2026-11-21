@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
   horsesMe, listHorses, createHorse, updateHorse, addHorseEvent, horseHistory,
-  horsesDay, assignHorse, horsesDays,
+  horsesDay, assignHorse, horsesDays, horsesStats,
 } from "../controllers/horses.controller.js";
 import { authenticateHorses } from "../middlewares/auth.middleware.js";
 
@@ -11,6 +11,7 @@ router.use(authenticateHorses);
 router.get("/me", horsesMe);
 router.get("/day", horsesDay);
 router.get("/days", horsesDays);
+router.get("/stats", horsesStats);
 router.put("/day/assign", assignHorse);
 router.get("/", listHorses);
 router.post("/", createHorse);

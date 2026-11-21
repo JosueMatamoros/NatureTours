@@ -42,3 +42,4 @@ export const addHorseEvent = (id, body) => post(`/${id}/events`, body);
 export const horseHistory = (id) => req(`/${id}/events`);
 export const horsesDay = (date) => req(`/day?date=${date}`);
 export const assignHorse = (body) => put("/day/assign", body);
+export const horsesStats = (from, to) => req(`/stats?from=${from}&to=${to}`);
