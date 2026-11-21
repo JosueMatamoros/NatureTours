@@ -533,29 +533,34 @@ export default function CaballosPage() {
             <h1 className="truncate text-xl font-black leading-tight text-slate-900 min-[430px]:text-2xl">{tab === "horses" ? "Herraduras" : tab === "stats" ? "Datos" : "Caballos"}</h1>
             <p className="truncate text-xs font-semibold text-slate-400">{me.user.name}</p>
           </div>
-          {/* Botón especial: directo a herraduras */}
+          {/* Botones especiales (solo ícono): herraduras y datos */}
           <button
             type="button"
             onClick={() => setTab("horses")}
-            className={`flex h-12 shrink-0 items-center gap-1.5 rounded-2xl px-3 text-sm font-black shadow-lg min-[430px]:h-14 min-[430px]:gap-2 min-[430px]:px-4 min-[430px]:text-base transition active:scale-95 cursor-pointer ${
+            aria-label="Herraduras"
+            title="Herraduras"
+            className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl shadow-lg min-[430px]:h-14 min-[430px]:w-14 transition active:scale-95 cursor-pointer ${
               tab === "horses" ? "bg-slate-900 text-white" : "bg-amber-500 text-white shadow-amber-500/30"
             }`}
           >
-            <GiHorseshoe className="h-6 w-6 min-[430px]:h-7 min-[430px]:w-7" /> Herraduras
+            <GiHorseshoe className="h-7 w-7" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("stats")}
+            aria-label="Datos de los caballos"
+            title="Datos"
+            className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl shadow-lg min-[430px]:h-14 min-[430px]:w-14 transition active:scale-95 cursor-pointer ${
+              tab === "stats" ? "bg-slate-900 text-white" : "bg-sky-600 text-white shadow-sky-600/30"
+            }`}
+          >
+            <FiBarChart2 className="h-7 w-7" />
           </button>
         </div>
 
         <div className="mb-5 flex gap-1 rounded-3xl bg-white p-1.5 ring-1 ring-slate-200">
           {dayTab(me.today, "Hoy", "bg-emerald-600")}
           {dayTab(tomorrow, "Mañana", "bg-orange-500")}
-          <button
-            type="button"
-            onClick={() => setTab("stats")}
-            aria-label="Datos de los caballos"
-            className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl text-[11px] font-black transition cursor-pointer min-[430px]:w-20 ${tab === "stats" ? "bg-sky-600 text-white shadow-lg" : "text-slate-500"}`}
-          >
-            <FiBarChart2 className="h-6 w-6" /> Datos
-          </button>
         </div>
 
         {tab === "tours" ? (

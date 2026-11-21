@@ -143,8 +143,6 @@ export default function HorsesStats({ today, toast }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, time, dayType]);
 
-  const total = rows?.reduce((s, h) => s + h.tours, 0) ?? 0;
-  const working = rows?.filter((h) => h.tours > 0).length ?? 0;
   const max = Math.max(1, ...(rows || []).map((h) => h.tours));
   const tired = (rows || []).filter((h) => h.active && h.streak >= RACHA_ALTA).sort((a, b) => b.streak - a.streak);
   const open = rows?.find((h) => h.id === openId);
@@ -192,12 +190,6 @@ export default function HorsesStats({ today, toast }) {
         <p className="rounded-2xl bg-white p-6 text-center font-bold text-slate-400 ring-1 ring-slate-200">Este período todavía no ha pasado.</p>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2">
-            <Tile value={total} label="salidas" />
-            <Tile value={`${working}/${rows.filter((h) => h.active).length}`} label="caballos trabajaron" />
-            <Tile value={working ? (total / working).toFixed(1) : "0"} label="salidas por caballo" />
-          </div>
-
           {tired.length > 0 && (
             <div className="rounded-2xl bg-red-50 p-3 ring-1 ring-red-200">
               <div className="mb-2 flex items-center gap-2 text-sm font-black text-red-700">
