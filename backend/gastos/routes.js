@@ -8,7 +8,8 @@ import { getVapidPublicKey } from "../utils/push.js";
 import { revenueBetween } from "../utils/revenue.js";
 import { login, requiereUsuario } from "./auth.js";
 import { categorizar, claveDe, normalizar } from "./categorizar.js";
-import { S, sembrarCategorias } from "./esquema.js";
+import { S, ZONAS, sembrarCategorias } from "./esquema.js";
+import { recordarZona, zonaDeComercio, zonaDePunto } from "./zonas.js";
 import { avisarGastosNuevos } from "./push.js";
 
 const router = Router();
@@ -114,6 +115,10 @@ router.post("/ingesta", h(async (req, res) => {
       [usuarioId, g.ref, fecha, g.banco || null, g.tipo || null, g.comercio, g.textoCategoria || null, g.monto,
         g.moneda || "CRC", g.montoOriginal ?? g.monto, categoriaId, Boolean(g.manual), Boolean(g.eliminado)]
     );
+    if (r.rowCount && !g.eliminado) { // zona según dónde queda el comercio
+      const zona = await zonaDeComercio(pool, usuarioId, g.comercio);
+      if (zona) await pool.query(`UPDATE ${S}.movimientos SET zona = $2 WHERE id = $1`, [r.rows[0].id, zona]);
+    }
     if (r.rowCount && !g.eliminado) {
       const n = r.rows[0];
       n.categoria_nombre = cats.rows.find((c) => c.id === n.categoria_id)?.nombre;
@@ -133,7 +138,9 @@ const SEL_MOV = `
          m.banco, m.tipo, m.comercio, m.monto::float AS monto, m.moneda, m.monto_original::float AS "montoOriginal",
          m.categoria_id AS "categoriaId", coalesce(c.nombre, '') AS categoria, m.origen, m.nota,
          m.usuario_id AS "usuarioId", CASE WHEN m.caja THEN 'Caja chica' ELSE u.nombre END AS quien,
-         m.caja, m.grupo_id AS "grupoId"
+         m.caja, m.grupo_id AS "grupoId", m.zona,
+         (SELECT coalesce(json_agg(json_build_object('id', k.id, 'persona', k.persona, 'monto', k.monto::float, 'pagado', k.pagado) ORDER BY k.creado), '[]')
+          FROM ${S}.cobros k WHERE k.movimiento_id = m.id) AS cobros
   FROM ${S}.movimientos m
   JOIN ${S}.usuarios u ON u.id = m.usuario_id
   LEFT JOIN ${S}.categorias c ON c.id = m.categoria_id`;
@@ -150,7 +157,7 @@ async function puedeVerIngresos(uid) {
   return Boolean(u && (!u.solo_grupos || u.ver_ingresos));
 }
 
-const SEL_CAT = `SELECT id, nombre, icono, color FROM ${S}.categorias`;
+const SEL_CAT = `SELECT id, nombre, icono, color, clave FROM ${S}.categorias`;
 
 /** Todo lo que la app necesita para pintar: personal + cada grupo. */
 // ── Guías por tour (lee la asignación de guías del sistema de tours) ──
@@ -345,6 +352,8 @@ const nuevoMov = z.object({
   nota: z.string().max(300).nullish(),
   pagadoPor: pagador.optional(), // solo en grupos: otra persona del grupo o la caja chica
   moneda: z.enum(["CRC", "USD"]).optional(), // en dólares se guarda el original y se convierte a colones
+  lat: z.number().min(-90).max(90).optional(), // dónde estaba el teléfono al anotarlo (para la zona)
+  lng: z.number().min(-180).max(180).optional(),
 });
 
 /** Monto en colones: si fue en dólares, al tipo de cambio del mes del gasto. */
@@ -372,9 +381,10 @@ router.post("/movimientos", h(async (req, res) => {
   }
   const c = await enColones(b.monto, b.moneda, fecha);
   await pool.query(
-    `INSERT INTO ${S}.movimientos (usuario_id, grupo_id, origen, fecha, tipo, comercio, monto, moneda, monto_original, categoria_id, manual, nota, caja)
-     VALUES ($1, $2, 'manual', $3, 'Manual', $4, $5, $9, $10, $6, true, $7, $8)`,
-    [dueño, b.grupoId || null, fecha, b.comercio, c.monto, b.categoriaId || null, b.nota || null, caja, c.moneda, c.original]
+    `INSERT INTO ${S}.movimientos (usuario_id, grupo_id, origen, fecha, tipo, comercio, monto, moneda, monto_original, categoria_id, manual, nota, caja, zona)
+     VALUES ($1, $2, 'manual', $3, 'Manual', $4, $5, $9, $10, $6, true, $7, $8, $11)`,
+    [dueño, b.grupoId || null, fecha, b.comercio, c.monto, b.categoriaId || null, b.nota || null, caja, c.moneda, c.original,
+      !b.grupoId && b.lat != null && b.lng != null ? zonaDePunto({ lat: b.lat, lng: b.lng }) : null]
   );
   res.json({ ok: true, ...(await datos(uid)) });
 }));
@@ -471,6 +481,64 @@ router.post("/movimientos/:id/restaurar", h(async (req, res) => {
   const id = validar(uuid, req.params.id);
   await movimientoPermitido(pool, id, req.usuario.id);
   await pool.query(`UPDATE ${S}.movimientos SET eliminado = false WHERE id = $1`, [id]);
+  res.json({ ok: true, ...(await datos(req.usuario.id)) });
+}));
+
+// ── Zona y "me deben" (gastos personales) ──
+
+// Zona a mano: queda recordada para ese comercio (próximos gastos) y se pone en los que no tienen zona.
+router.patch("/movimientos/:id/zona", h(async (req, res) => {
+  const id = validar(uuid, req.params.id);
+  const { zona } = validar(z.object({ zona: z.enum(ZONAS).nullable() }), req.body);
+  const m = await movimientoPermitido(pool, id, req.usuario.id);
+  await pool.query(`UPDATE ${S}.movimientos SET zona = $2 WHERE id = $1`, [id, zona]);
+  if (zona && zona !== "viaje" && m.origen === "correo") {
+    await recordarZona(pool, m.usuario_id, m.comercio, zona);
+    await pool.query(
+      `UPDATE ${S}.movimientos SET zona = $3 WHERE usuario_id = $1 AND comercio = $2 AND zona IS NULL AND NOT eliminado`,
+      [m.usuario_id, m.comercio, zona]);
+  }
+  res.json({ ok: true, ...(await datos(req.usuario.id)) });
+}));
+
+const cobroBody = z.object({
+  cobros: z.array(z.object({ persona: z.string().trim().min(1).max(40), monto: z.number().positive().max(100000000) })).min(1).max(30),
+});
+
+router.post("/movimientos/:id/cobros", h(async (req, res) => {
+  const id = validar(uuid, req.params.id);
+  const b = validar(cobroBody, req.body);
+  const m = await movimientoPermitido(pool, id, req.usuario.id);
+  const ya = await pool.query(`SELECT coalesce(sum(monto), 0)::float AS t FROM ${S}.cobros WHERE movimiento_id = $1`, [id]);
+  const nuevo = b.cobros.reduce((s, k) => s + k.monto, 0);
+  if (ya.rows[0].t + nuevo > Number(m.monto) + 1) throw err("Lo que te deben no puede pasar del total del gasto");
+  await enTransaccion(async (db) => {
+    for (const k of b.cobros) {
+      await db.query(`INSERT INTO ${S}.cobros (movimiento_id, persona, monto) VALUES ($1, $2, $3)`, [id, k.persona, k.monto]);
+    }
+  });
+  res.json({ ok: true, ...(await datos(req.usuario.id)) });
+}));
+
+async function cobroPermitido(id, uid) {
+  const q = await pool.query(`SELECT movimiento_id FROM ${S}.cobros WHERE id = $1`, [id]);
+  if (!q.rowCount) throw err("No se encontró", 404);
+  await movimientoPermitido(pool, q.rows[0].movimiento_id, uid);
+}
+
+// Marcar pagado / no pagado. Con ids varios a la vez ("ya me pagó todo").
+router.post("/cobros/pagar", h(async (req, res) => {
+  const { ids, pagado } = validar(z.object({ ids: z.array(uuid).min(1).max(200), pagado: z.boolean() }), req.body);
+  for (const id of ids) await cobroPermitido(id, req.usuario.id);
+  await pool.query(
+    `UPDATE ${S}.cobros SET pagado = $2, pagado_en = CASE WHEN $2 THEN now() END WHERE id = ANY($1)`, [ids, pagado]);
+  res.json({ ok: true, ...(await datos(req.usuario.id)) });
+}));
+
+router.delete("/cobros/:id", h(async (req, res) => {
+  const id = validar(uuid, req.params.id);
+  await cobroPermitido(id, req.usuario.id);
+  await pool.query(`DELETE FROM ${S}.cobros WHERE id = $1`, [id]);
   res.json({ ok: true, ...(await datos(req.usuario.id)) });
 }));
 

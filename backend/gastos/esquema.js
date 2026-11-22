@@ -18,8 +18,14 @@ export const CATEGORIAS_PERSONALES = [
   ["Salud", "Pill", "#DE7F72"],
   ["Entretenimiento", "Clapperboard", "#5FB8A5"],
   ["Suscripciones", "Tv", "#8E9DDB"],
+  ["Salidas", "PartyPopper", "#C98BB9"],
   ["Otros", "Shapes", "#9AA396"],
 ];
+
+// Zonas donde se gastó (solo para supermercado, comida y salidas). Ver zonas.js.
+// "viaje" y "ninguna" se marcan para que no cuenten en la comparación.
+export const ZONAS = ["pueblo", "ciudad", "viaje", "ninguna"];
+export const CLAVES_CON_ZONA = ["Supermercado", "Comida y restaurantes", "Salidas"];
 
 export const CATEGORIAS_GRUPO = [
   ["Comida y restaurantes", "UtensilsCrossed", "#E0A458"],
@@ -145,6 +151,38 @@ export async function migrarGastos() {
        fecha date NOT NULL,
        actualizado timestamptz NOT NULL DEFAULT now()
      )`,
+    // Zona del gasto (chachagua / ciudad / viaje / ninguna)
+    `ALTER TABLE ${S}.movimientos ADD COLUMN IF NOT EXISTS zona text`,
+    // Lo que otros me deben de un gasto que pagué yo (no cuenta como gasto mío)
+    `CREATE TABLE IF NOT EXISTS ${S}.cobros (
+       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+       movimiento_id uuid NOT NULL REFERENCES ${S}.movimientos(id) ON DELETE CASCADE,
+       persona text NOT NULL,
+       monto numeric(14,2) NOT NULL CHECK (monto > 0),
+       pagado boolean NOT NULL DEFAULT false,
+       pagado_en timestamptz,
+       creado timestamptz NOT NULL DEFAULT now()
+     )`,
+    `CREATE INDEX IF NOT EXISTS cobros_mov ON ${S}.cobros (movimiento_id)`,
+    `UPDATE ${S}.movimientos SET zona = 'pueblo' WHERE zona = 'chachagua'`,
+    // Dónde queda cada comercio (Google Places o corregido a mano), para no buscarlo cada vez
+    `CREATE TABLE IF NOT EXISTS ${S}.lugares (
+       usuario_id uuid NOT NULL REFERENCES ${S}.usuarios(id) ON DELETE CASCADE,
+       comercio text NOT NULL,
+       zona text,
+       lat double precision,
+       lng double precision,
+       nombre_google text,
+       manual boolean NOT NULL DEFAULT false,
+       actualizado timestamptz NOT NULL DEFAULT now(),
+       PRIMARY KEY (usuario_id, comercio)
+     )`,
+    // Categoría "Salidas" para quien ya tiene categorías personales
+    `INSERT INTO ${S}.categorias (usuario_id, nombre, icono, color, clave, orden)
+     SELECT u.id, 'Salidas', 'PartyPopper', '#C98BB9', 'Salidas', 8
+     FROM ${S}.usuarios u
+     WHERE NOT u.solo_grupos AND EXISTS (SELECT 1 FROM ${S}.categorias c WHERE c.usuario_id = u.id)
+     ON CONFLICT DO NOTHING`,
   ];
   for (const q of sql) await pool.query(q);
 }
