@@ -5,7 +5,7 @@ import { S } from "./esquema.js";
 
 // Pueblo: alrededor de Chachagua (donde vivo ahora). Ciudad: San José y Cartago (Tres Ríos queda en medio).
 export const CENTROS = {
-  pueblo: [{ nombre: "Chachagua", lat: 10.4066, lng: -84.5805, km: 25 }],
+  pueblo: [{ nombre: "Chachagua", lat: 10.4066, lng: -84.5805, km: 40 }],
   ciudad: [
     { nombre: "San José", lat: 9.9333, lng: -84.0833, km: 15 },
     { nombre: "Cartago", lat: 9.8644, lng: -83.9194, km: 15 },
@@ -30,6 +30,9 @@ export function zonaDePunto(p) {
 // ── Buscar el comercio en Google Places ──
 const PROVINCIAS = /\s+(SAN JOSE|ALAJUELA|CARTAGO|HEREDIA|PUNTARENAS|LIMON|GUANACASTE)$/i;
 const VACIAS = new Set(["de", "del", "la", "las", "los", "el", "y", "s", "sa", "srl", "ltda", "cr", "the"]);
+// Palabras de tipo de negocio: no sirven para saber cuál comercio es (hay "super" y "soda" en todo lado)
+const GENERICAS = new Set(["super", "mini", "minisuper", "supermercado", "licorera", "licoreria", "soda", "restaurante", "rest", "bar",
+  "tienda", "pulperia", "abastecedor", "comercial", "market", "minimarket", "panaderia", "carniceria", "cafe", "cafeteria", "comidas", "comida", "y"]);
 const sinTildes = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const palabras = (s) => sinTildes(s).split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !VACIAS.has(w));
 
@@ -40,7 +43,11 @@ function parecido(comercio, lugar) {
   const texto = new Set(sinTildes(`${lugar.displayName?.text || ""} ${lugar.formattedAddress || ""}`).split(/[^a-z0-9]+/));
   // Palabra completa; solo la última puede venir cortada por el banco ("COMI" → comidas)
   const ultima = ps[ps.length - 1];
-  return ps.filter((w) => texto.has(w) || (w === ultima && [...texto].some((t) => t.startsWith(w)))).length / ps.length;
+  const esta = (w) => texto.has(w) || (w === ultima && [...texto].some((t) => t.startsWith(w)));
+  // Tiene que coincidir el nombre propio (al menos una palabra que no sea genérica), y se mide solo con esas
+  const propias = ps.filter((w) => !GENERICAS.has(w));
+  if (!propias.length) return 0;
+  return propias.filter(esta).length / propias.length;
 }
 
 const clave = () => process.env.GOOGLE_MAPS_KEY || process.env.GOOGLE_PLACES_KEY || "";
