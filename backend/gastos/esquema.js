@@ -16,9 +16,8 @@ export const CATEGORIAS_PERSONALES = [
   ["Servicios", "Lightbulb", "#CDBB5E"],
   ["Vivienda", "House", "#B98668"],
   ["Salud", "Pill", "#DE7F72"],
-  ["Entretenimiento", "Clapperboard", "#5FB8A5"],
   ["Suscripciones", "Tv", "#8E9DDB"],
-  ["Salidas", "PartyPopper", "#C98BB9"],
+  ["Salidas", "HeartHandshake", "#C98BB9"],
   ["Otros", "Shapes", "#9AA396"],
 ];
 
@@ -179,10 +178,23 @@ export async function migrarGastos() {
      )`,
     // Categoría "Salidas" para quien ya tiene categorías personales
     `INSERT INTO ${S}.categorias (usuario_id, nombre, icono, color, clave, orden)
-     SELECT u.id, 'Salidas', 'PartyPopper', '#C98BB9', 'Salidas', 8
+     SELECT u.id, 'Salidas', 'HeartHandshake', '#C98BB9', 'Salidas', 8
      FROM ${S}.usuarios u
      WHERE NOT u.solo_grupos AND EXISTS (SELECT 1 FROM ${S}.categorias c WHERE c.usuario_id = u.id)
      ON CONFLICT DO NOTHING`,
+    // Entretenimiento se juntó con Salidas: sus gastos y reglas pasan a Salidas
+    // (o se renombra si esa persona no tiene Salidas). Ícono de Salidas: pareja.
+    `UPDATE ${S}.movimientos m SET categoria_id = s.id
+     FROM ${S}.categorias e JOIN ${S}.categorias s ON s.usuario_id = e.usuario_id AND s.clave = 'Salidas'
+     WHERE e.clave = 'Entretenimiento' AND e.usuario_id IS NOT NULL AND m.categoria_id = e.id`,
+    `UPDATE ${S}.reglas r SET categoria_id = s.id
+     FROM ${S}.categorias e JOIN ${S}.categorias s ON s.usuario_id = e.usuario_id AND s.clave = 'Salidas'
+     WHERE e.clave = 'Entretenimiento' AND e.usuario_id IS NOT NULL AND r.categoria_id = e.id`,
+    `DELETE FROM ${S}.categorias e WHERE e.clave = 'Entretenimiento' AND e.usuario_id IS NOT NULL
+       AND EXISTS (SELECT 1 FROM ${S}.categorias s WHERE s.usuario_id = e.usuario_id AND s.clave = 'Salidas')`,
+    `UPDATE ${S}.categorias SET nombre = 'Salidas', clave = 'Salidas', icono = 'HeartHandshake', color = '#C98BB9'
+     WHERE clave = 'Entretenimiento' AND usuario_id IS NOT NULL`,
+    `UPDATE ${S}.categorias SET icono = 'HeartHandshake' WHERE clave = 'Salidas' AND icono = 'PartyPopper'`,
   ];
   for (const q of sql) await pool.query(q);
 }
