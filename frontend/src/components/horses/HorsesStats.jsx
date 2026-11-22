@@ -202,7 +202,9 @@ export default function HorsesStats({ today, toast }) {
           <div>
             <div className="mb-2 flex items-baseline justify-between px-1">
               <h2 className="text-base font-black text-slate-900">Los que más salen</h2>
-              <span className="text-xs font-semibold text-slate-400">toque uno para ver más</span>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> salió hoy
+              </span>
             </div>
             <div className="space-y-2">
               {rows.map((h, i) => (
@@ -212,7 +214,11 @@ export default function HorsesStats({ today, toast }) {
                   onClick={() => setOpenId(h.id)}
                   className={`flex w-full items-center gap-3 rounded-2xl bg-white p-2.5 text-left ring-1 ring-slate-200 transition active:scale-[0.98] cursor-pointer ${h.tours ? "" : "opacity-60"}`}
                 >
-                  <span className={`w-6 shrink-0 text-center text-sm font-black ${i < 3 && h.tours ? "text-amber-600" : "text-slate-300"}`}>{i + 1}</span>
+                  {h.lastWorked === (data.today || today) ? (
+                    <span title="Salió hoy" className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-500 text-xs font-black text-white">{i + 1}</span>
+                  ) : (
+                    <span className={`w-6 shrink-0 text-center text-sm font-black ${i < 3 && h.tours ? "text-amber-600" : "text-slate-300"}`}>{i + 1}</span>
+                  )}
                   <HorseAvatar horse={h} size="h-12 w-12" text="text-xl" dim={h.resting} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
