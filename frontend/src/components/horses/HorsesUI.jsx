@@ -150,10 +150,10 @@ const ASSIGNED = {
   slate: "bg-emerald-50 ring-emerald-500",
 };
 
-function SeatTile({ label, horse, tone = "slate", onClick, big = false }) {
+function SeatTile({ label, horse, tone = "slate", onClick, onRemove, big = false }) {
   const st = horse ? statusOf(horse) : null;
   const sty = SEAT_STYLE[tone];
-  return (
+  const tile = (
     <button
       type="button"
       onClick={onClick}
@@ -179,6 +179,21 @@ function SeatTile({ label, horse, tone = "slate", onClick, big = false }) {
       <span className="-mt-0.5 w-full truncate text-[10px] font-semibold leading-tight text-slate-500">{label}</span>
     </button>
   );
+  if (horse || !onRemove) return tile;
+  // Espacio extra vacío: se puede quitar con la ×.
+  return (
+    <div className="relative">
+      {tile}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Quitar este espacio"
+        className="absolute -right-1.5 -top-1.5 grid h-8 w-8 place-items-center rounded-full bg-slate-700 text-white shadow ring-2 ring-white cursor-pointer active:scale-90"
+      >
+        <FiX className="h-4 w-4" />
+      </button>
+    </div>
+  );
 }
 
 function SectionTitle({ icon: Icon, color, children, right }) {
@@ -193,10 +208,18 @@ function SectionTitle({ icon: Icon, color, children, right }) {
 }
 
 export function TourCard({ slot, horsesById, onPick, bare = false }) {
-  const [extras, setExtras] = useState(0);
-  const assignedExtras = Object.keys(slot.assigned).filter((s) => s.startsWith("x:")).map((s) => Number(s.slice(2)));
-  const extraCount = Math.max(extras, assignedExtras.length ? Math.max(...assignedExtras) : 0);
-  const { wr, gd, ex } = slotSeats(slot, extraCount);
+  // Extras: los que tienen caballo + los que se agregaron aquí y siguen vacíos
+  // (esos no se guardan: si se recarga o se tocan con la ×, desaparecen).
+  const [added, setAdded] = useState([]);
+  const assignedEx = Object.keys(slot.assigned).filter((s) => s.startsWith("x:"));
+  const ex = [...new Set([...assignedEx, ...added])].sort((a, b) => Number(a.slice(2)) - Number(b.slice(2)));
+  const addExtra = () => {
+    let n = 1;
+    while (ex.includes(`x:${n}`)) n += 1;
+    setAdded((a) => [...a, `x:${n}`]);
+  };
+  const removeExtra = (s) => setAdded((a) => a.filter((x) => x !== s));
+  const { wr, gd } = slotSeats(slot);
   const { done, need } = slotProgress(slot);
   const horseAt = (s) => horsesById[slot.assigned[s]] || null;
   const totalPeople = slot.groups.reduce((n, g) => n + g.riders, 0);
@@ -260,13 +283,13 @@ export function TourCard({ slot, horsesById, onPick, bare = false }) {
           <div>
             <SectionTitle color="text-slate-500">Extra</SectionTitle>
             <div className="grid grid-cols-3 gap-2">
-              {ex.map((s) => <SeatTile key={s} label="Extra" horse={horseAt(s)} onClick={() => onPick(slot, s)} />)}
+              {ex.map((s) => <SeatTile key={s} label="Extra" horse={horseAt(s)} onClick={() => onPick(slot, s)} onRemove={() => removeExtra(s)} />)}
             </div>
           </div>
         )}
         <button
           type="button"
-          onClick={() => setExtras(extraCount + 1)}
+          onClick={addExtra}
           className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-slate-100 text-base font-black text-slate-600 transition hover:bg-slate-200 active:scale-[0.99] cursor-pointer"
         >
           <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-slate-700 shadow-sm"><FiPlus className="h-5 w-5" /></span>
