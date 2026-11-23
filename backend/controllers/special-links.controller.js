@@ -25,6 +25,17 @@ const createSchema = z
 
 const updateSchema = z.object({ active: z.boolean() });
 
+// Los links vencen a la semana de creados; pasada la semana se borran
+// (pagados o no): no se guarda historial. La reserva pagada queda intacta.
+const LINK_TTL = "7 days";
+
+async function purgeOldLinks() {
+  await pool.query(`
+    with old as (select id from special_links where created_at < now() - interval '${LINK_TTL}')
+    update bookings set special_link_id = null where special_link_id in (select id from old)`);
+  await pool.query(`delete from special_links where created_at < now() - interval '${LINK_TTL}'`);
+}
+
 // Datos del link + precio calculado + si ya se pagó.
 const LINK_SELECT = `
   select
@@ -33,6 +44,8 @@ const LINK_SELECT = `
     to_char(l.start_time, 'HH24:MI') as start_time,
     l.adults, l.children, l.babies,
     l.custom_subtotal, l.note, l.active, l.created_at,
+    l.created_at + interval '${LINK_TTL}' as expires_at,
+    (l.created_at < now() - interval '${LINK_TTL}') as expired,
     t.price as adult_price, coalesce(t.child_price, t.price) as child_price,
     coalesce(
       l.custom_subtotal,
@@ -69,12 +82,15 @@ function toLink(r) {
     active: r.active,
     used: r.used,
     createdAt: r.created_at,
+    expiresAt: r.expires_at,
+    expired: Boolean(r.expired),
   };
 }
 
 // GET /api/special-links (admin)
 export async function listSpecialLinks(_req, res) {
   try {
+    await purgeOldLinks().catch((e) => console.error("purgeOldLinks:", e.message));
     const q = await pool.query(`${LINK_SELECT} order by l.created_at desc limit 200`);
     return res.json({ ok: true, links: q.rows.map(toLink) });
   } catch (err) {
@@ -151,8 +167,8 @@ export async function getSpecialLink(req, res) {
   try {
     const q = await pool.query(`${LINK_SELECT} where l.id = $1`, [p.data.id]);
     // Un link pagado (ya desactivado) se sigue mostrando como "ya pagado".
-    if (q.rowCount === 0 || (!q.rows[0].active && !q.rows[0].used)) {
-      return res.status(404).json({ ok: false, message: "Link no encontrado" });
+    if (q.rowCount === 0 || (!q.rows[0].active && !q.rows[0].used) || q.rows[0].expired) {
+      return res.status(410).json({ ok: false, expired: true, message: "This payment link has expired." });
     }
     const link = toLink(q.rows[0]);
     // Al público no le exponemos la nota interna.
@@ -177,8 +193,8 @@ export async function bookSpecialLink(req, res) {
     if (row?.used) {
       return res.status(409).json({ ok: false, message: "This link has already been paid." });
     }
-    if (!row || !row.active) {
-      return res.status(404).json({ ok: false, message: "This link is no longer available." });
+    if (!row || !row.active || row.expired) {
+      return res.status(404).json({ ok: false, message: "This payment link has expired. Please contact us for a new one." });
     }
 
     const { status, body } = await insertPendingBooking({

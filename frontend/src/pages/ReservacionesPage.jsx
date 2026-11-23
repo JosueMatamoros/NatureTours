@@ -173,27 +173,30 @@ function EditModal({ r, onClose, onDone, showToast }) {
     name: r.customer?.name || "", phone: r.customer?.phone || "",
     adults: r.adults, children: r.children, babies: r.babies,
   });
-  const [paid, setPaid] = useState(String(r.paid ?? 0));
-  const [paidTouched, setPaidTouched] = useState(false);
-  const [addedPaid, setAddedPaid] = useState(null); // null = sin responder
+  const [addedPaid, setAddedPaid] = useState(null); // null | "no" | "all" | "part"
+  const [partAmount, setPartAmount] = useState("");
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   // Personas que pagan (adultos + niños) agregadas respecto a lo original.
   const added = Math.max(form.adults + form.children - (r.adults + r.children), 0);
-  const askPaid = added > 0 && !paidTouched;
+  const askPaid = added > 0;
 
   async function submit(e) {
     e.preventDefault();
     if (askPaid && addedPaid === null) return showToast("error", "Decí si las personas nuevas ya pagaron");
+    if (askPaid && addedPaid === "part" && !(Number(partAmount) > 0)) return showToast("error", "Poné cuánto pagaron");
     setSaving(true);
     try {
       const payload = {
         adults: form.adults, children: form.children, babies: form.babies,
         phone: form.phone.trim(), name: form.name.trim(),
       };
-      if (paidTouched) payload.paid = Number(paid) || 0;
-      else if (askPaid) payload.addedPaid = addedPaid;
+      if (askPaid) {
+        if (addedPaid === "all") payload.addedPaid = true;
+        else if (addedPaid === "part") payload.addedPaidAmount = Number(partAmount);
+        else payload.addedPaid = false;
+      }
       await editReservation(r.id, payload);
       showToast("success", "Reserva actualizada");
       onDone();
@@ -203,7 +206,7 @@ function EditModal({ r, onClose, onDone, showToast }) {
   }
 
   const choiceCls = (on) =>
-    `flex-1 rounded-lg border py-2 text-xs font-bold cursor-pointer ${on ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`;
+    `rounded-lg border px-1 py-2 text-xs font-bold leading-tight cursor-pointer ${on ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`;
 
   return (
     <Modal title="Editar reserva" onClose={onClose}>
@@ -220,21 +223,21 @@ function EditModal({ r, onClose, onDone, showToast }) {
             <p className="mb-2 text-sm font-semibold text-amber-800">
               Agregaste {added} persona{added === 1 ? "" : "s"}. ¿Ya pagaron?
             </p>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setAddedPaid(false)} className={choiceCls(addedPaid === false)}>No, pagan el día del tour</button>
-              <button type="button" onClick={() => setAddedPaid(true)} className={choiceCls(addedPaid === true)}>Sí, ya pagaron todo</button>
+            <div className="grid grid-cols-3 gap-2">
+              <button type="button" onClick={() => setAddedPaid("no")} className={choiceCls(addedPaid === "no")}>No, pagan el día del tour</button>
+              <button type="button" onClick={() => setAddedPaid("part")} className={choiceCls(addedPaid === "part")}>Pagaron una parte</button>
+              <button type="button" onClick={() => setAddedPaid("all")} className={choiceCls(addedPaid === "all")}>Sí, pagaron todo</button>
             </div>
-            <p className="mt-2 text-xs text-amber-700">Si pagaron otro monto, escribilo abajo en "Ya pagado".</p>
+            {addedPaid === "part" && (
+              <div className="mt-3">
+                <label className="mb-1 block text-xs font-semibold uppercase text-amber-800">¿Cuánto pagaron? (USD)</label>
+                <input type="number" inputMode="decimal" min="0" step="0.01" autoFocus className={inputCls}
+                  placeholder="Ej: 185" value={partAmount} onChange={(e) => setPartAmount(e.target.value)} />
+                <p className="mt-1 text-xs text-amber-700">Se suma a lo que ya habían pagado; el resto queda como saldo.</p>
+              </div>
+            )}
           </div>
         )}
-        <div>
-          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Ya pagado (USD)</label>
-          <input type="number" inputMode="decimal" min="0" step="0.01" className={inputCls} value={paid}
-            onChange={(e) => { setPaid(e.target.value); setPaidTouched(true); }} />
-          <p className="mt-1 text-xs text-slate-400">
-            Total actual ${r.subtotal} · {r.owes ? `debe $${r.balanceDue}` : "sin saldo"}. Cualquier monto: adelanto, SINPE, efectivo…
-          </p>
-        </div>
         <button type="submit" disabled={saving} className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60 cursor-pointer">
           {saving ? "Guardando…" : "Guardar cambios"}
         </button>

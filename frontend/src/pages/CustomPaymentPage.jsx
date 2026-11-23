@@ -3,6 +3,12 @@
 // el panel de links). El cliente pone monto y descripción, confirma y paga
 // con PayPal. Se registra sin reserva y llega un correo propio (no de tour).
 // Acepta ?amount=…&description=… para mandar el link ya prellenado.
+//
+// Variantes (kind):
+//   custom   /custom-payment          monto exacto (PayPal descuenta su fee a la empresa)
+//            /custom-payment?fee=1    + 5.4 % de fee PayPal que paga el cliente
+//   tip      /tip                     propina, sin fee, título EN/ES
+//   balance  /pay-balance             saldo restante de un tour, + fee PayPal
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
@@ -21,6 +27,40 @@ import WhatsAppButton from "../components/ui/WhatsAppButton";
 import { createCustomPayment } from "../../services/custom-payments.api";
 
 const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+const FEE_RATE = 0.054;
+const round2 = (n) => Math.round(n * 100) / 100;
+
+const KINDS = {
+  custom: {
+    title: "Secure Payment",
+    subtitle: null,
+    descLabel: "Description",
+    descPlaceholder: "e.g. Balance for private horseback tour on Nov 4",
+    descRequired: true,
+    presets: null,
+  },
+  tip: {
+    title: "Tip for our team",
+    subtitle: "Propina para nuestro equipo",
+    intro: "Thank you for riding with us! · ¡Gracias por cabalgar con nosotros!",
+    descLabel: "Message (optional) · Mensaje (opcional)",
+    descPlaceholder: "e.g. For our guide Carlos — thank you!",
+    descRequired: false,
+    defaultDescription: "Tip / Propina",
+    presets: [5, 10, 20, 30],
+    paypalPrefix: "Nature Tours – Tip",
+  },
+  balance: {
+    title: "Pay your tour balance",
+    subtitle: "Pague el saldo de su tour",
+    intro: "Pay the remaining balance of your booking online. · Pague en línea el saldo restante de su reserva.",
+    descLabel: "Booking name & tour date · Nombre de la reserva y fecha",
+    descPlaceholder: "e.g. John Smith – Horseback, Nov 24, 8:00 AM",
+    descRequired: true,
+    presets: null,
+    fee: true,
+  },
+};
 const MAX_AMOUNT = 10000;
 
 const fmt = (n) =>
@@ -83,8 +123,11 @@ function Field({ icon, label, required, error, children }) {
   );
 }
 
-export default function CustomPaymentPage() {
+export default function CustomPaymentPage({ kind = "custom" }) {
   const [params] = useSearchParams();
+  const cfg = KINDS[kind] ?? KINDS.custom;
+  const withFee = Boolean(cfg.fee) || params.get("fee") === "1";
+  const kindKey = kind === "custom" && withFee ? "custom_fee" : kind;
 
   const [step, setStep] = useState(0);
   const [amount, setAmount] = useState(() => params.get("amount") ?? "");
@@ -100,7 +143,7 @@ export default function CustomPaymentPage() {
 
   // Página no pública: que no la indexen.
   useEffect(() => {
-    document.title = "Secure Payment | Nature Tours La Fortuna";
+    document.title = `${cfg.title} | Nature Tours La Fortuna`;
     const meta = document.createElement("meta");
     meta.name = "robots";
     meta.content = "noindex, nofollow";
@@ -108,13 +151,16 @@ export default function CustomPaymentPage() {
     return () => meta.remove();
   }, []);
 
-  const amountNum = Math.round((Number(amount) || 0) * 100) / 100;
+  const amountNum = round2(Number(amount) || 0);
+  const feeNum = withFee ? round2(amountNum * FEE_RATE) : 0;
+  const totalNum = round2(amountNum + feeNum);
+  const finalDescription = description.trim() || cfg.defaultDescription || "";
 
   const errors = useMemo(() => {
     const e = {};
     if (!(amountNum >= 1)) e.amount = "Enter an amount of at least $1.00";
     else if (amountNum > MAX_AMOUNT) e.amount = `Maximum ${fmt(MAX_AMOUNT)} per payment`;
-    if (description.trim().length < 3) e.description = "Tell us what this payment is for";
+    if (cfg.descRequired && description.trim().length < 3) e.description = "Tell us what this payment is for";
     if (!NAME_RE.test(name.trim())) e.name = "Enter your full name";
     if (!EMAIL_RE.test(email.trim())) e.email = "Enter a valid email";
     if (phone.trim() && !PHONE_RE.test(phone.trim())) e.phone = "Enter a valid phone number";
@@ -133,7 +179,9 @@ export default function CustomPaymentPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const paypalDescription = `Nature Tours – ${description.trim()}`.slice(0, 127);
+  const paypalDescription = (
+    cfg.paypalPrefix ? `${cfg.paypalPrefix}: ${finalDescription}` : `Nature Tours – ${finalDescription}`
+  ).slice(0, 127);
 
   return (
     <main className="min-h-screen bg-linear-to-b from-emerald-50 via-white to-white">
@@ -141,7 +189,9 @@ export default function CustomPaymentPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600">
           Nature Tours La Fortuna
         </p>
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">Secure Payment</h1>
+        <h1 className="mt-2 text-3xl font-bold text-gray-900">{cfg.title}</h1>
+        {cfg.subtitle && <p className="mt-1 text-lg font-semibold text-gray-500">{cfg.subtitle}</p>}
+        {cfg.intro && <p className="mx-auto mt-3 max-w-md text-sm text-gray-600">{cfg.intro}</p>}
         <p className="mt-2 flex items-center justify-center gap-2 text-sm text-gray-500">
           <FiLock className="h-4 w-4" />
           Processed securely by PayPal
@@ -183,13 +233,33 @@ export default function CustomPaymentPage() {
                   <span className="text-sm font-semibold text-gray-400">USD</span>
                 </div>
                 {err("amount") && <p className="mt-1.5 text-xs text-red-600">{err("amount")}</p>}
+                {cfg.presets && (
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {cfg.presets.map((p) => (
+                      <button key={p} type="button" onClick={() => setAmount(String(p))}
+                        className={[
+                          "rounded-xl py-2.5 text-sm font-bold ring-1 transition",
+                          amountNum === p ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-gray-700 ring-gray-200 hover:bg-emerald-50",
+                        ].join(" ")}>
+                        ${p}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {withFee && amountNum > 0 && (
+                  <div className="mt-3 space-y-1 rounded-xl bg-gray-50 px-4 py-3 text-sm">
+                    <div className="flex justify-between text-gray-600"><span>Amount</span><span>{fmt(amountNum)}</span></div>
+                    <div className="flex justify-between text-gray-600"><span>PayPal fee (5.4%)</span><span>{fmt(feeNum)}</span></div>
+                    <div className="flex justify-between border-t border-gray-200 pt-1 font-bold text-gray-900"><span>Total</span><span>{fmt(totalNum)}</span></div>
+                  </div>
+                )}
               </div>
 
-              <Field icon={FiFileText} label="Description" required error={err("description")}>
+              <Field icon={FiFileText} label={cfg.descLabel} required={cfg.descRequired} error={err("description")}>
                 <textarea
                   rows={3}
                   maxLength={500}
-                  placeholder="e.g. Balance for private horseback tour on Nov 4"
+                  placeholder={cfg.descPlaceholder}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full resize-none bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
@@ -251,8 +321,10 @@ export default function CustomPaymentPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-50/80">
                   You are paying
                 </p>
-                <p className="mt-2 text-5xl font-black tracking-tight">{fmt(amountNum)}</p>
-                <p className="mt-1 text-sm text-emerald-50/90">USD</p>
+                <p className="mt-2 text-5xl font-black tracking-tight">{fmt(totalNum)}</p>
+                <p className="mt-1 text-sm text-emerald-50/90">
+                  {withFee ? `USD · ${fmt(amountNum)} + ${fmt(feeNum)} PayPal fee` : "USD"}
+                </p>
               </div>
 
               <div className="space-y-5 p-6 sm:p-8">
@@ -261,7 +333,7 @@ export default function CustomPaymentPage() {
                     Description
                   </p>
                   <p className="mt-2 whitespace-pre-wrap rounded-2xl border border-emerald-100 bg-emerald-50/50 px-4 py-3 text-sm leading-relaxed text-gray-800">
-                    {description.trim()}
+                    {finalDescription}
                   </p>
                 </div>
 
@@ -302,13 +374,13 @@ export default function CustomPaymentPage() {
                       <PayPalButtons
                         style={{ layout: "vertical" }}
                         disabled={processing}
-                        forceReRender={[amountNum, paypalDescription]}
+                        forceReRender={[totalNum, paypalDescription]}
                         createOrder={(_data, actions) =>
                           actions.order.create({
                             purchase_units: [
                               {
                                 description: paypalDescription,
-                                amount: { currency_code: "USD", value: amountNum.toFixed(2) },
+                                amount: { currency_code: "USD", value: totalNum.toFixed(2) },
                               },
                             ],
                           })
@@ -325,8 +397,10 @@ export default function CustomPaymentPage() {
                               name: name.trim(),
                               email: email.trim(),
                               phone: phone.trim(),
-                              description: description.trim(),
-                              amount: capture?.amount?.value ? Number(capture.amount.value) : amountNum,
+                              description: finalDescription,
+                              amount: capture?.amount?.value ? Number(capture.amount.value) : totalNum,
+                              kind: kindKey,
+                              fee: feeNum,
                               paypalOrderId: details?.id,
                               paypalCaptureId: capture?.id ?? null,
                               status: String(capture?.status ?? details?.status ?? "").toLowerCase(),
@@ -387,11 +461,11 @@ export default function CustomPaymentPage() {
                   <span className="flex items-center gap-2 text-gray-500">
                     <FiDollarSign /> Amount paid
                   </span>
-                  <span className="text-lg font-bold text-emerald-600">{fmt(amountNum)}</span>
+                  <span className="text-lg font-bold text-emerald-600">{fmt(totalNum)}</span>
                 </div>
                 <div>
                   <span className="text-gray-500">Description</span>
-                  <p className="mt-1 whitespace-pre-wrap text-gray-800">{description.trim()}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-gray-800">{finalDescription}</p>
                 </div>
                 <div className="flex justify-between gap-4 border-t border-gray-200 pt-3 text-xs">
                   <span className="text-gray-500">Payment ID</span>

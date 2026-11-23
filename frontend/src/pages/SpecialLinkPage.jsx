@@ -5,10 +5,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FiCalendar, FiClock, FiUsers, FiCheckCircle } from "react-icons/fi";
+import { FiLink2 } from "react-icons/fi";
 import { TOURS } from "../data/tours";
 import TourOverviewCard from "../components/checkout/TourOverviewCard";
 import WhatsAppButton from "../components/ui/WhatsAppButton";
-import NotFound from "./NotFound";
 import { getSpecialLink, bookSpecialLink } from "../../services/special-links.api";
 
 const fmt = (n) => `$${Number(n ?? 0).toFixed(2)}`;
@@ -35,6 +35,32 @@ function guestsText(l) {
   if (l.children > 0) parts.push(`${l.children} child${l.children === 1 ? "" : "ren"}`);
   if (l.babies > 0) parts.push(`${l.babies} bab${l.babies === 1 ? "y" : "ies"}`);
   return parts.join(" · ");
+}
+
+// Link vencido (pasó la semana), desactivado o inexistente: un solo mensaje.
+function LinkExpired() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-linear-to-b from-emerald-50 via-white to-white px-6 py-16">
+      <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-[0_20px_50px_rgba(15,23,42,0.06)]">
+        <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-amber-50 text-amber-600">
+          <FiLink2 className="h-8 w-8" />
+        </span>
+        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600">Nature Tours La Fortuna</p>
+        <h1 className="mt-2 text-2xl font-bold text-gray-900">This payment link has expired</h1>
+        <p className="mt-3 text-sm leading-relaxed text-gray-600">
+          For your security, payment links are valid for 7 days. If you still want to book
+          or review your reservation, please contact us and we'll gladly send you a new link.
+        </p>
+        <p className="mt-4 border-t border-gray-100 pt-4 text-sm leading-relaxed text-gray-500">
+          Este link de pago ha vencido. Los links son válidos por 7 días; escríbenos y con gusto te enviamos uno nuevo.
+        </p>
+        <a href="/" className="mt-6 inline-block rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-700">
+          Visit our website
+        </a>
+      </div>
+      <WhatsAppButton message="Hello, my payment link expired. Could you send me a new one?" />
+    </main>
+  );
 }
 
 export default function SpecialLinkPage() {
@@ -88,7 +114,7 @@ export default function SpecialLinkPage() {
     );
   }
 
-  if (notFound || !link) return <NotFound />;
+  if (notFound || !link) return <LinkExpired />;
 
   const tour = TOURS[link.tourId];
 

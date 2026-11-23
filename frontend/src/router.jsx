@@ -99,6 +99,22 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: "/tip",
+        element: (
+          <LazyPage>
+            <CustomPaymentPage kind="tip" />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/pay-balance",
+        element: (
+          <LazyPage>
+            <CustomPaymentPage kind="balance" />
+          </LazyPage>
+        ),
+      },
+      {
         path: "/link/:linkId",
         element: (
           <LazyPage>

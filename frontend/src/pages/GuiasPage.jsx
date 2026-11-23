@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useNavigate } from "react-router-dom";
 import {
   FiArrowLeft,
@@ -243,6 +244,8 @@ export default function GuiasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null); // guía a eliminar
+  const [notice, setNotice] = useState(null); // error no bloqueante
   const [modal, setModal] = useState(null); // null=cerrado, {guide:null}=nuevo, {guide}=editar
 
   function load() {
@@ -262,7 +265,7 @@ export default function GuiasPage() {
     try {
       await updateGuide(g.id, { active });
     } catch (e) {
-      if (e?.message) window.alert(e.message);
+      if (e?.message) setNotice(e.message);
       load();
     } finally {
       setBusyId(null);
@@ -270,11 +273,11 @@ export default function GuiasPage() {
   }
 
   async function removeGuide(g) {
-    if (!window.confirm(`¿Eliminar al guía "${g.name}"? Se quitarán sus asignaciones.`)) return;
     setBusyId(g.id);
     try {
       await deleteGuide(g.id);
       setGuides((list) => list.filter((x) => x.id !== g.id));
+      setConfirmDel(null);
     } catch {
       load();
     } finally {
@@ -304,6 +307,12 @@ export default function GuiasPage() {
       </div>
 
       {loading && <p className="py-16 text-center text-sm text-gray-400">Cargando...</p>}
+      {notice && (
+        <p className="mb-4 flex items-start justify-between gap-3 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {notice}
+          <button onClick={() => setNotice(null)} className="opacity-60 hover:opacity-100">✕</button>
+        </p>
+      )}
       {error && <p className="py-8 text-center font-semibold text-red-600">{error}</p>}
 
       {!loading && !error && guides.length === 0 && (
@@ -328,7 +337,7 @@ export default function GuiasPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {sec.list.map((g) => (
-                    <GuideCard key={g.id} g={g} onEdit={(x) => setModal({ guide: x })} onToggleActive={toggleActive} onDelete={removeGuide} busy={busyId === g.id} />
+                    <GuideCard key={g.id} g={g} onEdit={(x) => setModal({ guide: x })} onToggleActive={toggleActive} onDelete={(x) => setConfirmDel(x)} busy={busyId === g.id} />
                   ))}
                 </div>
               </section>
@@ -338,6 +347,16 @@ export default function GuiasPage() {
 
       {modal && (
         <GuideModal guide={modal.guide} onClose={() => setModal(null)} onSaved={load} />
+      )}
+      {confirmDel && (
+        <ConfirmDialog
+          title="Eliminar guía"
+          message={`¿Eliminar a ${confirmDel.name}? Se quitarán sus asignaciones.`}
+          confirmLabel="Sí, eliminar"
+          busy={busyId === confirmDel.id}
+          onClose={() => setConfirmDel(null)}
+          onConfirm={() => removeGuide(confirmDel)}
+        />
       )}
     </div>
   );

@@ -38,6 +38,18 @@ const SLOTS = {
 };
 
 const FEE = 0.054;
+
+// Links de pago libres (página /custom-payment y variantes).
+const PAY_LINKS = [
+  { path: "/custom-payment", title: "Pago personalizado", fee: false,
+    desc: "El cliente paga el monto exacto; PayPal les descuenta su comisión a ustedes." },
+  { path: "/custom-payment?fee=1", title: "Pago personalizado + comisión", fee: true,
+    desc: "Se le suma al cliente el 5.4 % de PayPal: a ustedes les llega el monto completo." },
+  { path: "/pay-balance", title: "Saldo del tour", fee: true,
+    desc: "Para pagar en línea lo que falta de una reserva (incluye la comisión de PayPal)." },
+  { path: "/tip", title: "Propina · Tip", fee: false,
+    desc: "Título en inglés y español, con botones de $5, $10, $20 y $30." },
+];
 const round2 = (n) => Math.round(n * 100) / 100;
 const fmt = (n) => `$${Number(n ?? 0).toFixed(2)}`;
 
@@ -102,6 +114,15 @@ const STATUS = {
   off: { label: "Desactivado", chip: "bg-gray-100 text-gray-500", card: "border-gray-200", bar: "bg-gray-300" },
 };
 
+// Días que le quedan al link (vence a la semana de creado y luego se borra).
+function expiresLabel(l, paid) {
+  if (!l.expiresAt) return null;
+  const days = Math.ceil((new Date(l.expiresAt).getTime() - Date.now()) / 86400000);
+  const verb = paid ? "Se borra" : "Vence";
+  if (days <= 1) return `${verb} hoy`;
+  return `${verb} en ${days} días`;
+}
+
 function LinkCard({ link: l, onToggle }) {
   const status = l.used ? "paid" : l.active ? "open" : "off";
   const st = STATUS[status];
@@ -129,6 +150,11 @@ function LinkCard({ link: l, onToggle }) {
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 ring-1 ring-gray-100">
             <FiUsers className="h-3.5 w-3.5 text-emerald-600" /> {guestsLabel(l)}
           </span>
+          {expiresLabel(l) && (
+            <span className="inline-flex items-center rounded-lg bg-amber-50 px-2.5 py-1.5 text-amber-700 ring-1 ring-amber-100">
+              {expiresLabel(l, status === "paid")}
+            </span>
+          )}
         </div>
 
         <div className="mt-4 flex items-end justify-between gap-3 border-t border-gray-100 pt-3">
@@ -544,17 +570,30 @@ export default function SpecialLinksAdminPage() {
             <span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-100 text-indigo-600">
               <FiCreditCard className="h-4 w-4" />
             </span>
-            Pago personalizado
+            Links de pago
           </p>
           <p className="mt-2 text-sm text-gray-600">
-            El cliente pone el monto y la descripción, confirma y paga con PayPal.
-            Le llega un correo de pago (no de reserva) a él y a ustedes.
+            El cliente pone el monto, confirma y paga con PayPal. Le llega un correo de pago
+            (no de reserva) a él y a ustedes. Estos links no vencen.
           </p>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <code className="min-w-0 flex-1 truncate rounded-xl bg-white px-3 py-2.5 text-xs text-gray-700 ring-1 ring-indigo-100">
-              {`${window.location.origin}/custom-payment`}
-            </code>
-            <CopyButton text={`${window.location.origin}/custom-payment`} primary className="w-full sm:w-auto" />
+          <div className="mt-4 space-y-3">
+            {PAY_LINKS.map((p) => (
+              <div key={p.path} className="rounded-xl bg-white p-3 ring-1 ring-indigo-100">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-bold text-gray-900">{p.title}</p>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${p.fee ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                    {p.fee ? "Cliente paga la comisión" : "Sin comisión al cliente"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">{p.desc}</p>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <code className="min-w-0 flex-1 truncate rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                    {`${window.location.origin}${p.path}`}
+                  </code>
+                  <CopyButton text={`${window.location.origin}${p.path}`} primary className="w-full sm:w-auto" />
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 

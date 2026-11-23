@@ -22,7 +22,16 @@ const createSchema = z.object({
   paypalOrderId: z.string().min(6).max(100),
   paypalCaptureId: z.string().min(6).max(100).nullable().optional(),
   status: z.string(),
+  kind: z.enum(["custom", "custom_fee", "tip", "balance"]).default("custom"),
+  fee: z.number().min(0).max(10000).default(0),
 });
+
+const KIND_LABEL = {
+  custom: "Custom Payment",
+  custom_fee: "Custom Payment",
+  tip: "Tip / Propina",
+  balance: "Tour Balance",
+};
 
 const escapeHtml = (s) =>
   String(s ?? "")
@@ -46,6 +55,8 @@ function toReceipt(r) {
     paypalOrderId: r.paypal_order_id,
     paypalCaptureId: r.paypal_capture_id,
     createdAt: r.created_at,
+    kind: r.kind || "custom",
+    fee: Number(r.fee || 0),
   };
 }
 
@@ -81,7 +92,7 @@ export function generateCustomPaymentHTML(p, { internal = false } = {}) {
   const idBox = (id) =>
     `<span style="background:#f3f4f6;padding:4px 10px;border-radius:6px;font-family:monospace;font-size:12px;">${escapeHtml(id)}</span>`;
 
-  const badge = `<span style="display:inline-block;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;background:#e0e7ff;color:#3730a3;">Custom Payment</span>`;
+  const badge = `<span style="display:inline-block;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;background:#e0e7ff;color:#3730a3;">${KIND_LABEL[p.kind] || "Custom Payment"}</span>`;
 
   return `
     <!DOCTYPE html>
@@ -112,6 +123,8 @@ export function generateCustomPaymentHTML(p, { internal = false } = {}) {
               [
                 ROW("Payment Type", badge),
                 ROW("Date", fecha),
+                p.fee > 0 ? ROW("Amount", fmtMoney(p.amount - p.fee)) : "",
+                p.fee > 0 ? ROW("PayPal fee", fmtMoney(p.fee)) : "",
                 ROW("Amount Paid", fmtMoney(p.amount), true),
               ].join("")
             ) +
@@ -154,7 +167,7 @@ async function sendCustomPaymentMails(id) {
       transporter.sendMail({
         from: `"Nature Tours System" <${process.env.EMAIL_USER}>`,
         to: INTERNAL_EMAIL,
-        subject: `💳 Custom Payment: ${fmtMoney(p.amount)} - ${p.name}`,
+        subject: `💳 ${KIND_LABEL[p.kind] || "Custom Payment"}: ${fmtMoney(p.amount)} - ${p.name}`,
         html: generateCustomPaymentHTML(p, { internal: true }),
       }),
       transporter.sendMail({
@@ -191,8 +204,8 @@ export async function createCustomPayment(req, res) {
     const q = await pool.query(
       `insert into custom_payments
          (customer_name, customer_email, customer_phone, description, amount,
-          paypal_order_id, paypal_capture_id, status)
-       values ($1, $2, $3, $4, $5, $6, $7, 'completed')
+          paypal_order_id, paypal_capture_id, status, kind, fee)
+       values ($1, $2, $3, $4, $5, $6, $7, 'completed', $8, $9)
        on conflict (paypal_order_id) do update set paypal_order_id = excluded.paypal_order_id
        returning id`,
       [
@@ -203,6 +216,8 @@ export async function createCustomPayment(req, res) {
         Math.round(d.amount * 100) / 100,
         d.paypalOrderId,
         d.paypalCaptureId || null,
+        d.kind,
+        Math.round(d.fee * 100) / 100,
       ]
     );
     const id = q.rows[0].id;

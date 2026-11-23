@@ -35,6 +35,8 @@ const editSchema = z.object({
   // Si se agregaron personas: ¿ya pagaron? true = todo pagado; false/ausente =
   // se mantiene lo pagado antes y los nuevos quedan debiendo.
   addedPaid: z.boolean().optional(),
+  // Pagaron una parte: este monto se suma a lo que ya estaba pagado.
+  addedPaidAmount: z.number().min(0).max(100000).optional(),
 });
 
 const moveSchema = z.object({
@@ -163,7 +165,7 @@ export async function editReservation(req, res) {
   const parsed = editSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   const { id } = req.params;
-  const { adults, children, babies, phone, name, paid, addedPaid } = parsed.data;
+  const { adults, children, babies, phone, name, paid, addedPaid, addedPaidAmount } = parsed.data;
 
   const client = await pool.connect();
   try {
@@ -197,6 +199,7 @@ export async function editReservation(req, res) {
     // o escriba el monto.
     let newPaid = null;
     if (paid != null) newPaid = round2(paid);
+    else if (addedPaidAmount != null) newPaid = round2(prevPaid + addedPaidAmount);
     else if (paxChanged) newPaid = addedPaid ? round2(subtotal) : prevPaid;
     if (newPaid != null) {
       await client.query(
