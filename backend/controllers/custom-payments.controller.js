@@ -29,7 +29,7 @@ const createSchema = z.object({
 const KIND_LABEL = {
   custom: "Custom Payment",
   custom_fee: "Custom Payment",
-  tip: "Tip / Propina",
+  tip: "Tip",
   balance: "Tour Balance",
 };
 

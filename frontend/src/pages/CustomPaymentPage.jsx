@@ -41,12 +41,12 @@ const KINDS = {
   },
   tip: {
     title: "Tip for our team",
-    subtitle: "Propina para nuestro equipo",
-    intro: "Thank you for riding with us! · ¡Gracias por cabalgar con nosotros!",
-    descLabel: "Message (optional) · Mensaje (opcional)",
-    descPlaceholder: "e.g. For our guide Carlos — thank you!",
+    subtitle: null,
+    intro: "Thank you for riding with us!",
+    descLabel: "Message",
+    descPlaceholder: "Write your message here",
     descRequired: false,
-    defaultDescription: "Tip / Propina",
+    defaultDescription: "Tip",
     presets: [5, 10, 20, 30],
     paypalPrefix: "Nature Tours – Tip",
   },
@@ -156,7 +156,11 @@ export default function CustomPaymentPage({ kind = "custom" }) {
   const amountNum = round2(Number(amount) || 0);
   const feeNum = withFee ? round2(amountNum * FEE_RATE) : 0;
   const totalNum = round2(amountNum + feeNum);
-  const finalDescription = description.trim() || cfg.defaultDescription || "";
+  // El backend pide mínimo 3 caracteres: un mensaje corto se antepone al default.
+  const descTrim = description.trim();
+  const finalDescription = !cfg.defaultDescription || descTrim.length >= 3
+    ? descTrim
+    : descTrim ? `${cfg.defaultDescription}: ${descTrim}` : cfg.defaultDescription;
 
   const errors = useMemo(() => {
     const e = {};
