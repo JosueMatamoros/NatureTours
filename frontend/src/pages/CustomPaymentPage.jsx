@@ -6,9 +6,9 @@
 //
 // Variantes (kind):
 //   custom   /custom-payment          monto exacto (PayPal descuenta su fee a la empresa)
-//            /custom-payment?fee=1    + 5.4 % de fee PayPal que paga el cliente
+//            /custom-payment?fee=1    = /pay-balance
 //   tip      /tip                     propina, sin fee, título EN/ES
-//   balance  /pay-balance             saldo restante de un tour, + fee PayPal
+//   balance  /pay-balance             saldo restante de un tour (el cliente pone el monto), + fee PayPal
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
@@ -125,9 +125,11 @@ function Field({ icon, label, required, error, children }) {
 
 export default function CustomPaymentPage({ kind = "custom" }) {
   const [params] = useSearchParams();
-  const cfg = KINDS[kind] ?? KINDS.custom;
-  const withFee = Boolean(cfg.fee) || params.get("fee") === "1";
-  const kindKey = kind === "custom" && withFee ? "custom_fee" : kind;
+  // /custom-payment?fee=1 es lo mismo que /pay-balance (saldo, el cliente pone el monto).
+  const effKind = kind === "custom" && params.get("fee") === "1" ? "balance" : kind;
+  const cfg = KINDS[effKind] ?? KINDS.custom;
+  const withFee = Boolean(cfg.fee);
+  const kindKey = effKind;
 
   const [step, setStep] = useState(0);
   const [amount, setAmount] = useState(() => params.get("amount") ?? "");

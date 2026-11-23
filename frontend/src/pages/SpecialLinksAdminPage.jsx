@@ -43,10 +43,8 @@ const FEE = 0.054;
 const PAY_LINKS = [
   { path: "/custom-payment", title: "Pago personalizado", fee: false,
     desc: "El cliente paga el monto exacto; PayPal les descuenta su comisión a ustedes." },
-  { path: "/custom-payment?fee=1", title: "Pago personalizado + comisión", fee: true,
-    desc: "Se le suma al cliente el 5.4 % de PayPal: a ustedes les llega el monto completo." },
   { path: "/pay-balance", title: "Saldo del tour", fee: true,
-    desc: "Para pagar en línea lo que falta de una reserva (incluye la comisión de PayPal)." },
+    desc: "El cliente pone el monto que le falta; se le suma el 5.4 % de PayPal y a ustedes les llega completo." },
   { path: "/tip", title: "Propina · Tip", fee: false,
     desc: "Título en inglés y español, con botones de $5, $10, $20 y $30." },
 ];

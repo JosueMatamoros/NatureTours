@@ -49,15 +49,6 @@ const CARDS = [
     note: 'Card or PayPal · Tarjeta o PayPal',
     scan: 'SCAN TO PAY · ESCANEA',
   },
-  {
-    slug: 'pago-personalizado-con-comision',
-    url: `${SITE}/custom-payment?fee=1`,
-    kicker: 'SECURE PAYMENT · PAGO SEGURO',
-    title: ['Secure', 'payment'],
-    subtitle: 'Pago seguro con PayPal',
-    note: 'PayPal fee included · Incluye comisión de PayPal',
-    scan: 'SCAN TO PAY · ESCANEA',
-  },
 ];
 
 // ─── QR con módulos redondeados ──────────────────────────────────────────────
