@@ -173,23 +173,37 @@ function EditModal({ r, onClose, onDone, showToast }) {
     name: r.customer?.name || "", phone: r.customer?.phone || "",
     adults: r.adults, children: r.children, babies: r.babies,
   });
+  const [paid, setPaid] = useState(String(r.paid ?? 0));
+  const [paidTouched, setPaidTouched] = useState(false);
+  const [addedPaid, setAddedPaid] = useState(null); // null = sin responder
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Personas que pagan (adultos + niños) agregadas respecto a lo original.
+  const added = Math.max(form.adults + form.children - (r.adults + r.children), 0);
+  const askPaid = added > 0 && !paidTouched;
+
   async function submit(e) {
     e.preventDefault();
+    if (askPaid && addedPaid === null) return showToast("error", "Decí si las personas nuevas ya pagaron");
     setSaving(true);
     try {
-      await editReservation(r.id, {
+      const payload = {
         adults: form.adults, children: form.children, babies: form.babies,
         phone: form.phone.trim(), name: form.name.trim(),
-      });
+      };
+      if (paidTouched) payload.paid = Number(paid) || 0;
+      else if (askPaid) payload.addedPaid = addedPaid;
+      await editReservation(r.id, payload);
       showToast("success", "Reserva actualizada");
       onDone();
     } catch (err) {
       showToast("error", err.message);
     } finally { setSaving(false); }
   }
+
+  const choiceCls = (on) =>
+    `flex-1 rounded-lg border py-2 text-xs font-bold cursor-pointer ${on ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`;
 
   return (
     <Modal title="Editar reserva" onClose={onClose}>
@@ -201,10 +215,60 @@ function EditModal({ r, onClose, onDone, showToast }) {
           <Stepper label="Niños" value={form.children} onChange={(v) => set("children", v)} />
           <Stepper label="Bebés" value={form.babies} onChange={(v) => set("babies", v)} />
         </div>
+        {askPaid && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <p className="mb-2 text-sm font-semibold text-amber-800">
+              Agregaste {added} persona{added === 1 ? "" : "s"}. ¿Ya pagaron?
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setAddedPaid(false)} className={choiceCls(addedPaid === false)}>No, pagan el día del tour</button>
+              <button type="button" onClick={() => setAddedPaid(true)} className={choiceCls(addedPaid === true)}>Sí, ya pagaron todo</button>
+            </div>
+            <p className="mt-2 text-xs text-amber-700">Si pagaron otro monto, escribilo abajo en "Ya pagado".</p>
+          </div>
+        )}
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Ya pagado (USD)</label>
+          <input type="number" inputMode="decimal" min="0" step="0.01" className={inputCls} value={paid}
+            onChange={(e) => { setPaid(e.target.value); setPaidTouched(true); }} />
+          <p className="mt-1 text-xs text-slate-400">
+            Total actual ${r.subtotal} · {r.owes ? `debe $${r.balanceDue}` : "sin saldo"}. Cualquier monto: adelanto, SINPE, efectivo…
+          </p>
+        </div>
         <button type="submit" disabled={saving} className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60 cursor-pointer">
           {saving ? "Guardando…" : "Guardar cambios"}
         </button>
       </form>
+    </Modal>
+  );
+}
+
+// ─── Confirmar cancelación ────────────────────────────────────────────────────
+function CancelModal({ r, onClose, onConfirm, busy }) {
+  return (
+    <Modal title="Cancelar reserva" onClose={onClose}>
+      <div className="space-y-4">
+        <div className="flex items-start gap-3 rounded-xl bg-red-50 p-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-red-100 text-red-600"><FiX className="h-5 w-5" /></span>
+          <div className="text-sm text-slate-700">
+            <p className="font-bold text-slate-900">{r.customer?.name || "Este cliente"}</p>
+            <p>{paxLine(r)} · {r.startTime}, {shortDate(r.tourDate)}</p>
+          </div>
+        </div>
+        <p className="text-sm text-slate-600">
+          Queda marcada como cancelada (no se borra), libera el cupo y su dinero deja de sumar.
+        </p>
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} disabled={busy}
+            className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 cursor-pointer">
+            No, volver
+          </button>
+          <button type="button" onClick={onConfirm} disabled={busy}
+            className="flex-1 rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60 cursor-pointer">
+            {busy ? "Cancelando…" : "Sí, cancelar"}
+          </button>
+        </div>
+      </div>
     </Modal>
   );
 }
@@ -346,7 +410,7 @@ export default function ReservacionesPage() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [busyId, setBusyId] = useState(null);
-  const [modal, setModal] = useState(null); // {type:'create'|'edit'|'move', slot?, r?}
+  const [modal, setModal] = useState(null); // {type:'create'|'edit'|'move'|'cancel', slot?, r?}
 
   function showToast(type, message) {
     setToast({ type, message });
@@ -381,12 +445,12 @@ export default function ReservacionesPage() {
     .filter((e) => !e.ghost && !e.cancelled)
     .reduce((s, e) => s + e.guests, 0);
 
-  async function handleCancel(r) {
-    if (!window.confirm(`¿Cancelar la reserva de ${r.customer?.name || "este cliente"}? Queda marcada como cancelada (no se borra) y libera el cupo.`)) return;
+  async function confirmCancel(r) {
     setBusyId(r.id);
     try {
       await cancelReservation(r.id);
       showToast("success", "Reserva cancelada");
+      setModal(null);
       await load(date);
     } catch (e) {
       showToast("error", e.message);
@@ -482,7 +546,7 @@ export default function ReservacionesPage() {
                           busy={busyId === r.id}
                           onEdit={(x) => setModal({ type: "edit", r: x })}
                           onMove={(x) => setModal({ type: "move", r: x })}
-                          onCancel={handleCancel}
+                          onCancel={(x) => setModal({ type: "cancel", r: x })}
                         />
                       ))}
                     </div>
@@ -499,6 +563,9 @@ export default function ReservacionesPage() {
       )}
       {modal?.type === "edit" && (
         <EditModal r={modal.r} onClose={() => setModal(null)} onDone={afterModal} showToast={showToast} />
+      )}
+      {modal?.type === "cancel" && (
+        <CancelModal r={modal.r} busy={busyId === modal.r.id} onClose={() => setModal(null)} onConfirm={() => confirmCancel(modal.r)} />
       )}
       {modal?.type === "move" && (
         <MoveModal r={modal.r} onClose={() => setModal(null)} onDone={afterModal} showToast={showToast} />

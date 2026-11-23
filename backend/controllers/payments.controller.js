@@ -1,5 +1,6 @@
 // src/controllers/payments.controller.js
 import { pool } from "../db.js";
+import { computeBalanceDue } from "../utils/balance.js";
 import { createPaymentSchema } from "../schemas/payments.schema.js";
 import { sendReceiptForPayment } from "./email.controller.js";
 import { notifyBooking } from "../utils/whatsapp.js";
@@ -289,6 +290,9 @@ export async function getAllPayments(req, res) {
       b.subtotal           AS subtotal,
       b.arrived            AS arrived,
       b.source             AS source,
+      b.paid_override      AS paid_override,
+      b.manual_paid        AS manual_paid,
+      b.deposit_amount     AS deposit_amount,
 
       c.id                 AS customer_id,
       c.name               AS customer_name,
@@ -333,10 +337,7 @@ export async function getAllPayments(req, res) {
           arrived: Boolean(r.arrived),
           source: r.source,
           // Saldo que falta pagar el día del tour (solo aplica a apartados).
-          balanceDue:
-            r.mode === "deposit"
-              ? Math.max(Number(r.subtotal) - Number(r.amount), 0)
-              : 0,
+          balanceDue: computeBalanceDue({ ...r, pay_mode: r.mode, pay_amount: r.amount }),
         },
 
         customer: r.customer_id

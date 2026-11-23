@@ -3,6 +3,7 @@
 // de horarios que no son suyos.
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
+import { computeBalanceDue } from "../utils/balance.js";
 import { setSlotGuide, publishOffer, cancelOffer, openOffersForDate, openOffersForGuide, takeOffer, replyAssignment, declinesForGuide, slotSchema, offerSchema } from "../utils/slot-assign.js";
 import { computeRevenue } from "../utils/revenue.js";
 import { verifyPassword } from "../utils/password.js";
@@ -74,17 +75,6 @@ function sessionCookieOptions() {
   };
 }
 
-function computeBalanceDue(row) {
-  const subtotal = Number(row.subtotal || 0);
-  if (row.source === "manual") {
-    return Math.max(round2(subtotal - Number(row.manual_paid || 0)), 0);
-  }
-  if (row.pay_mode === "deposit") {
-    const deposit = Number(row.deposit_amount ?? row.pay_amount ?? 0);
-    return Math.max(round2(subtotal - deposit), 0);
-  }
-  return 0;
-}
 
 function mapReservation(row) {
   const balanceDue = computeBalanceDue(row);
@@ -234,7 +224,7 @@ export async function guideMyDay(req, res) {
            to_char(b.start_time,'HH24:MI') AS start_time,
            b.adults, b.children, b.babies, b.guests,
            b.subtotal, b.deposit_amount, b.source, b.ota_net,
-           b.arrived, b.external_ref, b.manual_name, b.manual_phone, b.manual_paid,
+           b.arrived, b.external_ref, b.manual_name, b.manual_phone, b.manual_paid, b.paid_override,
            pay.mode AS pay_mode, pay.amount AS pay_amount,
            c.name AS customer_name, c.phone AS customer_phone
          FROM bookings b
@@ -294,7 +284,7 @@ export async function guideMyDay(req, res) {
          to_char(b.start_time,'HH24:MI') AS start_time,
          b.adults, b.children, b.babies, b.guests,
          b.subtotal, b.deposit_amount, b.source,
-         b.arrived, b.external_ref, b.manual_name, b.manual_phone, b.manual_paid,
+         b.arrived, b.external_ref, b.manual_name, b.manual_phone, b.manual_paid, b.paid_override,
          pay.mode AS pay_mode, pay.amount AS pay_amount,
          c.name AS customer_name, c.phone AS customer_phone
        FROM bookings b

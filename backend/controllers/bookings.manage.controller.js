@@ -4,6 +4,7 @@
 // no tocar la compra del cliente.
 import { pool } from "../db.js";
 import { z } from "zod";
+import { computeBalanceDue, computePaid } from "../utils/balance.js";
 
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
@@ -29,6 +30,11 @@ const editSchema = z.object({
   babies: z.number().int().min(0).max(24),
   phone: z.string().trim().max(30).nullable().optional().or(z.literal("")),
   name: z.string().trim().max(120).optional(),
+  // Monto ya pagado (USD, sin fee). Si viene, manda.
+  paid: z.number().min(0).max(100000).optional(),
+  // Si se agregaron personas: ¿ya pagaron? true = todo pagado; false/ausente =
+  // se mantiene lo pagado antes y los nuevos quedan debiendo.
+  addedPaid: z.boolean().optional(),
 });
 
 const moveSchema = z.object({
@@ -46,7 +52,7 @@ const SELECT_COLS = `
   to_char(b.moved_from_date,'YYYY-MM-DD') AS moved_from_date,
   to_char(b.moved_from_time,'HH24:MI')    AS moved_from_time,
   b.moved_at,
-  b.manual_name, b.manual_phone, b.manual_paid,
+  b.manual_name, b.manual_phone, b.manual_paid, b.paid_override,
   pay.mode AS pay_mode, pay.amount AS pay_amount,
   c.name AS customer_name, c.phone AS customer_phone`;
 
@@ -61,20 +67,10 @@ const FROM_JOINS = `
   ) pay ON true
   LEFT JOIN customers c ON c.id = pay.customer_id`;
 
-function balanceDue(row) {
-  const subtotal = Number(row.subtotal || 0);
-  if (row.source === "manual") return Math.max(round2(subtotal - Number(row.manual_paid || 0)), 0);
-  if (row.pay_mode === "deposit") {
-    const deposit = Number(row.deposit_amount ?? row.pay_amount ?? 0);
-    return Math.max(round2(subtotal - deposit), 0);
-  }
-  return 0;
-}
-
 function mapEntry(row, { ghost = false } = {}) {
   // Web usa customers (vía pago); manual y OTAs (gyg/viator) usan manual_*.
   const isWeb = row.source === "web";
-  const due = balanceDue(row);
+  const due = computeBalanceDue(row);
   return {
     id: row.id,
     tourId: row.tour_id,
@@ -89,6 +85,7 @@ function mapEntry(row, { ghost = false } = {}) {
     arrived: Boolean(row.arrived),
     cancelled: row.status === "cancelled" || row.cancelled_at != null,
     subtotal: round2(row.subtotal),
+    paid: computePaid(row),
     balanceDue: due,
     owes: due > 0,
     customer: {
@@ -161,43 +158,74 @@ export async function createReservation(req, res) {
   }
 }
 
-// PATCH /api/reservations/:id  → edita pax y teléfono
+// PATCH /api/reservations/:id  → edita pax, teléfono y lo pagado
 export async function editReservation(req, res) {
   const parsed = editSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ ok: false, error: parsed.error.flatten() });
   const { id } = req.params;
-  const { adults, children, babies, phone, name } = parsed.data;
+  const { adults, children, babies, phone, name, paid, addedPaid } = parsed.data;
 
+  const client = await pool.connect();
   try {
+    await client.query("BEGIN");
+    const before = await client.query(`SELECT ${SELECT_COLS} ${FROM_JOINS} WHERE b.id = $1 FOR UPDATE OF b`, [id]);
+    if (before.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ ok: false, message: "Reserva no encontrada" });
+    }
+    const prev = before.rows[0];
+    const prevPaid = computePaid(prev);
+    const paxChanged =
+      Number(prev.adults) !== adults || Number(prev.children) !== children || Number(prev.babies) !== babies;
+
     // Incluimos `guests` en el SET para disparar el trigger que recalcula
     // guests/subtotal (solo corre en UPDATE OF tour_id, guests).
-    const q = await pool.query(
+    const q = await client.query(
       `UPDATE bookings
        SET adults = $2::int, children = $3::int, babies = $4::int,
            guests = ($2::int + $3::int),
-           manual_phone = CASE WHEN source = 'manual' THEN COALESCE($5::text, manual_phone) ELSE manual_phone END,
-           manual_name  = CASE WHEN source = 'manual' AND $6::text <> '' THEN $6::text ELSE manual_name END
+           manual_phone = CASE WHEN source <> 'web' THEN COALESCE($5::text, manual_phone) ELSE manual_phone END,
+           manual_name  = CASE WHEN source <> 'web' AND $6::text <> '' THEN $6::text ELSE manual_name END
        WHERE id = $1
-       RETURNING id, source`,
+       RETURNING id, source, subtotal`,
       [id, adults, children, babies, phone === "" ? null : phone ?? null, name ?? ""],
     );
-    if (q.rowCount === 0) return res.status(404).json({ ok: false, message: "Reserva no encontrada" });
+    const { source, subtotal } = q.rows[0];
+
+    // Lo pagado NO se recalcula solo: al cambiar personas se conserva lo que
+    // ya se había pagado, salvo que el admin diga que los nuevos ya pagaron
+    // o escriba el monto.
+    let newPaid = null;
+    if (paid != null) newPaid = round2(paid);
+    else if (paxChanged) newPaid = addedPaid ? round2(subtotal) : prevPaid;
+    if (newPaid != null) {
+      await client.query(
+        source === "manual"
+          ? `UPDATE bookings SET manual_paid = $2 WHERE id = $1`
+          : `UPDATE bookings SET paid_override = $2 WHERE id = $1`,
+        [id, newPaid],
+      );
+    }
 
     // Para reservas web, el teléfono/nombre viven en customers (vía el pago).
-    if (q.rows[0].source === "web" && (phone != null || name)) {
-      await pool.query(
+    if (source === "web" && (phone != null || name)) {
+      await client.query(
         `UPDATE customers c
          SET phone = COALESCE($2, c.phone),
              name  = COALESCE(NULLIF($3,''), c.name)
          FROM payments p
          WHERE p.booking_id = $1 AND p.status = 'completed' AND c.id = p.customer_id`,
         [id, phone === "" ? null : phone ?? null, name ?? ""],
-      ).catch((e) => console.error("edit web customer:", e.message));
+      );
     }
+    await client.query("COMMIT");
     return res.json({ ok: true, id });
   } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
     console.error("editReservation error:", err);
     return res.status(500).json({ ok: false, message: "Error editando la reserva" });
+  } finally {
+    client.release();
   }
 }
 

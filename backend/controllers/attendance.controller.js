@@ -9,6 +9,7 @@
 //   - source<>'web' (manual / channel): siempre entran.
 // Los holds web abandonados (sin pago) NO aparecen.
 import { pool } from "../db.js";
+import { computeBalanceDue, computePaid } from "../utils/balance.js";
 import {
   attendanceDateSchema,
   setArrivedSchema,
@@ -17,25 +18,11 @@ import {
 
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
-// Deuda a cobrar el DÍA del tour (efectivo), según el tipo de reserva:
-//   - manual:  subtotal − lo ya cobrado (manual_paid)
-//   - deposit: subtotal − el adelanto (deposit_amount) → resto en efectivo
-//   - full:    0 (ya pagó todo en línea)
-function computeBalanceDue(row) {
-  const subtotal = Number(row.subtotal || 0);
-  if (row.source === "manual") {
-    return Math.max(round2(subtotal - Number(row.manual_paid || 0)), 0);
-  }
-  if (row.pay_mode === "deposit") {
-    const deposit = Number(row.deposit_amount ?? row.pay_amount ?? 0);
-    return Math.max(round2(subtotal - deposit), 0);
-  }
-  return 0; // full o cualquier otro caso pagado
-}
+// Deuda a cobrar el DÍA del tour: ver utils/balance.js
 
 function mapRow(row) {
   const isManual = row.source === "manual";
-  const paid = isManual ? Number(row.manual_paid || 0) : Number(row.pay_amount || 0);
+  const paid = isManual || row.paid_override != null ? computePaid(row) : Number(row.pay_amount || 0);
   const balanceDue = computeBalanceDue(row);
 
   return {
@@ -88,7 +75,7 @@ export async function getAttendance(req, res) {
         b.status                        AS booking_status,
         b.source,
         b.arrived, b.arrived_at,
-        b.manual_name, b.manual_phone, b.manual_paid,
+        b.manual_name, b.manual_phone, b.manual_paid, b.paid_override,
         b.reseller_id,
         r.name                          AS reseller_name,
         pay.mode                        AS pay_mode,
