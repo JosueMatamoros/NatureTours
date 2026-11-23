@@ -31,23 +31,24 @@ function toAmount(v) {
 
 const num = (v) => (v == null ? null : Number(v));
 
-// Viator paga cada lunes lo de los tours de la semana anterior (lunes a
-// domingo). Verificado: pago del lun 2 nov 2026 = $387.35 = tours del 26 al
-// 31 oct. Devuelve el próximo pago estimado (hoy, si hoy es lunes).
+// Viator paga cada lunes los tours de DOMINGO a SÁBADO de la semana anterior
+// (verificado con sus Payment Advice de oct–nov 2026: los domingos entran en
+// el pago de 8 días después; pago del 16 nov = tours 8–14 nov = $585.60).
+// Devuelve el próximo pago estimado (hoy, si hoy es lunes).
 async function viatorNextPayment() {
   const q = await pool.query(
     `WITH hoy AS (SELECT (now() AT TIME ZONE 'America/Costa_Rica')::date AS d),
           pago AS (SELECT d + ((8 - extract(isodow FROM d)::int) % 7) AS lunes FROM hoy)
      SELECT to_char(pago.lunes, 'YYYY-MM-DD') AS pay_date,
-            to_char(pago.lunes - 7, 'YYYY-MM-DD') AS from_date,
-            to_char(pago.lunes - 1, 'YYYY-MM-DD') AS to_date,
+            to_char(pago.lunes - 8, 'YYYY-MM-DD') AS from_date,
+            to_char(pago.lunes - 2, 'YYYY-MM-DD') AS to_date,
             COALESCE(SUM(b.ota_net), 0)::float AS amount,
             COUNT(b.id)::int AS bookings,
             COUNT(b.id) FILTER (WHERE b.ota_net IS NULL)::int AS missing
      FROM pago
      LEFT JOIN bookings b
        ON b.source = 'viator' AND b.status <> 'cancelled'
-      AND b.tour_date >= pago.lunes - 7 AND b.tour_date < pago.lunes
+      AND b.tour_date >= pago.lunes - 8 AND b.tour_date <= pago.lunes - 2
      GROUP BY pago.lunes`,
   );
   const r = q.rows[0];
@@ -63,7 +64,7 @@ export async function getFinanceMonth(req, res) {
       revenueBetween(range.from, range.to),
       pool.query(`SELECT * FROM finance_months WHERE month = $1::date`, [range.from]),
       pool.query(
-        `SELECT id, provider, amount, to_char(paid_at,'YYYY-MM-DD') AS paid_at, note
+        `SELECT id, provider, amount, to_char(paid_at,'YYYY-MM-DD') AS paid_at, note, source_ref
          FROM finance_payments
          WHERE paid_at >= $1::date AND paid_at < $2::date
          ORDER BY paid_at, created_at`,
@@ -74,6 +75,7 @@ export async function getFinanceMonth(req, res) {
     const m = monthQ.rows[0];
     const payments = payQ.rows.map((p) => ({
       id: p.id, provider: p.provider, amount: Number(p.amount), paidAt: p.paid_at, note: p.note,
+      auto: Boolean(p.source_ref),
     }));
     const received = { viator: 0, gyg: 0 };
     for (const p of payments) received[p.provider] = Math.round((received[p.provider] + p.amount) * 100) / 100;

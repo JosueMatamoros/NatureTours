@@ -1,5 +1,7 @@
 /**
- * NatureTours — Ingesta de reservas OTA (GetYourGuide / Viator) a la BD.
+ * NatureTours — Ingesta de reservas OTA (GetYourGuide / Viator) a la BD,
+ * y de los pagos semanales de Viator ("Payment Advice", con Excel adjunto),
+ * que se anotan solos en Finanzas → Pagos de las OTAs.
  *
  * Cómo usarlo:
  *  1. Entrá a https://script.google.com  (con la cuenta naturetourslafortuna@gmail.com).
@@ -19,9 +21,10 @@ var LABEL = "OTA-Procesado";
 function procesarOTA() {
   var label = GmailApp.getUserLabelByName(LABEL) || GmailApp.createLabel(LABEL);
 
-  // Remitentes de reservas y cancelaciones de GYG/Viator, sin procesar, últimos 7 días.
+  // Reservas/cancelaciones de GYG/Viator y pagos de Viator, sin procesar, últimos 7 días.
   var query =
-    "(from:notification.getyourguide.com OR from:t1.viator.com OR from:chargebacks@viator.com) " +
+    "(from:notification.getyourguide.com OR from:t1.viator.com OR from:chargebacks@viator.com " +
+    "OR from:finance@viator.com) " +
     "-label:" + LABEL + " newer_than:7d";
 
   var threads = GmailApp.search(query, 0, 30);
@@ -38,6 +41,12 @@ function procesarOTA() {
         // getPlainBody() lo desarma mal; el backend ya sabe leer el HTML.
         body: msg.getBody(),
       };
+      // Pago de Viator: el detalle viene en el Excel adjunto.
+      if (/finance@viator\.com/i.test(payload.from)) {
+        payload.attachments = msg.getAttachments()
+          .filter(function (a) { return /\.xlsx$/i.test(a.getName()); })
+          .map(function (a) { return { name: a.getName(), data: Utilities.base64Encode(a.getBytes()) }; });
+      }
       try {
         var resp = UrlFetchApp.fetch(BACKEND_URL, {
           method: "post",

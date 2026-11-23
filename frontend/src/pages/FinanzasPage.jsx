@@ -517,7 +517,7 @@ function OtaPaymentsCard({ month, generated, payments, received, viatorNext, onC
   }
 
   return (
-    <SectionCard icon={FiCalendar} title="Pagos de las OTAs" hint="Anotá cada pago que llega y su fecha, para saber cuándo pagan.">
+    <SectionCard icon={FiCalendar} title="Pagos de las OTAs" hint="Los pagos de Viator se anotan solos con su correo semanal; los de GetYourGuide se anotan a mano.">
       {/* Estado por OTA */}
       <div className="mb-5 grid gap-3 sm:grid-cols-2">
         {["viator", "gyg"].map((p) => (
@@ -602,7 +602,15 @@ function OtaPaymentsCard({ month, generated, payments, received, viatorNext, onC
                 <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${PROVIDERS[p.provider].chip}`}>
                   {PROVIDERS[p.provider].short}
                 </span>
-                <span className="text-sm font-semibold text-gray-600">{dateLabel(p.paidAt)}</span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-600">
+                    {dateLabel(p.paidAt)}
+                    {p.auto && (
+                      <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-700 ring-1 ring-emerald-100">Auto</span>
+                    )}
+                  </span>
+                  {p.note && <span className="block truncate text-xs text-gray-400">{p.note.replace(/^Automático · /, "")}</span>}
+                </span>
               </span>
               <span className="flex items-center gap-1">
                 <span className="text-base font-bold tabular-nums text-gray-900">{money(p.amount)}</span>

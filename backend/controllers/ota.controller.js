@@ -5,6 +5,7 @@ import { pool } from "../db.js";
 import { parseOtaEmail } from "../ota/ota-parser.js";
 import { notifyBooking } from "../utils/whatsapp.js";
 import { pushBookingToAdmins } from "../utils/push.js";
+import { parseViatorAdvice, recordViatorAdvice } from "../utils/viator-advice.js";
 
 // POST /api/ota/inbound   header: x-ota-token
 // body: { from, subject, body }
@@ -14,7 +15,23 @@ export async function otaInbound(req, res) {
     return res.status(401).json({ ok: false, message: "Token inválido" });
   }
 
-  const { from = "", subject = "", body = "", backfill = false } = req.body || {};
+  const { from = "", subject = "", body = "", backfill = false, attachments = [] } = req.body || {};
+
+  // Pago semanal de Viator (Excel adjunto) → se anota solo en Finanzas.
+  if (/finance@viator\.com/i.test(from) && /payment advice/i.test(subject)) {
+    try {
+      const xlsx = (Array.isArray(attachments) ? attachments : []).find((a) => /\.xlsx$/i.test(a?.name || ""));
+      if (!xlsx?.data) return res.status(422).json({ ok: false, message: "Falta el Excel adjunto" });
+      const advice = await parseViatorAdvice(Buffer.from(xlsx.data, "base64"));
+      if (!advice) return res.status(422).json({ ok: false, message: "No se pudo leer el Excel" });
+      const r = await recordViatorAdvice(advice);
+      return res.json({ ok: true, action: `payment-${r.action}`, ...r });
+    } catch (err) {
+      console.error("viator advice error:", err);
+      return res.status(500).json({ ok: false, message: "Error anotando el pago" });
+    }
+  }
+
   const parsed = parseOtaEmail({ from, subject, body });
   if (!parsed) {
     return res.json({ ok: true, ignored: true }); // no es una reserva OTA reconocible
