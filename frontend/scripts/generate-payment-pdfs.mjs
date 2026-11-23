@@ -1,7 +1,7 @@
 // PDFs de pago para imprimir/enviar: Propina y Saldo del tour.
 // Propina: 2 opciones, directo por PayPal (PayPal.me o correo) y por el sistema.
 // Saldo: SOLO por el sistema (ahí el cliente paga la comisión de PayPal).
-// Salida local: marketing/pagos/
+// Salida local: marketing/pagos/ (la propina también sale como PNG)
 // Uso: node scripts/generate-payment-pdfs.mjs [paypalMeUser]
 //   sin paypalMeUser → la opción PayPal muestra solo el correo (sin QR).
 import QRCode from 'qrcode';
@@ -32,6 +32,7 @@ const DOCS = [
     siteLabel: 'naturetourslafortuna.com/tip',
     siteNote: 'Choose the amount · Elige el monto',
     paypalDirect: true,
+    png: true, // también como imagen (marketing/pagos/propina-tip.png)
   },
   {
     slug: 'saldo-tour',
@@ -141,8 +142,14 @@ async function makePdf(d, logoB64) {
   writeFileSync(tmp, html);
   execFileSync(CHROME, ['--headless', '--disable-gpu', '--no-pdf-header-footer',
     `--print-to-pdf=${out}`, `file://${tmp}`], { stdio: 'ignore' });
-  rmSync(tmp);
   console.log('PDF:', out);
+  if (d.png) {
+    const png = path.join(OUT_DIR, `${d.slug}.png`);
+    execFileSync(CHROME, ['--headless', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=2',
+      '--window-size=816,1056', `--screenshot=${png}`, `file://${tmp}`], { stdio: 'ignore' });
+    console.log('PNG:', png);
+  }
+  rmSync(tmp);
 }
 
 mkdirSync(OUT_DIR, { recursive: true });

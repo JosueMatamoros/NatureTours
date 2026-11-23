@@ -23,30 +23,12 @@ const SANS_FONT = `Helvetica, Arial, sans-serif`;
 
 const CARDS = [
   {
-    slug: 'propina-tip',
-    url: `${SITE}/tip`,
-    kicker: 'THANK YOU · GRACIAS',
-    title: ['Tip for', 'our guides'],
-    subtitle: 'Propina para los guías',
-    note: 'Thank you for riding with us · ¡Gracias por venir!',
-    scan: 'SCAN TO TIP · ESCANEA',
-  },
-  {
     slug: 'saldo-tour',
     url: `${SITE}/pay-balance`,
     kicker: 'PAY ONLINE · PAGA EN LÍNEA',
     title: ['Pay your', 'tour balance'],
     subtitle: 'Paga el saldo de tu tour',
     note: 'PayPal fee included · Incluye comisión de PayPal',
-    scan: 'SCAN TO PAY · ESCANEA',
-  },
-  {
-    slug: 'pago-personalizado',
-    url: `${SITE}/custom-payment`,
-    kicker: 'SECURE PAYMENT · PAGO SEGURO',
-    title: ['Secure', 'payment'],
-    subtitle: 'Pago seguro con PayPal',
-    note: 'Card or PayPal · Tarjeta o PayPal',
     scan: 'SCAN TO PAY · ESCANEA',
   },
 ];
