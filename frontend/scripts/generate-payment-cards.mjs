@@ -1,7 +1,7 @@
 // Tarjetas con QR para los links de pago (propina, saldo, pago personalizado).
 // QR estático (nunca expira), colores de marca, sin logo al centro.
 // Salida local (no se sube): marketing/pagos/<slug>.png
-// Uso: node scripts/generate-payment-cards.mjs
+// Uso: node scripts/generate-payment-cards.mjs [usuarioPayPalMe]
 import QRCode from 'qrcode';
 import sharp from 'sharp';
 import { mkdirSync } from 'fs';
@@ -12,10 +12,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..', '..');
 const OUT_DIR = path.join(ROOT, 'marketing', 'pagos');
 const SITE = 'https://naturetourslafortuna.com';
+const PAYPAL_EMAIL = '1002matamoros@gmail.com';
+// Usuario de PayPal.me (ej. 'NatureTours'). Sin él, la opción PayPal muestra el correo.
+const PAYPAL_ME = process.argv[2]?.replace(/^https?:\/\//, '').replace(/^(www\.)?paypal\.me\//i, '') || null;
 
 const DARK = '#04231b';
 const DARK_MID = '#073a2c';
 const CREAM = '#f5efdd';
+const EMERALD = '#047857';
 const SAGE = '#a9c47f';
 const AMBER = '#fbbf24';
 const SCRIPT_FONT = `'Snell Roundhand', 'Apple Chancery', 'Brush Script MT', cursive`;
@@ -35,14 +39,14 @@ const CARDS = [
   },
   {
     slug: 'propina-tip',
+    dual: true, // dos opciones: PayPal directo + sistema
     url: `${SITE}/tip`,
     title: 'Tip our guides',
     subtitle: 'Propina para los guías',
     lines: [
-      'Scan to leave a tip by card or PayPal.',
-      'Escanea para dejar propina con tarjeta o PayPal.',
+      'Thank you for riding with us! Choose how you want to tip.',
+      '¡Gracias por cabalgar con nosotros! Elige cómo dejar tu propina.',
     ],
-    small: 'Or PayPal directly · O PayPal directo: 1002matamoros@gmail.com',
   },
 ];
 
@@ -112,6 +116,65 @@ function leaf(x, y, scale, angle, opacity) {
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
+// Tarjeta crema con QR (o correo) + rótulo, para la versión de dos opciones.
+function optionCard(x, y, w, num, label, labelEs, inner, foot) {
+  return `
+    <rect x="${x + 8}" y="${y + 14}" width="${w}" height="${w + 150}" rx="36" fill="#000" opacity="0.35"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${w + 150}" rx="36" fill="${CREAM}"/>
+    <circle cx="${x + w / 2}" cy="${y}" r="30" fill="${EMERALD}" stroke="${CREAM}" stroke-width="6"/>
+    <text x="${x + w / 2}" y="${y + 11}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="900" font-size="30" fill="#fff">${num}</text>
+    <text x="${x + w / 2}" y="${y + 74}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="900" font-size="32" fill="${DARK}">${esc(label)}</text>
+    <text x="${x + w / 2}" y="${y + 110}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="500" font-size="23" fill="#4b5d55">${esc(labelEs)}</text>
+    ${inner}
+    <text x="${x + w / 2}" y="${y + w + 120}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="700" font-size="21" fill="${EMERALD}">${esc(foot)}</text>`;
+}
+
+async function makeDualCard(c, hero, logo, W, H) {
+  const CW = 450, GAP = 50, X1 = (W - 2 * CW - GAP) / 2, X2 = X1 + CW + GAP, Y = 470;
+  const QR = 330, QOFF = (CW - QR) / 2, QY = Y + 140;
+
+  const ppInner = PAYPAL_ME
+    ? qrSvg(`https://paypal.me/${PAYPAL_ME}`, X1 + QOFF, QY, QR, DARK)
+    : `<rect x="${X1 + 30}" y="${QY}" width="${CW - 60}" height="${QR}" rx="24" fill="#eef5ee" stroke="${SAGE}" stroke-width="4" stroke-dasharray="14 10"/>
+       <text x="${X1 + CW / 2}" y="${QY + QR / 2 - 40}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="800" font-size="22" letter-spacing="3" fill="${EMERALD}">SEND TO · ENVIAR A</text>
+       <text x="${X1 + CW / 2}" y="${QY + QR / 2 + 10}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="900" font-size="30" fill="${DARK}">1002matamoros</text>
+       <text x="${X1 + CW / 2}" y="${QY + QR / 2 + 48}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="900" font-size="30" fill="${DARK}">@gmail.com</text>`;
+  const ppFoot = PAYPAL_ME ? `paypal.me/${PAYPAL_ME}` : 'From your PayPal app · Desde tu app';
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+    <defs>
+      <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${DARK}" stop-opacity="0.78"/>
+        <stop offset="0.3" stop-color="${DARK}" stop-opacity="0.6"/>
+        <stop offset="0.6" stop-color="${DARK}" stop-opacity="0.55"/>
+        <stop offset="1" stop-color="${DARK}" stop-opacity="0.92"/>
+      </linearGradient>
+    </defs>
+    <rect width="${W}" height="${H}" fill="url(#shade)"/>
+    <text x="${W / 2}" y="290" text-anchor="middle" font-family="${SANS_FONT}" font-weight="900"
+      font-size="76" fill="${CREAM}">${esc(c.title)}</text>
+    <text x="${W / 2}" y="365" text-anchor="middle" font-family="${SCRIPT_FONT}"
+      font-size="60" fill="#dcebc4">${esc(c.subtitle)}</text>
+
+    ${optionCard(X1, Y, CW, 1, 'PayPal directly', 'Directo por PayPal', ppInner, ppFoot)}
+    ${optionCard(X2, Y, CW, 2, 'Card or PayPal', 'Tarjeta o PayPal en el sistema',
+      qrSvg(c.url, X2 + QOFF, QY, QR, DARK), 'naturetourslafortuna.com/tip')}
+
+    <text x="${W / 2}" y="1225" text-anchor="middle" font-family="${SANS_FONT}" font-weight="700"
+      font-size="32" fill="${CREAM}">${esc(c.lines[0])}</text>
+    <text x="${W / 2}" y="1275" text-anchor="middle" font-family="${SANS_FONT}" font-weight="500"
+      font-size="29" fill="#d8e9c9">${esc(c.lines[1])}</text>
+    <text x="${W / 2}" y="1440" text-anchor="middle" font-family="${SANS_FONT}" font-weight="500"
+      font-size="24" letter-spacing="2" fill="${SAGE}">naturetourslafortuna.com</text>
+  </svg>`;
+
+  const out = path.join(OUT_DIR, `${c.slug}.png`);
+  await sharp(hero)
+    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }, { input: logo, top: 60, left: (W - 150) / 2 }])
+    .png().toFile(out);
+  console.log('Tarjeta:', out);
+}
+
 async function makeCard(c) {
   const W = 1080, H = 1500;
 
@@ -121,6 +184,7 @@ async function makeCard(c) {
 
   const logo = await sharp(path.join(ROOT, 'frontend', 'public', 'logo.webp'))
     .resize(150, 134, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+  if (c.dual) return makeDualCard(c, hero, logo, W, H);
 
   const CARD = 600, CX = (W - CARD) / 2, CY = 420;
   const QR = 440, QX = CX + (CARD - QR) / 2, QY = CY + (CARD - QR) / 2;
