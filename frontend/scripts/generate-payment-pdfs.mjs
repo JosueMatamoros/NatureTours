@@ -1,7 +1,7 @@
 // PDFs de pago para imprimir/enviar: Propina y Saldo del tour.
 // Propina: 2 opciones, directo por PayPal (PayPal.me o correo) y por el sistema.
 // Saldo: SOLO por el sistema (ahí el cliente paga la comisión de PayPal).
-// Salida local: marketing/pagos/ (la propina también sale como PNG)
+// Salida local: marketing/pagos/ (las imágenes salen de generate-payment-cards.mjs)
 // Uso: node scripts/generate-payment-pdfs.mjs [paypalMeUser]
 //   sin paypalMeUser → la opción PayPal muestra solo el correo (sin QR).
 import QRCode from 'qrcode';
@@ -32,7 +32,6 @@ const DOCS = [
     siteLabel: 'naturetourslafortuna.com/tip',
     siteNote: 'Choose the amount · Elige el monto',
     paypalDirect: true,
-    png: true, // también como imagen (marketing/pagos/propina-tip.png)
   },
   {
     slug: 'saldo-tour',

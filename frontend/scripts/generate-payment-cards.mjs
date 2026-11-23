@@ -25,11 +25,24 @@ const CARDS = [
   {
     slug: 'saldo-tour',
     url: `${SITE}/pay-balance`,
-    kicker: 'PAY ONLINE · PAGA EN LÍNEA',
-    title: ['Pay your', 'tour balance'],
-    subtitle: 'Paga el saldo de tu tour',
-    note: 'PayPal fee included · Incluye comisión de PayPal',
-    scan: 'SCAN TO PAY · ESCANEA',
+    title: 'Pay your balance',
+    subtitle: 'Paga tu saldo',
+    lines: [
+      'Scan, enter the amount you owe and pay by card or PayPal.',
+      'Escanea, ingresa lo que debes y paga con tarjeta o PayPal.',
+    ],
+    small: 'Includes PayPal fee · Incluye comisión de PayPal',
+  },
+  {
+    slug: 'propina-tip',
+    url: `${SITE}/tip`,
+    title: 'Tip our guides',
+    subtitle: 'Propina para los guías',
+    lines: [
+      'Scan to leave a tip by card or PayPal.',
+      'Escanea para dejar propina con tarjeta o PayPal.',
+    ],
+    small: 'Or PayPal directly · O PayPal directo: 1002matamoros@gmail.com',
   },
 ];
 
@@ -102,58 +115,52 @@ const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 async function makeCard(c) {
   const W = 1080, H = 1500;
 
-  // Foto de fondo arriba, oscurecida.
+  // Foto a pantalla completa, oscurecida para que resalten el QR y el texto.
   const heroSrc = path.join(ROOT, 'frontend', 'public', 'booking', 'horse', 'image12.webp');
-  const hero = await sharp(heroSrc).resize(W, 760, { fit: 'cover', position: 'centre' }).toBuffer();
+  const hero = await sharp(heroSrc).resize(W, H, { fit: 'cover', position: 'centre' }).toBuffer();
 
   const logo = await sharp(path.join(ROOT, 'frontend', 'public', 'logo.webp'))
     .resize(150, 134, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
 
-  const CARD = 640, CX = (W - CARD) / 2, CY = 640;
-  const QR = 450, QX = CX + (CARD - QR) / 2, QY = CY + 78;
+  const CARD = 600, CX = (W - CARD) / 2, CY = 420;
+  const QR = 440, QX = CX + (CARD - QR) / 2, QY = CY + (CARD - QR) / 2;
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
     <defs>
-      <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="${DARK}" stop-opacity="0.55"/>
-        <stop offset="0.55" stop-color="${DARK}" stop-opacity="0.8"/>
-        <stop offset="1" stop-color="${DARK}" stop-opacity="1"/>
+      <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${DARK}" stop-opacity="0.78"/>
+        <stop offset="0.3" stop-color="${DARK}" stop-opacity="0.6"/>
+        <stop offset="0.6" stop-color="${DARK}" stop-opacity="0.5"/>
+        <stop offset="1" stop-color="${DARK}" stop-opacity="0.92"/>
       </linearGradient>
     </defs>
-    <rect x="0" y="760" width="${W}" height="${H - 760}" fill="${DARK}"/>
-    <rect x="0" y="0" width="${W}" height="780" fill="url(#fade)"/>
-    <circle cx="${W + 60}" cy="${H - 120}" r="260" fill="${DARK_MID}"/>
-    <circle cx="-80" cy="${H - 300}" r="200" fill="${DARK_MID}"/>
-    ${leaf(820, 170, 2.4, -20, 0.55)}${leaf(880, 230, 1.6, 15, 0.4)}${leaf(120, 1330, 2, 160, 0.35)}
+    <rect width="${W}" height="${H}" fill="url(#shade)"/>
 
-    <text x="${W / 2}" y="250" text-anchor="middle" font-family="${SANS_FONT}" font-weight="700"
-      font-size="26" letter-spacing="6" fill="${AMBER}">${esc(c.kicker)}</text>
-    <text x="${W / 2}" y="345" text-anchor="middle" font-family="${SANS_FONT}" font-weight="900"
-      font-size="84" fill="${CREAM}">${esc(c.title[0])}</text>
-    <text x="${W / 2}" y="435" text-anchor="middle" font-family="${SANS_FONT}" font-weight="900"
-      font-size="84" fill="${CREAM}">${esc(c.title[1])}</text>
-    <text x="${W / 2}" y="520" text-anchor="middle" font-family="${SCRIPT_FONT}"
-      font-size="58" fill="${SAGE}">${esc(c.subtitle)}</text>
+    <text x="${W / 2}" y="290" text-anchor="middle" font-family="${SANS_FONT}" font-weight="900"
+      font-size="76" fill="${CREAM}">${esc(c.title)}</text>
+    <text x="${W / 2}" y="365" text-anchor="middle" font-family="${SCRIPT_FONT}"
+      font-size="60" fill="#dcebc4">${esc(c.subtitle)}</text>
 
-    <rect x="${CX + 10}" y="${CY + 16}" width="${CARD}" height="${CARD + 70}" rx="44" fill="#000" opacity="0.35"/>
-    <rect x="${CX}" y="${CY}" width="${CARD}" height="${CARD + 70}" rx="44" fill="${CREAM}"/>
-    ${brackets(QX - 48, QY - 48, QR + 96, 74, 12, DARK, 30)}
+    <rect x="${CX + 10}" y="${CY + 16}" width="${CARD}" height="${CARD}" rx="44" fill="#000" opacity="0.35"/>
+    <rect x="${CX}" y="${CY}" width="${CARD}" height="${CARD}" rx="44" fill="${CREAM}"/>
+    ${brackets(QX - 44, QY - 44, QR + 88, 70, 12, DARK, 28)}
     ${qrSvg(c.url, QX, QY, QR, DARK)}
-    <text x="${W / 2}" y="${CY + CARD + 34}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="800"
-      font-size="34" letter-spacing="3" fill="${DARK}">${esc(c.scan)}</text>
 
-    <text x="${W / 2}" y="1440" text-anchor="middle" font-family="${SANS_FONT}" font-weight="600"
-      font-size="28" fill="#d8e9c9">${esc(c.note)}</text>
-    <text x="${W / 2}" y="1478" text-anchor="middle" font-family="${SANS_FONT}" font-weight="500"
-      font-size="22" fill="${SAGE}" opacity="0.8">naturetourslafortuna.com</text>
+    <text x="${W / 2}" y="1150" text-anchor="middle" font-family="${SANS_FONT}" font-weight="700"
+      font-size="34" fill="${CREAM}">${esc(c.lines[0])}</text>
+    <text x="${W / 2}" y="1200" text-anchor="middle" font-family="${SANS_FONT}" font-weight="500"
+      font-size="31" fill="#d8e9c9">${esc(c.lines[1])}</text>
+    <text x="${W / 2}" y="1290" text-anchor="middle" font-family="${SANS_FONT}" font-weight="600"
+      font-size="26" fill="${AMBER}">${esc(c.small)}</text>
+    <text x="${W / 2}" y="1440" text-anchor="middle" font-family="${SANS_FONT}" font-weight="500"
+      font-size="24" letter-spacing="2" fill="${SAGE}">naturetourslafortuna.com</text>
   </svg>`;
 
   const out = path.join(OUT_DIR, `${c.slug}.png`);
-  await sharp({ create: { width: W, height: H, channels: 4, background: DARK } })
+  await sharp(hero)
     .composite([
-      { input: hero, top: 0, left: 0 },
       { input: Buffer.from(svg), top: 0, left: 0 },
-      { input: logo, top: 50, left: (W - 150) / 2 },
+      { input: logo, top: 60, left: (W - 150) / 2 },
     ])
     .png()
     .toFile(out);
