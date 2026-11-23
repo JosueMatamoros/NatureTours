@@ -126,7 +126,10 @@ function optionCard(x, y, w, num, label, labelEs, inner, foot) {
     <text x="${x + w / 2}" y="${y + 74}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="900" font-size="32" fill="${DARK}">${esc(label)}</text>
     <text x="${x + w / 2}" y="${y + 110}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="500" font-size="23" fill="#4b5d55">${esc(labelEs)}</text>
     ${inner}
-    <text x="${x + w / 2}" y="${y + w + 120}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="700" font-size="21" fill="${EMERALD}">${esc(foot)}</text>`;
+    ${Array.isArray(foot)
+      ? `<text x="${x + w / 2}" y="${y + w + 104}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="600" font-size="19" fill="#4b5d55">${esc(foot[0])}</text>
+         <text x="${x + w / 2}" y="${y + w + 132}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="800" font-size="23" fill="${EMERALD}">${esc(foot[1])}</text>`
+      : `<text x="${x + w / 2}" y="${y + w + 120}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="700" font-size="21" fill="${EMERALD}">${esc(foot)}</text>`}`;
 }
 
 async function makeDualCard(c, hero, logo, W, H) {
@@ -139,7 +142,7 @@ async function makeDualCard(c, hero, logo, W, H) {
        <text x="${X1 + CW / 2}" y="${QY + QR / 2 - 40}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="800" font-size="22" letter-spacing="3" fill="${EMERALD}">SEND TO · ENVIAR A</text>
        <text x="${X1 + CW / 2}" y="${QY + QR / 2 + 10}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="900" font-size="30" fill="${DARK}">1002matamoros</text>
        <text x="${X1 + CW / 2}" y="${QY + QR / 2 + 48}" text-anchor="middle" font-family="${SANS_FONT}" font-weight="900" font-size="30" fill="${DARK}">@gmail.com</text>`;
-  const ppFoot = PAYPAL_ME ? `paypal.me/${PAYPAL_ME}` : 'From your PayPal app · Desde tu app';
+  const ppFoot = PAYPAL_ME ? ['Or send to · O envía a', PAYPAL_EMAIL] : 'From your PayPal app · Desde tu app';
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
     <defs>
